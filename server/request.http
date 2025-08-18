@@ -1,0 +1,30 @@
+### Check if the server is running and the API endpoints are accessible
+GET http://localhost:3000/api/health
+
+### List all nodes
+GET http://localhost:3000/api/nodes
+
+### Get latest reading for a node
+GET http://localhost:3000/api/nodes/1/latest
+
+### Query readings with time range & limit
+GET http://localhost:3000/api/readings?nodeId=1&from=2025-08-01&to=2025-08-15&limit=2
+
+### Publish pump command 1
+POST http://localhost:3000/api/pump/1
+Content-Type: application/json
+
+{
+  "command":"ON"
+}
+
+### Publish pump command 2
+POST http://localhost:3000/api/pump/2
+Content-Type: application/json
+
+{
+  "command":"OFF"
+}
+
+### List command logs
+GET http://localhost:3000/api/commands?nodeId=1&limit=2
