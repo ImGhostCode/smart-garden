@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:smartgarden_flutter/src/models/rule_model.dart';
 import '../models/models.dart';
 
 class ApiService {
@@ -64,5 +65,39 @@ class ApiService {
     if (res.statusCode != 200) throw Exception('Failed to load commands');
     final data = jsonDecode(res.body) as List;
     return data.map((j) => CommandLog.fromJson(j)).toList();
+  }
+
+  Future<List<AutomationRule>> getRules(int? nodeId) async {
+    final res =
+        await http.get(_u('/rules', {if (nodeId != null) 'nodeId': nodeId}));
+    if (res.statusCode != 200) throw Exception('Failed to load rules');
+    final data = jsonDecode(res.body) as List;
+    return data.map((j) => AutomationRule.fromJson(j)).toList();
+  }
+
+  Future<AutomationRule> createRule(Map<String, dynamic> payload) async {
+    final res = await http.post(
+      _u('/rules'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(payload),
+    );
+    if (res.statusCode != 200) throw Exception('Failed to create rule');
+    return AutomationRule.fromJson(jsonDecode(res.body));
+  }
+
+  Future<AutomationRule> updateRule(
+      String id, Map<String, dynamic> payload) async {
+    final res = await http.put(
+      _u('/rules/$id'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(payload),
+    );
+    if (res.statusCode != 200) throw Exception('Failed to update rule');
+    return AutomationRule.fromJson(jsonDecode(res.body));
+  }
+
+  Future<void> deleteRule(String id) async {
+    final res = await http.delete(_u('/rules/$id'));
+    if (res.statusCode != 200) throw Exception('Failed to delete rule');
   }
 }

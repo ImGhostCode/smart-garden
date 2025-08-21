@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:smartgarden_flutter/src/blocs/node/node_bloc.dart';
+import 'package:smartgarden_flutter/src/blocs/rule/rule_bloc.dart';
+import 'package:smartgarden_flutter/src/blocs/rule/rule_event.dart';
+import 'package:smartgarden_flutter/src/pages/rules_page.dart';
+import 'package:smartgarden_flutter/src/repositories/rule_repository.dart';
 import 'src/api/api_service.dart';
-import 'src/bloc/node_bloc.dart';
 import 'src/pages/dashboard_page.dart';
 import 'src/pages/commands_page.dart';
 import 'src/services/socket_service.dart';
@@ -29,6 +33,9 @@ class SmartGardenApp extends StatelessWidget {
       child: MultiBlocProvider(
         providers: [
           BlocProvider(create: (_) => NodeBloc(api)..add(LoadNodes())),
+          BlocProvider(
+              create: (_) =>
+                  RuleBloc(RuleRepository(api))..add(LoadRules(null))),
         ],
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
@@ -37,7 +44,7 @@ class SmartGardenApp extends StatelessWidget {
             colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
             useMaterial3: true,
           ),
-          home: HomeRouter(),
+          home: const HomeRouter(),
         ),
       ),
     );
@@ -45,6 +52,8 @@ class SmartGardenApp extends StatelessWidget {
 }
 
 class HomeRouter extends StatefulWidget {
+  const HomeRouter({super.key});
+
   @override
   State<HomeRouter> createState() => _HomeRouterState();
 }
@@ -61,6 +70,7 @@ class _HomeRouterState extends State<HomeRouter> {
         children: [
           DashboardPage(api: api, socket: socket),
           CommandsPage(api: api, socket: socket),
+          const RulesPage()
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -70,6 +80,7 @@ class _HomeRouterState extends State<HomeRouter> {
           BottomNavigationBarItem(
               icon: Icon(Icons.dashboard), label: 'Dashboard'),
           BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Commands'),
+          BottomNavigationBarItem(icon: Icon(Icons.rule), label: "Rules"),
         ],
       ),
     );

@@ -9,6 +9,9 @@ import { initMqtt } from "./services/mqttClient.js";
 import { Server as SocketIOServer } from "socket.io";
 import http from "http";
 import { setIO } from "./serverApp.js";
+import rulesRouter from "./routes/rules.js";
+import { AutomationEngine } from "./services/automationEngine.js";
+
 
 const app = express();
 
@@ -19,6 +22,7 @@ app.use(express.json({ limit: "1mb" }));
 app.use(httpLogger);
 
 // Routes
+app.use("/api/rules", rulesRouter);
 app.use("/api", apiRoutes);
 
 // Error handler
@@ -37,7 +41,7 @@ const MQTT_TOPIC_DATA = process.env.MQTT_TOPIC_DATA || "smartgarden/area1/node/+
 
 async function start() {
   await connectDB(MONGO_URI);
-  initMqtt({
+  let mqttClient = initMqtt({
     url: MQTT_URL,
     port: MQTT_PORT,
     username: process.env.MQTT_USERNAME,
@@ -55,6 +59,15 @@ async function start() {
   setIO(io);
 
   app.set("io", io);
+  const engine = new AutomationEngine({
+    app,
+    mqttClient, // client bạn tạo trong initMqtt
+    mqttTopicPumpBase: process.env.MQTT_TOPIC_PUMP_BASE || "smartgarden/area1/node"
+  });
+  app.set("automationEngine", engine);
+
+  // reset quota hằng ngày, v.v.
+  setInterval(() => engine.tick(), 60 * 1000);
 
   io.on("connection", (socket) => {
     console.log("[Socket] client connected:", socket.id);
@@ -69,3 +82,5 @@ start().catch((e) => {
   console.error("Fatal:", e);
   process.exit(1);
 });
+
+export default app;

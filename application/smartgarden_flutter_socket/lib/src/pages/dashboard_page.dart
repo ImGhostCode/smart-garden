@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:smartgarden_flutter/src/blocs/node/node_bloc.dart';
 import '../api/api_service.dart';
-import '../bloc/node_bloc.dart';
 import '../models/models.dart';
 import '../widgets/reading_chart.dart';
 import '../services/socket_service.dart';

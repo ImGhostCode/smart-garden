@@ -28,3 +28,54 @@ Content-Type: application/json
 
 ### List command logs
 GET http://localhost:3000/api/commands?nodeId=1&limit=2
+
+### List all rules
+GET http://localhost:3000/api/rules
+
+### List rules for a specific node
+GET http://localhost:3000/api/rules?nodeId=1
+
+### Create a new rule
+POST http://localhost:3000/api/rules/
+Content-Type: application/json
+
+{
+  "name": "Soil Morning Window 1",
+  "node_id": 1,
+  "type": "soil_threshold",
+  "min": 450,
+  "max": 700,
+  "action": "pump_on",
+  "durationSec": 20,
+  "enabled": true,
+  "timeWindows": [
+    { "start": "06:00", "end": "07:00" },
+    { "start": "19:00", "end": "21:00" }
+  ],
+  "cooldownSec": 120,
+  "maxDailyRuntimeSec": 1800
+}
+
+### Update a rule
+PUT http://localhost:3000/api/rules/
+Content-Type: application/json
+
+{
+  "name": "Soil Morning Window",
+  "node_id": 1,
+  "type": "soil_threshold",
+  "min": 300,
+  "max": 500,
+  "action": "pump_on",
+  "durationSec": 20,
+  "enabled": true,
+  "timeWindows": [
+    { "start": "06:00", "end": "07:00" },
+    { "start": "17:00", "end": "18:00" }
+  ],
+  "cooldownSec": 300,
+  "maxDailyRuntimeSec": 1800
+}
+
+### Delete a rule
+DELETE http://localhost:3000/api/rules/1

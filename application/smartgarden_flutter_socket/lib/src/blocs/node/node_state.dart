@@ -49,5 +49,6 @@ class NodeState extends Equatable {
       );
 
   @override
-  List<Object?> get props => [loading, nodes, selectedNodeId, latest, history, historyLoading, error];
+  List<Object?> get props =>
+      [loading, nodes, selectedNodeId, latest, history, historyLoading, error];
 }

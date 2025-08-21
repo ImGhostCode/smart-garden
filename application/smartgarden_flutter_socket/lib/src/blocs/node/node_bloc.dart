@@ -1,7 +1,7 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import '../api/api_service.dart';
-import '../models/models.dart';
+import 'package:smartgarden_flutter/src/api/api_service.dart';
+import 'package:smartgarden_flutter/src/models/models.dart';
 
 part 'node_event.dart';
 part 'node_state.dart';

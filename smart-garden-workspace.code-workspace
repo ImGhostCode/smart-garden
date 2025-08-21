@@ -1,0 +1,22 @@
+{
+	"folders": [
+		{
+			"path": "device/gateway"
+		},
+		{
+			"path": "device/node"
+		},
+		{
+			"path": "."
+		},
+		{
+			"name": "node-esp8266",
+			"path": "../../Documents/PlatformIO/Projects/node-esp8266"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"string": "cpp"
+		}
+	}
+}

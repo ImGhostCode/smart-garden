@@ -2,6 +2,8 @@ import mqtt from "mqtt";
 import SensorReading from "../models/SensorReading.js";
 import NodeMeta from "../models/NodeMeta.js";
 import { getIO } from "../serverApp.js";
+import app from "../server.js";
+
 
 let client;
 
@@ -64,6 +66,15 @@ export function initMqtt({
         raw: data
       });
 
+      app.get("automationEngine")?.onNewReading({
+        node_id: nodeId,
+        temperature: data.temperature,
+        humidity: data.humidity,
+        soil: data.soil,
+        ldr: data.ldr,
+        createdAt: reading.createdAt,
+      });
+
       // Update lastSeenAt
       await NodeMeta.findOneAndUpdate(
         { node_id: nodeId },
@@ -83,6 +94,8 @@ export function initMqtt({
         soil: data.soil,
         createdAt: reading.createdAt
       });
+
+
     } catch (e) {
       console.error("[MQTT] Invalid payload:", e.message);
     }
