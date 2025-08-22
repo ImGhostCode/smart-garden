@@ -25,9 +25,8 @@ class RuleAdded extends RuleState {
   RuleAdded(this.rule);
 }
 
-class RuleAddingError extends RuleState {
-  final String message;
-  RuleAddingError(this.message);
+class RuleAddingError extends RuleError {
+  RuleAddingError(super.message);
 }
 
 class RuleUpdating extends RuleState {
@@ -39,7 +38,18 @@ class RuleUpdated extends RuleState {
   RuleUpdated(this.rule);
 }
 
-class RuleUpdatingError extends RuleState {
-  final String message;
-  RuleUpdatingError(this.message);
+class RuleUpdatingError extends RuleError {
+  RuleUpdatingError(super.message);
+}
+
+class RuleDeleting extends RuleState {
+  RuleDeleting();
+}
+
+class RuleDeleted extends RuleState {
+  RuleDeleted();
+}
+
+class RuleDeletingError extends RuleError {
+  RuleDeletingError(super.message);
 }

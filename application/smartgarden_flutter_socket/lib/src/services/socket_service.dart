@@ -3,6 +3,7 @@ import 'dart:async';
 
 typedef OnReading = void Function(Map<String, dynamic> data);
 typedef OnCommand = void Function(Map<String, dynamic> data);
+typedef OnAutomationAction = void Function(Map<String, dynamic> data);
 
 class SocketService {
   final String baseUrl;
@@ -39,6 +40,11 @@ class SocketService {
 
   void onCommand(OnCommand cb) {
     _socket?.on('command', (d) => cb(Map<String, dynamic>.from(d as Map)));
+  }
+
+  void onAutomationAction(OnAutomationAction cb) {
+    _socket?.on(
+        'automation_action', (d) => cb(Map<String, dynamic>.from(d as Map)));
   }
 
   void dispose() {

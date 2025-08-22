@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smartgarden_flutter/src/blocs/node/node_bloc.dart';
 import 'package:smartgarden_flutter/src/blocs/rule/rule_event.dart';
+import 'package:smartgarden_flutter/src/blocs/rule/rule_state.dart';
 import '../blocs/rule/rule_bloc.dart';
 
 class RuleFormPage extends StatefulWidget {
@@ -68,7 +69,7 @@ class _RuleFormPageState extends State<RuleFormPage> {
     } else {
       bloc.add(UpdateRule(widget.initial!["_id"], payload));
     }
-    Navigator.pop(context);
+    // Navigator.pop(context);
   }
 
   void _addTimeWindow() async {
@@ -134,86 +135,109 @@ class _RuleFormPageState extends State<RuleFormPage> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              TextFormField(
-                  controller: _nameCtrl,
-                  decoration: const InputDecoration(labelText: "Name")),
-              DropdownButtonFormField<String>(
-                initialValue: _type,
-                items: const [
-                  DropdownMenuItem(
-                      value: "soil_threshold", child: Text("Soil Moisture")),
-                  DropdownMenuItem(
-                      value: "humidity_threshold", child: Text("Humidity")),
-                  DropdownMenuItem(
-                      value: "temperature_threshold",
-                      child: Text("Temperature")),
-                ],
-                onChanged: (v) => setState(() => _type = v!),
-                decoration: const InputDecoration(labelText: "Type"),
-              ),
-              TextFormField(
-                  controller: _minCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration:
-                      const InputDecoration(labelText: "Min Threshold")),
-              TextFormField(
-                  controller: _maxCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration:
-                      const InputDecoration(labelText: "Max Threshold")),
-              TextFormField(
-                  controller: _durationCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration:
-                      const InputDecoration(labelText: "Duration (sec)")),
-              TextFormField(
-                  controller: _cooldownCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration:
-                      const InputDecoration(labelText: "Cooldown (sec)")),
-              TextFormField(
-                  controller: _dailyCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                      labelText: "Max Daily Runtime (sec)")),
-              SwitchListTile(
-                value: _enabled,
-                onChanged: (v) => setState(() => _enabled = v),
-                title: const Text("Enabled"),
-              ),
-              const SizedBox(height: 10),
-              Text("Time Windows",
-                  style: Theme.of(context).textTheme.titleSmall),
-              Column(
-                children: _timeWindows
-                    .map((w) => ListTile(
-                          title: Text("${w["start"]} - ${w["end"]}"),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete),
-                            onPressed: () {
-                              setState(() => _timeWindows.remove(w));
-                            },
-                          ),
-                        ))
-                    .toList(),
-              ),
-              TextButton.icon(
-                onPressed: _addTimeWindow,
-                icon: const Icon(Icons.add),
-                label: const Text("Add Window"),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _save,
-                child: Text(isEdit ? "Update" : "Create"),
-              )
-            ],
+      body: BlocListener<RuleBloc, RuleState>(
+        listenWhen: (previous, current) {
+          return current is RuleAdded ||
+              current is RuleUpdated ||
+              current is RuleAddingError ||
+              current is RuleUpdatingError;
+        },
+        listener: (context, state) {
+          if (state is RuleAdded || state is RuleUpdated) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Operation success!")),
+            );
+            Navigator.pop(context);
+          } else if (state is RuleError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Error: ${state.message}")),
+            );
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              children: [
+                TextFormField(
+                    controller: _nameCtrl,
+                    decoration: const InputDecoration(labelText: "Name")),
+                DropdownButtonFormField<String>(
+                  initialValue: _type,
+                  items: const [
+                    DropdownMenuItem(
+                        value: "soil_threshold", child: Text("Soil Moisture")),
+                    DropdownMenuItem(
+                        value: "humidity_threshold", child: Text("Humidity")),
+                    DropdownMenuItem(
+                        value: "temperature_threshold",
+                        child: Text("Temperature")),
+                  ],
+                  onChanged: (v) => setState(() => _type = v!),
+                  decoration: const InputDecoration(labelText: "Type"),
+                ),
+                TextFormField(
+                    controller: _minCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration:
+                        const InputDecoration(labelText: "Min Threshold")),
+                TextFormField(
+                    controller: _maxCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration:
+                        const InputDecoration(labelText: "Max Threshold")),
+                TextFormField(
+                    controller: _durationCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration:
+                        const InputDecoration(labelText: "Duration (sec)")),
+                TextFormField(
+                    controller: _cooldownCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration:
+                        const InputDecoration(labelText: "Cooldown (sec)")),
+                TextFormField(
+                    controller: _dailyCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                        labelText: "Max Daily Runtime (sec)")),
+                SwitchListTile(
+                  value: _enabled,
+                  onChanged: (v) => setState(() => _enabled = v),
+                  title: const Text("Enabled"),
+                ),
+                const SizedBox(height: 10),
+                Text("Time Windows",
+                    style: Theme.of(context).textTheme.titleSmall),
+                Column(
+                  children: _timeWindows
+                      .map((w) => ListTile(
+                            title: Text("${w["start"]} - ${w["end"]}"),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete),
+                              onPressed: () {
+                                setState(() => _timeWindows.remove(w));
+                              },
+                            ),
+                          ))
+                      .toList(),
+                ),
+                TextButton.icon(
+                  onPressed: _addTimeWindow,
+                  icon: const Icon(Icons.add),
+                  label: const Text("Add Window"),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: context.read<RuleBloc>().state is RuleAdding ||
+                          context.read<RuleBloc>().state is RuleUpdating
+                      ? null
+                      : _save,
+                  child: Text(isEdit ? "Update" : "Create"),
+                )
+              ],
+            ),
           ),
         ),
       ),

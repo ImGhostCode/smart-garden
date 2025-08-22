@@ -18,38 +18,35 @@ class RuleBloc extends Bloc<RuleEvent, RuleState> {
     });
 
     on<AddRule>((event, emit) async {
-      if (state is RuleLoaded) {
-        try {
-          await repo.createRule(event.payload);
-          final rules = await repo.fetchRules(null);
-          emit(RuleLoaded(rules));
-        } catch (e) {
-          emit(RuleError(e.toString()));
-        }
+      emit(RuleAdding());
+      try {
+        final added = await repo.createRule(event.payload);
+        emit(RuleAdded(added));
+        add(LoadRules(null)); // Refresh rules after adding
+      } catch (e) {
+        emit(RuleAddingError(e.toString()));
       }
     });
 
     on<DeleteRule>((event, emit) async {
-      if (state is RuleLoaded) {
-        try {
-          await repo.deleteRule(event.id);
-          final rules = await repo.fetchRules(null);
-          emit(RuleLoaded(rules));
-        } catch (e) {
-          emit(RuleError(e.toString()));
-        }
+      emit(RuleDeleting());
+      try {
+        await repo.deleteRule(event.id);
+        emit(RuleDeleted());
+        add(LoadRules(null)); // Refresh rules after deletion
+      } catch (e) {
+        emit(RuleDeletingError(e.toString()));
       }
     });
 
     on<UpdateRule>((event, emit) async {
-      if (state is RuleLoaded) {
-        try {
-          await repo.updateRule(event.id, event.payload);
-          final rules = await repo.fetchRules(null);
-          emit(RuleLoaded(rules));
-        } catch (e) {
-          emit(RuleError(e.toString()));
-        }
+      emit(RuleUpdating());
+      try {
+        final updated = await repo.updateRule(event.id, event.payload);
+        emit(RuleUpdated(updated));
+        add(LoadRules(null)); // Refresh rules after updating
+      } catch (e) {
+        emit(RuleUpdatingError(e.toString()));
       }
     });
   }

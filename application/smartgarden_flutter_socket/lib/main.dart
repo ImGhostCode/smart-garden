@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smartgarden_flutter/src/blocs/node/node_bloc.dart';
 import 'package:smartgarden_flutter/src/blocs/rule/rule_bloc.dart';
 import 'package:smartgarden_flutter/src/blocs/rule/rule_event.dart';
+import 'package:smartgarden_flutter/src/blocs/rule/rule_log_cubit.dart';
 import 'package:smartgarden_flutter/src/pages/rules_page.dart';
 import 'package:smartgarden_flutter/src/repositories/rule_repository.dart';
 import 'src/api/api_service.dart';
@@ -36,6 +37,7 @@ class SmartGardenApp extends StatelessWidget {
           BlocProvider(
               create: (_) =>
                   RuleBloc(RuleRepository(api))..add(LoadRules(null))),
+          BlocProvider(create: (_) => RuleLogCubit()),
         ],
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
@@ -70,7 +72,7 @@ class _HomeRouterState extends State<HomeRouter> {
         children: [
           DashboardPage(api: api, socket: socket),
           CommandsPage(api: api, socket: socket),
-          const RulesPage()
+          RulesPage(socket: socket),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
