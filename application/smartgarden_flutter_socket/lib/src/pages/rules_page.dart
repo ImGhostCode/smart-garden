@@ -58,7 +58,7 @@ class _RulesPageState extends State<RulesPage> {
                   buildWhen: (previous, current) {
                     return current is RuleLoading ||
                         current is RuleLoaded ||
-                        current is RuleError;
+                        current is RuleLoadingError;
                   },
                   builder: (context, state) {
                     if (state is RuleLoading) {
@@ -118,7 +118,7 @@ class _RulesPageState extends State<RulesPage> {
                           );
                         },
                       );
-                    } else if (state is RuleError) {
+                    } else if (state is RuleLoadingError) {
                       return Center(child: Text("Error: ${state.message}"));
                     }
                     return const SizedBox.shrink();

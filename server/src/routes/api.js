@@ -4,6 +4,8 @@ import SensorReading from "../models/SensorReading.js";
 import CommandLog from "../models/CommandLog.js";
 import NodeMeta from "../models/NodeMeta.js";
 import { publish } from "../services/mqttClient.js";
+import { setPumpOnManual, setPumpOff, getPumpState } from "../services/pumpStateService.js";
+
 
 const router = express.Router();
 
@@ -53,11 +55,14 @@ router.get("/readings", async (req, res, next) => {
 });
 
 // Publish pump command
+// Body: { command: 'ON', lock?: boolean, expireSec?: number }
 router.post("/pump/:nodeId", async (req, res, next) => {
   try {
     const nodeId = Number(req.params.nodeId);
     const schema = Joi.object({
-      command: Joi.string().valid("ON", "OFF").required()
+      command: Joi.string().valid("ON", "OFF").required(),
+      lock: Joi.boolean().optional(),
+      expireSec: Joi.number().integer().min(1).max(3600).optional()
     });
     const { value, error } = schema.validate(req.body);
     if (error) return res.status(400).json({ error: error.details[0].message });
@@ -65,7 +70,14 @@ router.post("/pump/:nodeId", async (req, res, next) => {
     const topic = `smartgarden/area1/node/${nodeId}/pump`;
     let status = "sent", errMsg = "";
     try {
-      await publish(topic, value.command);
+      if (value.command === "ON") {
+        // publish MQTT "ON" như cũ ...
+        await publish(topic, value.command);
+        await setPumpOnManual({ app: req.app, pumpTopic: topic, nodeId, lock: value.lock === true, expireSec: value.expireSec });
+      } else {
+        // publish MQTT "OFF" như cũ ...
+        await setPumpOff({ app: req.app, pumpTopic: topic, nodeId, source: "manual" });
+      }
     } catch (err) {
       status = "failed";
       errMsg = err.message;
@@ -82,7 +94,8 @@ router.post("/pump/:nodeId", async (req, res, next) => {
     // Emit socket.io event
     req.app.get("io").emit("command", log);
 
-    res.json({ ok: status === "sent", log });
+    res.json({ ok: true, state: await getPumpState(nodeId) });
+    // res.json({ ok: status === "sent", log });
   } catch (e) { next(e); }
 });
 

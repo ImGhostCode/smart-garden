@@ -15,11 +15,12 @@ POST http://localhost:3000/api/pump/1
 Content-Type: application/json
 
 {
-  "command":"ON"
+  "command":"ON",
+  "lock": true
 }
 
-### Publish pump command 2
-POST http://localhost:3000/api/pump/2
+### Publish pump command 1
+POST http://localhost:3000/api/pump/1
 Content-Type: application/json
 
 {
@@ -40,17 +41,17 @@ POST http://localhost:3000/api/rules/
 Content-Type: application/json
 
 {
-  "name": "Soil Morning Window 1",
+  "name": "Test Rule 1",
   "node_id": 1,
   "type": "soil_threshold",
-  "min": 450,
+  "min": 400,
   "max": 700,
   "action": "pump_on",
   "durationSec": 20,
   "enabled": true,
   "timeWindows": [
-    { "start": "06:00", "end": "07:00" },
-    { "start": "19:00", "end": "21:00" }
+    { "start": "05:00", "end": "07:00" },
+    { "start": "17:00", "end": "21:00" }
   ],
   "cooldownSec": 120,
   "maxDailyRuntimeSec": 1800

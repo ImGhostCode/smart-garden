@@ -13,10 +13,27 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
   try {
     const body = req.body || {};
-    if (!body.node_id || !body.type || !body.action) {
-      return res.status(400).json({ error: "node_id, type, action required" });
+    const schema = Joi.object({
+      node_id: Joi.number().integer().required(),
+      type: Joi.string().valid("soil_threshold", "humidity_threshold", "temperature_threshold").required(),
+      action: Joi.string().valid("pump_on").required(),
+      min: Joi.number().optional(),
+      max: Joi.number().optional(),
+      durationSec: Joi.number().integer().min(1).max(3600).optional(),
+      cooldownSec: Joi.number().integer().min(0).max(86400).optional(),
+      enabled: Joi.boolean().default(true),
+      timeWindows: Joi.array().items(
+        Joi.object({
+          start: Joi.string().pattern(/^\d{2}:\d{2}$/).required(),
+          end: Joi.string().pattern(/^\d{2}:\d{2}$/).required()
+        })
+      ).optional()
+    });
+    const { value, error } = schema.validate(body);
+    if (error) {
+      return res.status(400).json({ error: error.details[0].message });
     }
-    const rule = await AutomationRule.create(body);
+    const rule = await AutomationRule.create(value);
     res.json(rule);
   } catch (e) { res.status(400).json({ error: e.message }); }
 });

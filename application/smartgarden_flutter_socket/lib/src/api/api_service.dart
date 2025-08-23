@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:smartgarden_flutter/src/models/rule_model.dart';
 import '../models/models.dart';
 
 class ApiService {
@@ -43,17 +42,6 @@ class ApiService {
     if (res.statusCode != 200) throw Exception('Failed to load readings');
     final data = jsonDecode(res.body) as List;
     return data.map((j) => SensorReading.fromJson(j)).toList();
-  }
-
-  Future<CommandLog> sendPump(int nodeId, String command) async {
-    final res = await http.post(
-      _u('/pump/$nodeId'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'command': command}),
-    );
-    if (res.statusCode != 200) throw Exception('Failed to send command');
-    final data = jsonDecode(res.body);
-    return CommandLog.fromJson(data['log']);
   }
 
   Future<List<CommandLog>> getCommands({int? nodeId, int limit = 100}) async {
@@ -99,5 +87,26 @@ class ApiService {
   Future<void> deleteRule(String id) async {
     final res = await http.delete(_u('/rules/$id'));
     if (res.statusCode != 200) throw Exception('Failed to delete rule');
+  }
+
+  Future<void> manualOn(
+      {required int nodeId, bool lock = false, int? expireSec}) async {
+    await http.post(
+      _u('/pump/$nodeId'),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "command": 'ON',
+        "lock": lock,
+        if (expireSec != null) "expireSec": expireSec
+      }),
+    );
+  }
+
+  Future<void> manualOff({required int nodeId}) async {
+    await http.post(
+      _u('/pump/$nodeId'),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"command": 'OFF'}),
+    );
   }
 }

@@ -123,7 +123,7 @@ class _RuleFormPageState extends State<RuleFormPage> {
         title: Text(isEdit ? "Edit Rule" : "New Rule"),
         actions: [
           DropdownButton<int>(
-            value: _selectedNode ?? nodes.first,
+            value: _selectedNode ?? nodes.firstOrNull,
             items: nodes.map((n) {
               return DropdownMenuItem<int>(
                 value: n,
@@ -230,8 +230,8 @@ class _RuleFormPageState extends State<RuleFormPage> {
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton(
-                  onPressed: context.read<RuleBloc>().state is RuleAdding ||
-                          context.read<RuleBloc>().state is RuleUpdating
+                  onPressed: context.watch<RuleBloc>().state is RuleAdding ||
+                          context.watch<RuleBloc>().state is RuleUpdating
                       ? null
                       : _save,
                   child: Text(isEdit ? "Update" : "Create"),

@@ -51,11 +51,22 @@ class NodeBloc extends Bloc<NodeEvent, NodeState> {
       }
     });
 
-    on<SendPump>((event, emit) async {
+    on<PumpControl>((event, emit) async {
       if (state.selectedNodeId == null) return;
       try {
-        await api.sendPump(state.selectedNodeId!, event.command);
-        add(RefreshLatest());
+        final command = event.command.toUpperCase();
+        if (command != 'ON' && command != 'OFF') {
+          throw Exception('Invalid pump command: $command');
+        }
+
+        if (command == 'ON') {
+          api.manualOn(
+              nodeId: state.selectedNodeId!,
+              lock: event.lock,
+              expireSec: event.expireSec);
+        } else if (command == 'OFF') {
+          api.manualOff(nodeId: state.selectedNodeId!);
+        }
       } catch (e) {
         emit(state.copyWith(error: e.toString()));
       }

@@ -13,7 +13,7 @@ class RuleBloc extends Bloc<RuleEvent, RuleState> {
         final rules = await repo.fetchRules(event.nodeId);
         emit(RuleLoaded(rules));
       } catch (e) {
-        emit(RuleError(e.toString()));
+        emit(RuleLoadingError(e.toString().replaceAll('Exception:', '')));
       }
     });
 
@@ -24,7 +24,7 @@ class RuleBloc extends Bloc<RuleEvent, RuleState> {
         emit(RuleAdded(added));
         add(LoadRules(null)); // Refresh rules after adding
       } catch (e) {
-        emit(RuleAddingError(e.toString()));
+        emit(RuleAddingError(e.toString().replaceAll('Exception: ', '')));
       }
     });
 
@@ -35,7 +35,7 @@ class RuleBloc extends Bloc<RuleEvent, RuleState> {
         emit(RuleDeleted());
         add(LoadRules(null)); // Refresh rules after deletion
       } catch (e) {
-        emit(RuleDeletingError(e.toString()));
+        emit(RuleDeletingError(e.toString().replaceAll('Exception:', '')));
       }
     });
 
@@ -46,7 +46,7 @@ class RuleBloc extends Bloc<RuleEvent, RuleState> {
         emit(RuleUpdated(updated));
         add(LoadRules(null)); // Refresh rules after updating
       } catch (e) {
-        emit(RuleUpdatingError(e.toString()));
+        emit(RuleUpdatingError(e.toString().replaceAll('Exception:', '')));
       }
     });
   }

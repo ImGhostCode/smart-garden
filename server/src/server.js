@@ -11,6 +11,7 @@ import http from "http";
 import { setIO } from "./serverApp.js";
 import rulesRouter from "./routes/rules.js";
 import { AutomationEngine } from "./services/automationEngine.js";
+import PumpState from "./models/PumpState.js";
 
 
 const app = express();
@@ -69,8 +70,13 @@ async function start() {
   // reset quota hằng ngày, v.v.
   setInterval(() => engine.tick(), 60 * 1000);
 
-  io.on("connection", (socket) => {
+  io.on("connection", async (socket) => {
     console.log("[Socket] client connected:", socket.id);
+    // Gửi trạng thái hiện tại của tất cả node (hoặc bạn có thể chỉ gửi node đang xem)
+    const states = await PumpState.find({});
+    socket.emit("pump_state_bootstrap", states.map(s => ({
+      node_id: s.node_id, state: s.state, source: s.source, expiresAt: s.expiresAt, manualLock: s.manualLock
+    })));
     socket.on("disconnect", () => console.log("[Socket] client disconnected:", socket.id));
     socket.on("error", (err) => console.error("[Socket] error:", err));
   });

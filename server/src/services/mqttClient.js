@@ -43,19 +43,17 @@ export function initMqtt({
 
   client.on("reconnect", () => console.log("[MQTT] Reconnecting..."));
   client.on("error", (err) => console.error("[MQTT] Error:", err.message));
-
   client.on("message", async (topic, payload) => {
     try {
       const msg = payload.toString();
       const data = JSON.parse(msg);
+      console.log("[MQTT] Received topic: ", topic);
+      console.log("[MQTT] Received data: ", data);
 
       // Expect topic: smartgarden/area1/node/{id}/sensors
       const parts = topic.split("/");
       const nodeIndex = parts.indexOf("node");
       const nodeId = nodeIndex >= 0 ? Number(parts[nodeIndex + 1]) : Number(data.node_id);
-
-      console.log("[MQTT] Received topic: ", topic);
-      console.log("[MQTT] Received data: ", data);
 
       const reading = await SensorReading.create({
         node_id: nodeId,
@@ -109,6 +107,7 @@ export function publish(topic, message, options = {}) {
   return new Promise((resolve, reject) => {
     client.publish(topic, message, options, (err) => {
       if (err) return reject(err);
+      console.log(`[MQTT] Published to ${topic}:`, message);
       resolve();
     });
   });

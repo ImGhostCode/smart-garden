@@ -47,6 +47,18 @@ class SocketService {
         'automation_action', (d) => cb(Map<String, dynamic>.from(d as Map)));
   }
 
+  void onPumpStateBootstrap(void Function(List<dynamic> data) cb) {
+    _socket?.on('pump_state_bootstrap', (data) {
+      if (data is List) cb(List<dynamic>.from(data));
+    });
+  }
+
+  void onPumpState(void Function(Map<String, dynamic> data) cb) {
+    _socket?.on('pump_state', (data) {
+      if (data is Map<String, dynamic>) cb(data);
+    });
+  }
+
   void dispose() {
     _socket?.dispose();
   }

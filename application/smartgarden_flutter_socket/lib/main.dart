@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smartgarden_flutter/src/blocs/node/node_bloc.dart';
+import 'package:smartgarden_flutter/src/blocs/pump_state_cubit.dart';
 import 'package:smartgarden_flutter/src/blocs/rule/rule_bloc.dart';
 import 'package:smartgarden_flutter/src/blocs/rule/rule_event.dart';
 import 'package:smartgarden_flutter/src/blocs/rule/rule_log_cubit.dart';
@@ -38,6 +39,7 @@ class SmartGardenApp extends StatelessWidget {
               create: (_) =>
                   RuleBloc(RuleRepository(api))..add(LoadRules(null))),
           BlocProvider(create: (_) => RuleLogCubit()),
+          BlocProvider(create: (_) => PumpStateCubit()),
         ],
         child: MaterialApp(
           debugShowCheckedModeBanner: false,

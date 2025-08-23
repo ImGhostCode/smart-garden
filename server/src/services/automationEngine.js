@@ -3,6 +3,8 @@ import CommandLog from "../models/CommandLog.js";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc.js";
 import timezone from "dayjs/plugin/timezone.js";
+import PumpState from "../models/PumpState.js";
+import { setPumpOnAuto } from "./pumpStateService.js";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
@@ -15,6 +17,12 @@ export class AutomationEngine {
   }
 
   async onNewReading(reading) {
+    const ps = await PumpState.findOne({ node_id: reading.node_id });
+    if (ps?.manualLock) {
+      // manual đang lock → bỏ qua automation
+      console.log(`[Automation] Skipping automation for node ${reading.node_id} due to manual lock`);
+      return;
+    }
     const rules = await AutomationRule.find({ node_id: reading.node_id, enabled: true }).lean();
     for (const rule of rules) {
       if (!this._isWithinWindows(rule.timeWindows)) continue;
@@ -40,6 +48,9 @@ export class AutomationEngine {
     const topic = `${this.mqttTopicPumpBase}/${nodeId}/pump`;
     try {
       this.mqttClient.publish(topic, "ON", { qos: 1 });
+      console.log(`[Automation] Executing pump ON for node ${nodeId} with rule ${rule._id}`);
+      await setPumpOnAuto({ app: this.app, mqttClient: this.mqttClient, pumpTopic: topic, nodeId, durationSec: rule.durationSec });
+      // (không cần setTimeout OFF ở engine nữa, vì pumpStateService đã làm + emit)
       const log = await CommandLog.create({ node_id: nodeId, command: "ON", status: "sent", topic });
       this.app.get("io")?.emit("automation_action", {
         node_id: nodeId, ruleId: String(rule._id), ruleName: rule.name || rule.type,
@@ -50,15 +61,6 @@ export class AutomationEngine {
         { _id: rule._id },
         { $set: { lastTriggeredAt: new Date() }, $inc: { todayRuntimeSec: rule.durationSec || 0 } }
       );
-      setTimeout(() => {
-        try {
-          this.mqttClient.publish(topic, "OFF", { qos: 1 });
-          this.app.get("io")?.emit("automation_action", {
-            node_id: nodeId, ruleId: String(rule._id), ruleName: rule.name || rule.type,
-            command: "OFF", createdAt: new Date()
-          });
-        } catch (e) { console.error("[Automation] auto-off error:", e.message); }
-      }, (rule.durationSec || 20) * 1000);
     } catch (e) { console.error("[Automation] executePump error:", e.message); }
   }
 

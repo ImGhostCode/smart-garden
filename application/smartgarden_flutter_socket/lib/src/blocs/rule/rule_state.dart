@@ -11,6 +11,11 @@ class RuleLoaded extends RuleState {
   RuleLoaded(this.rules);
 }
 
+class RuleLoadingError extends RuleState {
+  final String message;
+  RuleLoadingError(this.message);
+}
+
 class RuleError extends RuleState {
   final String message;
   RuleError(this.message);
