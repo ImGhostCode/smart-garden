@@ -1,11 +1,11 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "main": "src/server.js",
-  "type": "module",
+  "main": "src/v2/server.js",
+  "type": "commonjs",
   "scripts": {
-    "dev": "node --watch src/server.js",
-    "start": "NODE_ENV=production node src/server.js",
+    "dev": "node --watch src/v2/server.js",
+    "start": "NODE_ENV=production node src/v2/server.js",
     "lint": "echo \"(add eslint if you like)\""
   },
   "keywords": [],
@@ -13,6 +13,7 @@
   "license": "ISC",
   "description": "Smart Garden Node.js server: MQTT -> MongoDB, REST APIs for dashboard, pump control",
   "dependencies": {
+    "@influxdata/influxdb-client": "^1.35.0",
     "cors": "^2.8.5",
     "dayjs": "^1.11.13",
     "dotenv": "^17.2.1",
@@ -23,6 +24,7 @@
     "mongoose": "^8.17.0",
     "morgan": "^1.10.1",
     "mqtt": "^5.14.0",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "winston": "^3.17.0"
   }
 }
