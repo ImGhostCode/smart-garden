@@ -4,6 +4,7 @@ require('dotenv').config();
 
 // Import MQTT service
 const mqttService = require('./services/mqttService');
+const influxdbService = require('./services/influxdbService');
 
 // Import database
 const db = require('./models/database');
@@ -89,17 +90,33 @@ const initializeMQTT = () => {
 };
 
 // Initialize MongoDB connection
-// const initializeMongoDB = async () => {
-//     try {
-//         const mongoUri = process.env.MONGODB_URI || 'mongodb://root:password@localhost:27017/smartgarden?authSource=admin';
-//         console.log('Initializing MongoDB connection...');
-//         await db.connect(mongoUri);
-//         console.log('✅ MongoDB connected successfully');
-//     } catch (error) {
-//         console.error('❌ MongoDB connection failed:', error.message);
-//         // Don't exit the process, let the retry mechanism in mongoService handle it
-//     }
-// };
+const initializeMongoDB = async () => {
+    try {
+        const mongoUri = process.env.MONGODB_URI || 'mongodb://root:password@localhost:27017/smartgarden?authSource=admin';
+        console.log('Initializing MongoDB connection...');
+        await db.connect(mongoUri);
+        console.log('✅ MongoDB connected successfully');
+    } catch (error) {
+        console.error('❌ MongoDB connection failed:', error.message);
+        // Don't exit the process, let the retry mechanism in mongoService handle it
+    }
+};
+
+// Initialize Influxdb connection
+const initializeInfluxDB = async () => {
+    try {
+        influxdbService.connect({
+            url: process.env.INFLUXDB_URL,
+            token: process.env.INFLUXDB_TOKEN,
+            org: process.env.INFLUXDB_ORG,
+            bucket: process.env.INFLUXDB_BUCKET || 'garden'
+        });
+        console.log('✅ InfluxDB connected successfully');
+    } catch (error) {
+        console.error('❌ InfluxDB connection failed:', error.message);
+        // Don't exit the process, let the retry mechanism in mongoService handle it
+    }
+};
 
 
 // Routes
@@ -115,7 +132,7 @@ app.get('/health', (req, res) => {
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
         mqtt_status: mqttService.getConnectionStatus(),
-        // database_status: db.getConnectionStatus()
+        database_status: db.getConnectionStatus()
     });
 });
 
@@ -170,6 +187,7 @@ process.on('SIGINT', async () => {
 
     mqttService.disconnect();
     await db.disconnect();
+    await influxdbService.close();
 
     process.exit(0);
 });
@@ -178,7 +196,8 @@ process.on('SIGTERM', async () => {
     console.log('🛑 SIGTERM received, shutting down gracefully...');
 
     mqttService.disconnect();
-    // await db.disconnect();
+    await db.disconnect();
+    await influxdbService.close();
 
     process.exit(0);
 });
@@ -190,7 +209,8 @@ app.listen(PORT, async () => {
     console.log(`📍 MQTT status: http://localhost:${PORT}/mqtt/status`);
 
     // Initialize MongoDB first
-    // await initializeMongoDB();
+    await initializeMongoDB();
+    await initializeInfluxDB();
 
     // Initialize MQTT after MongoDB and server starts
     setTimeout(() => {

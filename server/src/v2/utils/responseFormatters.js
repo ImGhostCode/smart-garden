@@ -16,6 +16,7 @@ function formatGardenResponse(garden, req) {
         light_schedule: garden.light_schedule || {},
         created_at: garden.created_at,
         end_date: garden.end_date,
+        controller_config: garden.controller_config || {},
         next_light_action: garden.next_light_action || {},
         health: garden.health || {
             status: 'N/A',

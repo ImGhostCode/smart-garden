@@ -1,292 +1,269 @@
 const db = require('../models/database');
-const { validateXid, addTimestamps, createLink } = require('../utils/helpers');
+const { formatGardenResponse } = require('../utils/responseFormatters');
 const mqttService = require('../services/mqttService');
 
 const GardensController = {
-    getAllGardens: (req, res) => {
-        const { end_dated } = req.query;
-        const gardens = Array.from(db.gardens.values());
+    getAllGardens: async (req, res) => {
+        try {
+            const { end_dated } = req.query;
+            const filter = {};
+            if (!end_dated || end_dated === 'false') {
+                filter.end_date = null;
+            }
+            const gardens = await db.gardens.getAll(filter);
 
-        let filteredGardens = gardens;
-        if (!end_dated || end_dated === 'false') {
-            filteredGardens = gardens.filter(garden => !garden.end_date);
+            // Get plant and zone counts for each garden
+            const gardensWithCounts = await Promise.all(
+                gardens.map(async (garden) => {
+                    const [plantsCount, zonesCount] = await Promise.all([
+                        db.plants.getByGardenId(garden.id).then(plants =>
+                            plants.filter(p => !p.end_date).length
+                        ),
+                        db.zones.getByGardenId(garden.id).then(zones =>
+                            zones.filter(z => !z.end_date).length
+                        )
+                    ]);
+
+                    const formattedGarden = formatGardenResponse(garden, req);
+                    formattedGarden.num_plants = plantsCount;
+                    formattedGarden.num_zones = zonesCount;
+
+                    return formattedGarden;
+                })
+            );
+
+            res.json(gardensWithCounts);
+
+        } catch (error) {
+            console.error('Error getting gardens:', error);
+            res.status(500).json({
+                error: 'Internal server error',
+                message: 'Failed to retrieve gardens'
+            });
         }
-
-        res.json({
-            items: filteredGardens.map(garden => ({
-                ...garden,
-                links: [
-                    createLink('self', `/gardens/${garden.id}`),
-                    createLink('health', `/gardens/${garden.id}/health`),
-                    createLink('plants', `/gardens/${garden.id}/plants`),
-                    createLink('zones', `/gardens/${garden.id}/zones`),
-                    createLink('action', `/gardens/${garden.id}/action`)
-                ],
-                plants: createLink('collection', `/gardens/${garden.id}/plants`),
-                zones: createLink('collection', `/gardens/${garden.id}/zones`),
-                num_plants: Array.from(db.plants.values()).filter(p => p.garden_id === garden.id && !p.end_date).length,
-                num_zones: Array.from(db.zones.values()).filter(z => z.garden_id === garden.id && !z.end_date).length,
-                health: garden.health_status || {
-                    status: 'N/A',
-                    details: 'No recent health data from ESP32',
-                    last_contact: null
-                },
-                temperature_humidity_data: {
-                    temperature_celsius: garden.temperature_data?.celsius || null,
-                    humidity_percentage: garden.humidity_data?.percentage || null
-                }
-            }))
-        });
     },
 
     createGarden: async (req, res) => {
-        const { name, topic_prefix, max_zones, light_schedule } = req.body;
+        try {
+            const { name, topic_prefix, max_zones, light_schedule, controller_config } = req.body;
 
-        if (!name) {
-            return res.status(400).json({ error: 'Name is required' });
+            if (controller_config != null && (controller_config.valvePins.length !== max_zones || controller_config.pumpPins.length !== max_zones)) {
+                return res.status(400).json({ error: 'controller_config valvePins and pumpPins length must match max_zones' });
+            }
+
+            const newGarden = {
+                name,
+                topic_prefix,
+                max_zones: max_zones,
+                light_schedule,
+                controller_config,
+                end_date: null
+            };
+
+            const savedGarden = await db.gardens.create(newGarden);
+
+            // Format and return the response
+            const formattedGarden = formatGardenResponse(savedGarden, req);
+            formattedGarden.num_plants = 0;
+            formattedGarden.num_zones = 0;
+
+            res.status(201).json(formattedGarden);
+
+        } catch (error) {
+            console.error('Error creating garden:', error);
+            res.status(500).json({
+                error: 'Internal server error',
+                message: 'Failed to create garden'
+            });
         }
+    },
 
-        const { generateXid } = require('../utils/helpers');
-        const garden = {
-            id: generateXid(),
-            name,
-            topic_prefix: topic_prefix || name.toLowerCase().replace(/\s+/g, '_'),
-            max_zones: max_zones || 0,
-            light_schedule,
-            ...addTimestamps({})
-        };
+    getGarden: async (req, res) => {
+        try {
+            const { gardenID } = req.params;
 
-        db.gardens.set(garden.id, garden);
+            const garden = await db.gardens.getById(gardenID);
+            if (!garden) {
+                return res.status(404).json({ error: 'Garden not found' });
+            }
 
-        // Subscribe to MQTT topics for this new garden
-        // if (mqttService.isConnected) {
-        //     mqttService.subscribeToGarden(garden);
-        // }
+            // Get plant and zone counts
+            const [plantsCount, zonesCount] = await Promise.all([
+                db.plants.getByGardenId(gardenID).then(plants =>
+                    plants.filter(p => !p.end_date).length
+                ),
+                db.zones.getByGardenId(gardenID).then(zones =>
+                    zones.filter(z => !z.end_date).length
+                )
+            ]);
 
-        res.status(201).json({
-            ...garden,
-            links: [
-                createLink('self', `/gardens/${garden.id}`),
-                createLink('health', `/gardens/${garden.id}/health`),
-                createLink('plants', `/gardens/${garden.id}/plants`),
-                createLink('zones', `/gardens/${garden.id}/zones`),
-                createLink('action', `/gardens/${garden.id}/action`)
-            ],
-            plants: createLink('collection', `/gardens/${garden.id}/plants`),
-            zones: createLink('collection', `/gardens/${garden.id}/zones`),
-            num_plants: 0,
-            num_zones: 0,
-            health: {
+            // Format response with HATEOAS links and counts
+            const formattedGarden = formatGardenResponse(garden, req);
+            formattedGarden.num_plants = plantsCount;
+            formattedGarden.num_zones = zonesCount;
+
+            // Add health information
+            formattedGarden.health = garden.health || {
                 status: 'N/A',
                 details: 'Waiting for ESP32 connection',
                 last_contact: null
-            },
-            temperature_humidity_data: {
+            };
+            formattedGarden.temperature_humidity_data = {
                 temperature_celsius: null,
                 humidity_percentage: null
+            };
+
+            res.json(formattedGarden);
+
+        } catch (error) {
+            console.error('Error getting garden:', error);
+            res.status(500).json({
+                error: 'Internal server error',
+                message: 'Failed to retrieve garden'
+            });
+        }
+    }, updateGarden: async (req, res) => {
+        try {
+            const { gardenID } = req.params;
+            const { name, topic_prefix, max_zones, light_schedule, controller_config } = req.body;
+
+            // Validate input fields if provided
+            const updates = {};
+            if (name !== undefined) {
+                updates.name = name;
             }
-        });
-    },
 
-    getGarden: (req, res) => {
-        const { gardenID } = req.params;
-
-        if (!validateXid(gardenID)) {
-            return res.status(400).json({ error: 'Invalid garden ID format' });
-        }
-
-        const garden = db.gardens.get(gardenID);
-        if (!garden) {
-            return res.status(404).json({ error: 'Garden not found' });
-        }
-
-        res.json({
-            ...garden,
-            links: [
-                createLink('self', `/gardens/${garden.id}`),
-                createLink('health', `/gardens/${garden.id}/health`),
-                createLink('plants', `/gardens/${garden.id}/plants`),
-                createLink('zones', `/gardens/${garden.id}/zones`),
-                createLink('action', `/gardens/${garden.id}/action`)
-            ],
-            plants: createLink('collection', `/gardens/${garden.id}/plants`),
-            zones: createLink('collection', `/gardens/${garden.id}/zones`),
-            num_plants: Array.from(db.plants.values()).filter(p => p.garden_id === garden.id && !p.end_date).length,
-            num_zones: Array.from(db.zones.values()).filter(z => z.garden_id === garden.id && !z.end_date).length,
-            health: garden.health_status || {
-                status: 'N/A',
-                details: 'No recent health data from ESP32',
-                last_contact: null
-            },
-            temperature_humidity_data: {
-                temperature_celsius: garden.temperature_data?.celsius || null,
-                humidity_percentage: garden.humidity_data?.percentage || null
+            if (topic_prefix !== undefined) {
+                updates.topic_prefix = topic_prefix;
             }
-        });
-    },
 
-    updateGarden: async (req, res) => {
-        const { gardenID } = req.params;
-
-        if (!validateXid(gardenID)) {
-            return res.status(400).json({ error: 'Invalid garden ID format' });
-        }
-
-        const garden = db.gardens.get(gardenID);
-        if (!garden) {
-            return res.status(404).json({ error: 'Garden not found' });
-        }
-
-        const oldTopicPrefix = garden.topic_prefix;
-
-        const updatedGarden = {
-            ...garden,
-            ...req.body,
-            id: gardenID // Prevent ID modification
-        };
-
-        db.gardens.set(gardenID, updatedGarden);
-
-        // If topic_prefix changed, update MQTT subscriptions
-        // if (mqttService.isConnected && oldTopicPrefix !== updatedGarden.topic_prefix) {
-        //     mqttService.unsubscribeFromGarden({ ...garden, topic_prefix: oldTopicPrefix });
-        //     mqttService.subscribeToGarden(updatedGarden);
-
-        // Send config update to ESP32 if connected
-        // try {
-        //     await mqttService.sendConfigUpdate(updatedGarden, {
-        //         topic_prefix: updatedGarden.topic_prefix,
-        //         light_schedule: updatedGarden.light_schedule,
-        //         max_zones: updatedGarden.max_zones
-        //     });
-        // } catch (error) {
-        //     console.error('Failed to send config update to ESP32:', error);
-        // }
-        // }
-
-        res.json({
-            ...updatedGarden,
-            links: [
-                createLink('self', `/gardens/${garden.id}`),
-                createLink('health', `/gardens/${garden.id}/health`),
-                createLink('plants', `/gardens/${garden.id}/plants`),
-                createLink('zones', `/gardens/${garden.id}/zones`),
-                createLink('action', `/gardens/${garden.id}/action`)
-            ],
-            plants: createLink('collection', `/gardens/${garden.id}/plants`),
-            zones: createLink('collection', `/gardens/${garden.id}/zones`),
-            num_plants: Array.from(db.plants.values()).filter(p => p.garden_id === garden.id && !p.end_date).length,
-            num_zones: Array.from(db.zones.values()).filter(z => z.garden_id === garden.id && !z.end_date).length,
-            health: garden.health_status || {
-                status: 'N/A',
-                details: 'No recent health data from ESP32',
-                last_contact: null
+            if (max_zones !== undefined) {
+                updates.max_zones = max_zones;
             }
-        });
+
+            if (light_schedule !== undefined) {
+                updates.light_schedule = light_schedule;
+            }
+
+            if (controller_config != undefined && (controller_config.valvePins.length !== max_zones || controller_config.pumpPins.length !== max_zones)) {
+                return res.status(400).json({ error: 'controller_config valvePins and pumpPins length must match max_zones' });
+            }
+
+            if (controller_config !== undefined) {
+                updates.controller_config = controller_config;
+            }
+
+            const updatedGarden = await db.gardens.updateById(gardenID, updates);
+            if (!updatedGarden) {
+                return res.status(404).json({ error: 'Garden not found' });
+            }
+
+            // Get plant and zone counts
+            const [plantsCount, zonesCount] = await Promise.all([
+                db.plants.getByGardenId(gardenID).then(plants =>
+                    plants.filter(p => !p.end_date).length
+                ),
+                db.zones.getByGardenId(gardenID).then(zones =>
+                    zones.filter(z => !z.end_date).length
+                )
+            ]);
+
+            // Format response
+            const formattedGarden = formatGardenResponse(updatedGarden, req);
+            formattedGarden.num_plants = plantsCount;
+            formattedGarden.num_zones = zonesCount;
+
+            res.json(formattedGarden);
+
+        } catch (error) {
+            console.error('Error updating garden:', error);
+            res.status(500).json({
+                error: 'Internal server error',
+                message: 'Failed to update garden'
+            });
+        }
     },
 
     endDateGarden: async (req, res) => {
-        const { gardenID } = req.params;
+        try {
+            const { gardenID } = req.params;
 
-        if (!validateXid(gardenID)) {
-            return res.status(400).json({ error: 'Invalid garden ID format' });
+            // End-date the garden (soft delete)
+            const endDatedGarden = await db.gardens.deleteById(gardenID);
+            if (!endDatedGarden) {
+                return res.status(404).json({ error: 'Garden not found' });
+            }
+
+            // Get plant and zone counts
+            const [plantsCount, zonesCount] = await Promise.all([
+                db.plants.getByGardenId(gardenID).then(plants =>
+                    plants.filter(p => !p.end_date).length
+                ),
+                db.zones.getByGardenId(gardenID).then(zones =>
+                    zones.filter(z => !z.end_date).length
+                )
+            ]);
+
+            // Format response
+            const formattedGarden = formatGardenResponse(endDatedGarden, req);
+            formattedGarden.num_plants = plantsCount;
+            formattedGarden.num_zones = zonesCount;
+
+            res.json(formattedGarden);
+
+        } catch (error) {
+            console.error('Error end-dating garden:', error);
+            res.status(500).json({
+                error: 'Internal server error',
+                message: 'Failed to end-date garden'
+            });
         }
-
-        const garden = db.gardens.get(gardenID);
-        if (!garden) {
-            return res.status(404).json({ error: 'Garden not found' });
-        }
-
-        garden.end_date = new Date().toISOString();
-        db.gardens.set(gardenID, garden);
-
-        // Unsubscribe from MQTT topics
-        // if (mqttService.isConnected) {
-        //     mqttService.unsubscribeFromGarden(garden);
-        // }
-
-        res.json({
-            ...garden,
-            links: [
-                createLink('self', `/gardens/${garden.id}`)
-            ]
-        });
     },
 
     gardenAction: async (req, res) => {
-        const { gardenID } = req.params;
-        const action = req.body;
-
-        if (!validateXid(gardenID)) {
-            return res.status(400).json({ error: 'Invalid garden ID format' });
-        }
-
-        const garden = db.gardens.get(gardenID);
-        if (!garden) {
-            return res.status(404).json({ error: 'Garden not found' });
-        }
-
-        if (garden.end_date) {
-            return res.status(400).json({ error: 'Cannot perform actions on end-dated garden' });
-        }
-
         try {
-            // Handle different garden actions
-            // if (action.light) {
-            //     await mqttService.sendLightCommand(
-            //         garden,
-            //         action.light.state,
-            //         action.light.for_duration
-            //     );
-            //     console.log(`Light command sent to garden ${garden.name}:`, action.light);
-            // }
+            const { gardenID } = req.params;
+            const { light, stop, update } = req.body;
 
-            // if (action.stop) {
-            //     await mqttService.sendStopAllCommand(garden);
-            //     console.log(`Stop all command sent to garden ${garden.name}`);
-            // }
+            // Verify garden exists
+            const garden = await db.gardens.getById(gardenID);
+            if (!garden) {
+                return res.status(404).json({ error: 'Garden not found' });
+            }
 
-            res.status(202).json({
-                message: 'Action command sent to ESP32',
-                garden_id: gardenID,
-                action: action
-            });
+            try {
+                if (light) {
+                    await mqttService.sendLightAction(garden, light.state);
+                }
+
+                if (stop && stop.all) {
+                    await mqttService.sendStopAllAction(garden);
+                }
+
+                if (update && update.config) {
+                    await mqttService.sendUpdateAction(garden, update.controller_config);
+                }
+
+                res.status(202).json({
+                    message: 'Action accepted and sent to garden controller'
+                });
+
+            } catch (mqttError) {
+                console.error('MQTT action error:', mqttError);
+                res.status(502).json({
+                    error: 'Failed to communicate with garden controller',
+                    message: mqttError.message
+                });
+            }
 
         } catch (error) {
-            console.error('Failed to send action to ESP32:', error);
+            console.error('Error executing garden action:', error);
             res.status(500).json({
-                error: 'Failed to communicate with garden controller',
-                details: error.message
+                error: 'Internal server error',
+                message: 'Failed to execute garden action'
             });
         }
     },
-
-    // New endpoint to get garden health status
-    getGardenHealth: (req, res) => {
-        const { gardenID } = req.params;
-
-        if (!validateXid(gardenID)) {
-            return res.status(400).json({ error: 'Invalid garden ID format' });
-        }
-
-        const garden = db.gardens.get(gardenID);
-        if (!garden) {
-            return res.status(404).json({ error: 'Garden not found' });
-        }
-
-        res.json({
-            garden_id: gardenID,
-            health: garden.health_status || {
-                status: 'N/A',
-                details: 'No recent health data from ESP32',
-                last_contact: null
-            },
-            mqtt_status: mqttService.getConnectionStatus(),
-            temperature: garden.temperature_data || null,
-            humidity: garden.humidity_data || null,
-            light_status: garden.light_status || null
-        });
-    }
 };
 
 module.exports = GardensController;

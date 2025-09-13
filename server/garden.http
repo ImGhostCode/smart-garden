@@ -8,46 +8,65 @@ POST   {{host}}/gardens
 Content-Type: application/json
 
 {
-  "name": "Garden",
-  "topic_prefix": "garden1",
-  "max_zones": 3,
+  "name": "Garden 5",
+  "topic_prefix": "garden5",
+  "max_zones": 1,
   "light_schedule": {
     "duration": "14h",
-    "start_time": "23:00:00-07:00",
-    "adhoc_on_time": "2025-09-10T04:34:13.103Z",
-    "temperature_humidity_sensor": true
+    "start_time": "23:00:00-07:00"
+  },
+  "controller_config": {
+    "valvePins": [1],
+    "pumpPins": [2],
+    "lightPin": 3,
+    "tempHumidityPin": 4,
+    "tempHumidityInterval": 10000
   }
 }
 ###
-GET    {{host}}/gardens/9dslf36fjrb242hbalva
+GET    {{host}}/gardens/68c550b1ea8f770bb5112dec
 ###
-PATCH  {{host}}/gardens/9dslf36fjrb242hbalva
+PATCH  {{host}}/gardens/68c57aac78e37f35b582064e
 Content-Type: application/json
 
 {
-  "name": "Garden 1",
-  "topic_prefix": "garden",
-  "max_zones": 3,
+  "name": "Garden 5 updated",
+  "topic_prefix": "garden5",
+  "max_zones": 2,
   "light_schedule": {
     "duration": "14h",
-    "start_time": "23:00:00-07:00",
-    "adhoc_on_time": "2025-09-10T09:28:30.696Z",
-    "temperature_humidity_sensor": true
+    "start_time": "23:00:00-07:00"
   },
-  "created_at": "2025-09-10T09:28:30.696Z"
+  "controller_config": {
+    "valvePins": [1,2],
+    "pumpPins": [3,4],
+    "lightPin": 5,
+    "tempHumidityPin": 6,
+    "tempHumidityInterval": 15000
+  }
 }
 ###
-DELETE {{host}}/gardens/9dslf36fjrb242hbalva
+DELETE {{host}}/gardens/68c550b1ea8f770bb5112dec
 ###
-POST   {{host}}/gardens/sr3nt5tbp8jll9hpfpsp/action
+POST   {{host}}/gardens/68c57aac78e37f35b582064e/action
 Content-Type: application/json
 
 {
   "light": {
-    "state": "ON",
-    "for_duration": "14h"
+    "state": "OFF"
   },
   "stop": {
-    "all": true
+    "all": false
+  },
+  "update": {
+    "config":true,
+    "controller_config": {
+      "max_zones": 2,
+      "valvePins": [1,2],
+      "pumpPins": [3,4],
+      "lightPin": 5,
+      "tempHumidityPin": 6,
+      "tempHumidityInterval": 20000
+    }
   }
 }

@@ -1,22 +1,6 @@
 const mongoose = require('mongoose');
 
-// XID validation pattern from OpenAPI spec
-const xidPattern = /^[0-9a-v]{20}$/;
-
-// Garden Schema - following OpenAPI Garden + GardenResponse
 const gardenSchema = new mongoose.Schema({
-    id: {
-        type: String,
-        required: true,
-        unique: true,
-        index: true,
-        validate: {
-            validator: function (v) {
-                return xidPattern.test(v);
-            },
-            message: 'ID must be a valid XID format (20 character string)'
-        }
-    },
     name: {
         type: String,
         required: true,
@@ -27,6 +11,7 @@ const gardenSchema = new mongoose.Schema({
         required: true,
         trim: true,
         index: true,
+        unique: true,
         validate: {
             validator: function (v) {
                 // Avoid spaces and characters: [$#*>+/]
@@ -38,8 +23,8 @@ const gardenSchema = new mongoose.Schema({
     max_zones: {
         type: Number,
         required: true,
-        min: 0,
-        default: 0
+        min: 1,
+        default: 1
     },
     light_schedule: {
         duration: {
@@ -62,13 +47,12 @@ const gardenSchema = new mongoose.Schema({
                 message: 'Start time must be in format "HH:MM:SS±HH:MM"'
             }
         },
-        adhoc_on_time: Date,
-        temperature_humidity_sensor: {
-            type: Boolean,
-            default: false
-        }
+        // adhoc_on_time: Date,
+        // temperature_humidity_sensor: {
+        //     type: Boolean,
+        //     default: false
+        // }
     },
-    // Response-only fields for GardenResponse
     health: {
         status: {
             type: String,
@@ -81,28 +65,32 @@ const gardenSchema = new mongoose.Schema({
         },
         last_contact: Date
     },
-    temperature_humidity_data: {
-        temperature_celsius: Number,
-        humidity_percentage: Number,
-        timestamp: Date
-    },
-    next_light_action: {
-        time: Date,
-        state: {
-            type: String,
-            enum: ['ON', 'OFF', '']
-        }
-    },
+    // temperature_humidity_data: {
+    //     temperature_celsius: Number,
+    //     humidity_percentage: Number,
+    //     timestamp: Date
+    // },
+    // next_light_action: {
+    //     time: Date,
+    //     state: {
+    //         type: String,
+    //         enum: ['ON', 'OFF', '']
+    //     }
+    // },
     end_date: {
         type: Date,
         default: null
+    },
+    controller_config: {
+        valvePins: { type: [Number], default: [] },
+        pumpPins: { type: [Number], default: [] },
+        lightPin: { type: Number, default: null },
+        tempHumidityPin: { type: Number, default: null },
+        tempHumidityInterval: { type: Number, default: 5000 }, // in minutes
     }
 }, {
-    timestamps: {
-        createdAt: 'created_at',
-        updatedAt: 'updated_at'
-    }
+    timestamps: true
 });
 // Add compound indexes for better query performance
-gardenSchema.index({ topic_prefix: 1, end_date: 1 });
+// gardenSchema.index({ _id: 1, topic_prefix: 1, end_date: 1 });
 module.exports = mongoose.model('Garden', gardenSchema);

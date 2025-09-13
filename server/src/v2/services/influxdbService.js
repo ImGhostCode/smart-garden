@@ -1,7 +1,14 @@
 const { InfluxDB, Point } = require('@influxdata/influxdb-client');
 
 class InfluxDBService {
-    constructor(config) {
+    constructor() {
+        this.config = null;
+        this.client = null;
+        this.writeApi = null;
+        this.queryApi = null;
+    }
+
+    connect(config) {
         this.config = config;
         this.client = new InfluxDB({
             url: config.url,
@@ -207,11 +214,11 @@ class InfluxDBService {
     async close() {
         try {
             await this.writeApi.close();
-            this.client.close();
+            this.client = null;
         } catch (error) {
             console.error('Error closing InfluxDB connections:', error);
         }
     }
 }
 
-module.exports = InfluxDBService;
+module.exports = new InfluxDBService();

@@ -2,7 +2,7 @@ const mqtt = require('mqtt');
 const EventEmitter = require('events');
 const db = require('../models/database');
 const { generateXid } = require('../utils/helpers');
-const InfluxDBService = require('./influxdbService');
+const influxDBService = require('./influxdbService');
 
 class MQTTService extends EventEmitter {
     constructor() {
@@ -10,17 +10,6 @@ class MQTTService extends EventEmitter {
         this.client = null;
         this.isConnected = false;
         this.subscribedTopics = new Set();
-        this.influxDB = null;
-
-        // Initialize InfluxDB if configured
-        if (process.env.INFLUXDB_URL) {
-            this.influxDB = new InfluxDBService({
-                url: process.env.INFLUXDB_URL,
-                token: process.env.INFLUXDB_TOKEN,
-                org: process.env.INFLUXDB_ORG,
-                bucket: process.env.INFLUXDB_BUCKET || 'garden'
-            });
-        }
 
         // MQTT Topics constants
         this.TOPICS = {
@@ -62,7 +51,13 @@ class MQTTService extends EventEmitter {
         this.client.on('connect', () => {
             console.log('Connected to MQTT broker');
             this.isConnected = true;
-            this.subscribeToDataTopics();
+            // this.subscribeToDataTopics();
+            this.subscribe(`+${this.TOPICS.DATA.HEALTH}`);
+            this.subscribe(`+${this.TOPICS.DATA.TEMPERATURE}`);
+            this.subscribe(`+${this.TOPICS.DATA.HUMIDITY}`);
+            this.subscribe(`+${this.TOPICS.DATA.WATER}`);
+            this.subscribe(`+${this.TOPICS.DATA.LIGHT}`);
+            this.subscribe(`+${this.TOPICS.DATA.LOGGING}`);
             this.emit('connected');
         });
 
@@ -234,11 +229,6 @@ class MQTTService extends EventEmitter {
     // Handle health status from ESP32
     handleHealthData(garden, message, timestamp) {
         try {
-            // Write to InfluxDB
-            // if (this.influxDB) {
-            //     this.influxDB.writeHealthData(garden.topic_prefix);
-            // }
-
             // Update garden health in database
             const updatedGarden = {
                 ...garden,
@@ -267,9 +257,9 @@ class MQTTService extends EventEmitter {
             const temperature = parseFloat(message);
 
             // Write to InfluxDB
-            if (this.influxDB) {
-                this.influxDB.writeTemperatureData(garden.topic_prefix, temperature);
-            }
+            // if (this.influxDB) {
+            //     this.influxDB.writeTemperatureData(garden.topic_prefix, temperature);
+            // }
 
             const updatedGarden = {
                 ...garden,
@@ -293,9 +283,9 @@ class MQTTService extends EventEmitter {
             const humidity = parseFloat(message);
 
             // Write to InfluxDB
-            if (this.influxDB) {
-                this.influxDB.writeHumidityData(garden.topic_prefix, humidity);
-            }
+            // if (this.influxDB) {
+            //     this.influxDB.writeHumidityData(garden.topic_prefix, humidity);
+            // }
 
             const updatedGarden = {
                 ...garden,
@@ -327,15 +317,15 @@ class MQTTService extends EventEmitter {
                 if (zone) {
                     const eventId = waterData.id || generateXid();
                     // Write to InfluxDB
-                    if (this.influxDB) {
-                        this.influxDB.writeWaterEvent(
-                            garden.topic_prefix,
-                            zone.position,
-                            waterData.duration || '0ms',
-                            eventId,
-                            waterData.status || 'complete'
-                        );
-                    }
+                    // if (this.influxDB) {
+                    //     this.influxDB.writeWaterEvent(
+                    //         garden.topic_prefix,
+                    //         zone.position,
+                    //         waterData.duration || '0ms',
+                    //         eventId,
+                    //         waterData.status || 'complete'
+                    //     );
+                    // }
 
                     if (!db.waterHistory.has(zone.id)) {
                         db.waterHistory.set(zone.id, []);
@@ -401,15 +391,15 @@ class MQTTService extends EventEmitter {
         };
 
         // Write command to InfluxDB
-        if (this.influxDB) {
-            this.influxDB.writeWaterCommand(
-                garden.topic_prefix,
-                zonePosition,
-                duration,
-                eventId,
-                'api'
-            );
-        }
+        // if (this.influxDB) {
+        //     this.influxDB.writeWaterCommand(
+        //         garden.topic_prefix,
+        //         zonePosition,
+        //         duration,
+        //         eventId,
+        //         'api'
+        //     );
+        // }
 
         await this.publish(topic, command);
         return eventId;
@@ -427,36 +417,32 @@ class MQTTService extends EventEmitter {
     }
 
     // Send stop all command
-    async sendStopAllCommand(garden) {
+    async sendStopAllAction(garden) {
         const topic = `${garden.topic_prefix}${this.TOPICS.COMMANDS.STOP_ALL}`;
-        const command = {
-            timestamp: new Date().toISOString()
-        };
-
-        await this.publish(topic, command);
+        await this.publish(topic, "no message");
     }
 
     // Send light command
-    async sendLightCommand(garden, state, duration = null) {
+    async sendLightAction(garden, state) {
         const topic = `${garden.topic_prefix}${this.TOPICS.COMMANDS.LIGHT}`;
         const command = {
             state: state, // "true", "false", or ""
-            timestamp: new Date().toISOString()
+            // timestamp: new Date().toISOString()
         };
 
-        if (duration) {
-            command.for_duration = duration;
-        }
+        // if (duration) {
+        //     command.for_duration = duration;
+        // }
 
         await this.publish(topic, command);
     }
 
     // Send configuration update to ESP32
-    async sendConfigUpdate(garden, config) {
+    async sendUpdateAction(garden, config) {
         const topic = `${garden.topic_prefix}${this.TOPICS.COMMANDS.UPDATE_CONFIG}`;
         const command = {
             ...config,
-            timestamp: new Date().toISOString()
+            // timestamp: new Date().toISOString()
         };
 
         await this.publish(topic, command);
@@ -488,10 +474,6 @@ class MQTTService extends EventEmitter {
             this.client.end();
             this.isConnected = false;
             console.log('MQTT client disconnected');
-        }
-        if (this.influxDB) {
-            this.influxDB.close();
-            console.log('InfluxDB client closed');
         }
     }
 
