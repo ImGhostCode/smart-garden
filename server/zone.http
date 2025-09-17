@@ -3,47 +3,41 @@
 @host = {{hostname}}:{{port}}
 
 # Zones:
-GET    {{host}}/gardens/sr3nt5tbp8jll9hpfpsp/zones?end_dated=true&exclude_weather_data=true
+GET    {{host}}/gardens/68c57aac78e37f35b582064e/zones?end_dated=true&exclude_weather_data=true
 ###
-POST   {{host}}/gardens/sr3nt5tbp8jll9hpfpsp/zones?exclude_weather_data=true
+POST   {{host}}/gardens/68c57aac78e37f35b582064e/zones?exclude_weather_data=true
+Content-Type: application/json
+
+{
+  "name": "Raised Bed 2",
+  "details": {
+    "description": "raised bed containing assorted vegetables 2",
+    "notes": "near the west wall of the yard, receiving morning light and afternoon shade 2"
+  },
+  "position": 3,
+  "skip_count": 5,
+  "water_schedule_ids": []
+}
+###
+GET    {{host}}/gardens/68c57aac78e37f35b582064e/zones/68c8274982d47429c2cf5ee7?exclude_weather_data=false
+###
+PATCH  {{host}}/gardens/68c57aac78e37f35b582064e/zones/68c8274982d47429c2cf5ee7?exclude_weather_data=true
 Content-Type: application/json
 
 {
   "name": "Raised Bed 1",
   "details": {
-    "description": "raised bed containing assorted vegetables",
-    "notes": "near the west wall of the yard, receiving morning light and afternoon shade"
+    "description": "raised bed containing assorted vegetables 2",
+    "notes": "near the west wall of the yard, receiving morning light and afternoon shade 2"
   },
   "position": 0,
-  "skip_count": 1,
-  "water_schedule_ids": [
-    "9m4e2mr0ui3e8a215n4g"
-  ]
+  "skip_count": 0,
+  "water_schedule_ids": []
 }
 ###
-GET    {{host}}/gardens/sr3nt5tbp8jll9hpfpsp/zones/h9k9k4adcpbo0f9fdlog?exclude_weather_data=false
+DELETE {{host}}/gardens/68c57aac78e37f35b582064e/zones/68c8275782d47429c2cf5eed?exclude_weather_data=false
 ###
-PATCH  {{host}}/gardens/sr3nt5tbp8jll9hpfpsp/zones/h9k9k4adcpbo0f9fdlog?exclude_weather_data=true
-Content-Type: application/json
-
-{
-  "name": "Raised Bed 1",
-  "details": {
-    "description": "raised bed containing assorted vegetables",
-    "notes": "near the west wall of the yard, receiving morning light and afternoon shade"
-  },
-  "position": 0,
-  "skip_count": 1,
-  "water_schedule_ids": [
-    "9m4e2mr0ui3e8a215n4g"
-  ],
-  "created_at": "2025-09-10T09:53:11.803Z",
-  "end_date": "2025-09-10T09:53:11.803Z"
-}
-###
-DELETE {{host}}/gardens/sr3nt5tbp8jll9hpfpsp/zones/h9k9k4adcpbo0f9fdlog?exclude_weather_data=false
-###
-POST   {{host}}/gardens/sr3nt5tbp8jll9hpfpsp/zones/h9k9k4adcpbo0f9fdlog/action
+POST   {{host}}/gardens/68c57aac78e37f35b582064e/zones/68c8274982d47429c2cf5ee7/action
 Content-Type: application/json
 
 {
@@ -52,4 +46,4 @@ Content-Type: application/json
   }
 }
 ###
-GET    {{host}}/gardens/sr3nt5tbp8jll9hpfpsp/zones/h9k9k4adcpbo0f9fdlog/history?range=72h&limit=10
+GET    {{host}}/gardens/68c57aac78e37f35b582064e/zones/68c8274982d47429c2cf5ee7/history?range=72h&limit=10

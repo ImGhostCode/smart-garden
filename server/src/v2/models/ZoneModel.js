@@ -1,39 +1,34 @@
 const mongoose = require('mongoose');
+// const { xidPattern } = require('../utils/validation');
 
-// XID validation pattern from OpenAPI spec
-const xidPattern = /^[0-9a-v]{20}$/;
-
-
-// Zone Schema - following OpenAPI Zone + ZoneResponse
+// Zone Schema
 const zoneSchema = new mongoose.Schema({
-    id: {
-        type: String,
-        required: true,
-        unique: true,
-        index: true,
-        validate: {
-            validator: function (v) {
-                return xidPattern.test(v);
-            },
-            message: 'ID must be a valid XID format'
-        }
-    },
     garden_id: {
         type: String,
         required: true,
         ref: 'Garden',
         index: true,
-        validate: {
-            validator: function (v) {
-                return xidPattern.test(v);
-            },
-            message: 'Garden ID must be a valid XID format'
-        }
+        // validate: {
+        //     validator: function (v) {
+        //         return xidPattern.test(v);
+        //     },
+        //     message: 'Garden ID must be a valid XID format'
+        // }
     },
     name: {
         type: String,
         required: true,
         trim: true
+    },
+    details: {
+        description: {
+            type: String,
+            trim: true
+        },
+        notes: {
+            type: String,
+            trim: true
+        }
     },
     position: {
         type: Number,
@@ -54,16 +49,6 @@ const zoneSchema = new mongoose.Schema({
         type: Number,
         default: 0,
         min: 0
-    },
-    details: {
-        description: {
-            type: String,
-            trim: true
-        },
-        notes: {
-            type: String,
-            trim: true
-        }
     },
     // Additional fields for sensor data and status (not in OpenAPI but useful)
     // sensor_data: {
@@ -98,12 +83,9 @@ const zoneSchema = new mongoose.Schema({
         default: null
     }
 }, {
-    timestamps: {
-        createdAt: 'created_at',
-        updatedAt: 'updated_at'
-    }
+    timestamps: true
 });
 // Add compound indexes for better query performance
-zoneSchema.index({ garden_id: 1, position: 1, end_date: 1 });
-zoneSchema.index({ garden_id: 1, end_date: 1 });
+// zoneSchema.index({ garden_id: 1, position: 1, end_date: 1 });
+// zoneSchema.index({ garden_id: 1, end_date: 1 });
 module.exports = mongoose.model('Zone', zoneSchema);

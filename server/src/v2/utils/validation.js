@@ -285,10 +285,7 @@ const schemas = {
             Joi.string().pattern(xidPattern).messages({
                 'string.pattern.base': 'Water Schedule ID must be a 24 character XID format'
             })
-        ).min(1).required().messages({
-            'array.min': 'At least one water schedule ID is required',
-            'any.required': 'Water schedule IDs are required'
-        })
+        ).optional()
     }),
 
     updateZoneRequest: Joi.object({
@@ -307,11 +304,7 @@ const schemas = {
             Joi.string().pattern(xidPattern).messages({
                 'string.pattern.base': 'Water Schedule ID must be a 24 character XID format'
             })
-        ).min(1).optional().messages({
-            'array.min': 'At least one water schedule ID is required'
-        }),
-        created_at: Joi.string().isoDate().optional(),
-        end_date: Joi.string().isoDate().optional()
+        ).optional(),
     }).min(1).messages({
         'object.min': 'At least one field must be provided for update'
     }),
@@ -467,6 +460,10 @@ const validateEndpoint = (bodySchema, paramsSchema, querySchema) => {
 };
 
 module.exports = {
+    xidPattern,
+    durationPattern,
+    timePattern,
+    topicPrefixPattern,
     schemas,
     validateBody,
     validateParams,

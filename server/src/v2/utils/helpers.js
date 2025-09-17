@@ -3,7 +3,7 @@
 const generateXid = () => {
   const chars = '0123456789abcdefghijklmnopqrstuv';
   let result = '';
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 24; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return result;
@@ -12,7 +12,7 @@ const generateXid = () => {
 const createLink = (rel, href) => ({ rel, href });
 
 const validateXid = (id) => {
-  return typeof id === 'string' && id.length === 20 && /^[0-9a-v]{20}$/.test(id);
+  return typeof id === 'string' && id.length === 24 && /^[0-9a-v]{20}$/.test(id);
 };
 
 const addTimestamps = (obj) => ({

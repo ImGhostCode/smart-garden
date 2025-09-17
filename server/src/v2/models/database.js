@@ -26,7 +26,6 @@ const db = {
         Plant,
         Zone,
         WaterSchedule,
-        WaterHistory
     },
 
     // Enhanced helper methods for easier controller usage
@@ -139,12 +138,11 @@ const db = {
 
     zones: {
         async getAll(filters = {}) {
-            const query = { end_date: null, ...filters };
-            return await Zone.find(query).sort({ position: 1 });
+            return await Zone.find(filters).sort({ position: 1 });
         },
 
         async getById(id) {
-            return await Zone.findOne({ id, end_date: null });
+            return await Zone.findOne({ _id: id, end_date: null });
         },
 
         async getByGardenId(garden_id) {
@@ -158,7 +156,7 @@ const db = {
 
         async updateById(id, data) {
             return await Zone.findOneAndUpdate(
-                { id, end_date: null },
+                { _id: id, end_date: null },
                 { ...data, updated_at: new Date() },
                 { new: true }
             );
@@ -166,7 +164,7 @@ const db = {
 
         async deleteById(id) {
             return await Zone.findOneAndUpdate(
-                { id },
+                { _id: id },
                 { end_date: new Date() },
                 { new: true }
             );
@@ -247,40 +245,6 @@ const db = {
         }
     },
 
-    waterHistory: {
-        async getAll(filters = {}) {
-            return await WaterHistory.find(filters).sort({ start_time: -1 });
-        },
-
-        async getById(id) {
-            return await WaterHistory.findOne({ id });
-        },
-
-        async getByZoneId(zone_id, limit = 50) {
-            return await WaterHistory.find({ zone_id })
-                .sort({ start_time: -1 })
-                .limit(limit);
-        },
-
-        async create(data) {
-            const history = new WaterHistory(data);
-            return await history.save();
-        },
-
-        // Legacy interface
-        async get(id) {
-            return await this.getById(id);
-        },
-
-        async set(id, data) {
-            const history = new WaterHistory({ ...data, id });
-            return await history.save();
-        },
-
-        async values() {
-            return await this.getAll();
-        }
-    }
 };
 
 module.exports = db;
