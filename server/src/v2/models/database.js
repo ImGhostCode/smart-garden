@@ -3,7 +3,6 @@ const Garden = require('./GardenModel');
 const Plant = require('./PlantModel');
 const Zone = require('./ZoneModel');
 const WaterSchedule = require('./WaterScheduleModel');
-const WaterHistory = require('./WaterHistoryModel');
 
 // MongoDB database interface
 const db = {
@@ -192,12 +191,11 @@ const db = {
 
     waterSchedules: {
         async getAll(filters = {}) {
-            const query = { end_date: null, ...filters };
-            return await WaterSchedule.find(query).sort({ created_at: -1 });
+            return await WaterSchedule.find(filters).sort({ created_at: -1 });
         },
 
         async getById(id) {
-            return await WaterSchedule.findOne({ id, end_date: null });
+            return await WaterSchedule.findOne({ _id: id, end_date: null });
         },
 
         async getByGardenId(garden_id) {
@@ -211,7 +209,7 @@ const db = {
 
         async updateById(id, data) {
             return await WaterSchedule.findOneAndUpdate(
-                { id, end_date: null },
+                { _id: id, end_date: null },
                 { ...data, updated_at: new Date() },
                 { new: true }
             );
@@ -219,7 +217,7 @@ const db = {
 
         async deleteById(id) {
             return await WaterSchedule.findOneAndUpdate(
-                { id },
+                { _id: id },
                 { end_date: new Date() },
                 { new: true }
             );

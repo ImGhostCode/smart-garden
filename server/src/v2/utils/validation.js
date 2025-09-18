@@ -12,6 +12,8 @@ const timePattern = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\+|-[0-1][0-9]:
 
 const topicPrefixPattern = /^[^#$+>*]+$/; // No spaces or MQTT wildcards
 
+const validMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 // Base schemas
 const schemas = {
     // Basic types
@@ -332,7 +334,11 @@ const schemas = {
                 range: Joi.number().required()
             }).optional()
         }).optional(),
-        name: Joi.string().optional(),
+        active_period: Joi.object({
+            start_month: Joi.string().valid(...validMonths).required(),
+            end_month: Joi.string().valid(...validMonths).required()
+        }).optional(),
+        name: Joi.string().required(),
         description: Joi.string().optional()
     }),
 
@@ -357,6 +363,10 @@ const schemas = {
                 factor: Joi.number().min(0).max(1).required(),
                 range: Joi.number().required()
             }).optional()
+        }).optional(),
+        active_period: Joi.object({
+            start_month: Joi.string().valid(...validMonths).required(),
+            end_month: Joi.string().valid(...validMonths).required()
         }).optional(),
         name: Joi.string().optional(),
         description: Joi.string().optional()

@@ -8,9 +8,9 @@ POST   {{host}}/water_schedules?exclude_weather_data=true
 Content-Type: application/json
 
 {
-  "duration": "15000ms",
-  "interval": "72h",
-  "start_time": "23:00:00-07:00",
+  "duration": "5000ms",
+  "interval": "30h",
+  "start_time": "19:00:00-07:00",
   "weather_control": {
     "rain_control": {
       "baseline_value": 0,
@@ -23,13 +23,17 @@ Content-Type: application/json
       "range": 0
     }
   },
-  "name": "string",
-  "description": "string"
+  "active_period": {
+    "start_month": "Mar",
+    "end_month": "Apr"
+  },
+  "name": "Watering Schedule 3",
+  "description": "Morning watering schedule"
 }
 ###
-GET    {{host}}/water_schedules/8rcdbdq49l8057n5ct5h?exclude_weather_data=false
+GET    {{host}}/water_schedules/68ca39aa956e21e13a38e006?exclude_weather_data=false
 ###
-PATCH  {{host}}/water_schedules/8rcdbdq49l8057n5ct5h?exclude_weather_data=true
+PATCH  {{host}}/water_schedules/68ca39aa956e21e13a38e006?exclude_weather_data=true
 Content-Type: application/json
 
 {
@@ -48,8 +52,12 @@ Content-Type: application/json
       "range": 0
     }
   },
-  "name": "string",
+    "active_period": {
+    "start_month": "Mar",
+    "end_month": "May"
+  },
+  "name": "Watering Schedule 1 Updated",
   "description": "string"
 }
 ###
-DELETE {{host}}/water_schedules/8rcdbdq49l8057n5ct5h?exclude_weather_data=false
+DELETE {{host}}/water_schedules/68ca39197866c41a32a6561f?exclude_weather_data=false
