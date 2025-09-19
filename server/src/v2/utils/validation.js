@@ -8,7 +8,7 @@ const xidPattern = /^[0-9a-v]{24}$/;
 const durationPattern = /^(\d+(\.\d+)?)(ns|μs|ms|s|m|h)$/;
 
 // Time validation pattern (HH:MM:SS with optional timezone offset)
-const timePattern = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\+|-[0-1][0-9]:[0-5][0-9])?$/;
+const timePattern = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]([+-][0-1][0-9]:[0-5][0-9])?$/;;
 
 const topicPrefixPattern = /^[^#$+>*]+$/; // No spaces or MQTT wildcards
 
@@ -79,7 +79,7 @@ const schemas = {
         light: Joi.object({
             state: Joi.string().valid('ON', 'OFF', '').optional(),
             // for_duration: Joi.string().pattern(durationPattern).when('state', {
-            //     is: 'OFF',
+            //     is: 'ON',
             //     then: Joi.optional(),
             //     otherwise: Joi.forbidden().messages({
             //         'any.unknown': 'for_duration can only be used with state=OFF'
@@ -87,6 +87,9 @@ const schemas = {
             // }).messages({
             //     'string.pattern.base': 'Duration must be in valid format (e.g., "14h", "30m", "15s")'
             // })
+            for_duration: Joi.string().pattern(durationPattern).optional().messages({
+                'string.pattern.base': 'Duration must be in valid format (e.g., "14h", "30m", "15s")'
+            })
         }).optional(),
         stop: Joi.object({
             all: Joi.boolean().optional()
@@ -194,7 +197,7 @@ const schemas = {
             pumpPins: Joi.array().items(Joi.number().integer().min(0).required()).required(),
             lightPin: Joi.number().integer().min(0).optional(),
             tempHumidityPin: Joi.number().integer().min(0).optional(),
-            tempHumidityInterval: Joi.number().integer().min(0).optional()
+            tempHumidityInterval: Joi.number().integer().min(0).optional().default(5000)
         }).optional()
     }),
 
@@ -226,7 +229,7 @@ const schemas = {
             pumpPins: Joi.array().items(Joi.number().integer().min(0).required()).required(),
             lightPin: Joi.number().integer().min(0).optional(),
             tempHumidityPin: Joi.number().integer().min(0).optional(),
-            tempHumidityInterval: Joi.number().integer().min(0).optional()
+            tempHumidityInterval: Joi.number().integer().min(0).optional().default(5000)
         }).optional()
     }).min(1).messages({
         'object.min': 'At least one field must be provided for update'
@@ -263,7 +266,6 @@ const schemas = {
             time_to_harvest: Joi.string().optional(),
             count: Joi.number().integer().min(0).optional()
         }).optional(),
-        created_at: Joi.string().isoDate().optional()
     }).min(1).messages({
         'object.min': 'At least one field must be provided for update'
     }),

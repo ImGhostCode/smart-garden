@@ -2,14 +2,30 @@
 @port = 3000
 @host = {{hostname}}:{{port}}
 ### Plants:
-GET    {{host}}/gardens/sr3nt5tbp8jll9hpfpsp/plants?end_dated=false
+GET    {{host}}/gardens/68c57aac78e37f35b582064e/plants?end_dated=false
 ###
-POST   {{host}}/gardens/sr3nt5tbp8jll9hpfpsp/plants
+POST   {{host}}/gardens/68c57aac78e37f35b582064e/plants
 Content-Type: application/json
 
 {
-  "name": "lettuce",
-  "zone_id": "h9k9k4adcpbo0f9fdlog",
+  "name": "lemon balm",
+  "zone_id": "68c8274982d47429c2cf5ee7",
+  "details": {
+    "description": "nutritious leafy green",
+    "notes": "grown from seed and planted about 6 inches apart",
+    "time_to_harvest": "100 days",
+    "count": 5
+  }
+}
+###
+GET    {{host}}/gardens/68c57aac78e37f35b582064e/plants/68cac1a69baa16f2c65ffd81
+###
+PATCH  {{host}}/gardens/68c57aac78e37f35b582064e/plants/68cac1a69baa16f2c65ffd81
+Content-Type: application/json
+
+{
+  "name": "lettuce mix",
+  "zone_id": "68c8274982d47429c2cf5ee7",
   "details": {
     "description": "nutritious leafy green",
     "notes": "grown from seed and planted about 6 inches apart",
@@ -18,21 +34,4 @@ Content-Type: application/json
   }
 }
 ###
-GET    {{host}}/gardens/sr3nt5tbp8jll9hpfpsp/plants/669imlth0ie3c0nkhl43
-###
-PATCH  {{host}}/gardens/sr3nt5tbp8jll9hpfpsp/plants/do2n9lmii164irq4p0rj
-Content-Type: application/json
-
-{
-  "name": "lettuce",
-  "zone_id": "9m4e2mr0ui3e8a215n4g",
-  "details": {
-    "description": "nutritious leafy green",
-    "notes": "grown from seed and planted about 6 inches apart",
-    "time_to_harvest": "70 days",
-    "count": 6
-  },
-  "created_at": "2025-09-10T10:06:00.329Z"
-}
-###
-DELETE {{host}}/gardens/sr3nt5tbp8jll9hpfpsp/plants/do2n9lmii164irq4p0rj
+DELETE {{host}}/gardens/68c57aac78e37f35b582064f/plants/68cac0e81e1824b2e05fa6fb

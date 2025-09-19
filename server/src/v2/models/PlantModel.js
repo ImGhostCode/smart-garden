@@ -1,27 +1,18 @@
 const mongoose = require('mongoose');
+const { xidPattern } = require('../utils/validation');
 
-// XID validation pattern from OpenAPI spec
-const xidPattern = /^[0-9a-v]{20}$/;
-
-// Plant Schema - following OpenAPI Plant + PlantResponse
+// Plant Schema
 const plantSchema = new mongoose.Schema({
-    id: {
+    name: {
         type: String,
         required: true,
-        unique: true,
-        index: true,
-        validate: {
-            validator: function (v) {
-                return xidPattern.test(v);
-            },
-            message: 'ID must be a valid XID format'
-        }
+        trim: true
     },
     garden_id: {
         type: String,
         required: true,
         ref: 'Garden',
-        index: true,
+        // index: true,
         validate: {
             validator: function (v) {
                 return xidPattern.test(v);
@@ -29,16 +20,11 @@ const plantSchema = new mongoose.Schema({
             message: 'Garden ID must be a valid XID format'
         }
     },
-    name: {
-        type: String,
-        required: true,
-        trim: true
-    },
     zone_id: {
         type: String,
         required: true,
         ref: 'Zone',
-        index: true,
+        // index: true,
         validate: {
             validator: function (v) {
                 return xidPattern.test(v);
@@ -69,13 +55,10 @@ const plantSchema = new mongoose.Schema({
         default: null
     }
 }, {
-    timestamps: {
-        createdAt: 'created_at',
-        updatedAt: 'updated_at'
-    }
+    timestamps: true
 });
 
 // Add compound indexes for better query performance
-plantSchema.index({ garden_id: 1, end_date: 1 });
-plantSchema.index({ zone_id: 1, end_date: 1 });
+// plantSchema.index({ garden_id: 1, end_date: 1 });
+// plantSchema.index({ zone_id: 1, end_date: 1 });
 module.exports = mongoose.model('Plant', plantSchema);

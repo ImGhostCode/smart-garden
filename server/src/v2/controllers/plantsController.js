@@ -2,24 +2,22 @@ const db = require('../models/database');
 const { validateXid, addTimestamps, createLink, generateXid, getNextWaterTime } = require('../utils/helpers');
 
 const PlantsController = {
-    getAllPlants: (req, res) => {
+    getAllPlants: async (req, res) => {
         const { gardenID } = req.params;
         const { end_dated } = req.query;
 
-        if (!validateXid(gardenID)) {
-            return res.status(400).json({ error: 'Invalid garden ID format' });
-        }
-
-        const plants = Array.from(db.plants.values()).filter(plant => plant.garden_id === gardenID);
-
-        let filteredPlants = plants;
+        const filters = {
+            garden_id: gardenID
+        };
         if (!end_dated || end_dated === 'false') {
-            filteredPlants = plants.filter(plant => !plant.end_date);
+            filters.end_date = null;
         }
+
+        const plants = await db.plants.getAll(filters);
 
         res.json({
-            plants: filteredPlants.map(plant => ({
-                ...plant,
+            items: plants.map(plant => ({
+                ...plant.toObject(),
                 links: [
                     createLink('self', `/gardens/${gardenID}/plants/${plant.id}`),
                     createLink('garden', `/gardens/${gardenID}`),
@@ -30,31 +28,33 @@ const PlantsController = {
         });
     },
 
-    addPlant: (req, res) => {
+    addPlant: async (req, res) => {
         const { gardenID } = req.params;
         const { name, zone_id, details } = req.body;
 
-        if (!validateXid(gardenID)) {
-            return res.status(400).json({ error: 'Invalid garden ID format' });
+        // Check if garden exists
+        const garden = await db.gardens.getById(gardenID);
+        if (!garden) {
+            return res.status(404).json({ error: 'Garden not found' });
         }
 
-        if (!name || !zone_id) {
-            return res.status(400).json({ error: 'Name and zone_id are required' });
+        // Check if zone exists and belongs to the garden
+        const zone = await db.zones.getById(zone_id);
+        if (!zone || zone.garden_id !== gardenID) {
+            return res.status(400).json({ error: 'Invalid zone_id for the specified garden' });
         }
 
         const plant = {
-            id: generateXid(),
             garden_id: gardenID,
             name,
             zone_id,
             details,
-            ...addTimestamps({})
         };
 
-        db.plants.set(plant.id, plant);
+        const result = await db.plants.create(plant);
 
         res.status(201).json({
-            ...plant,
+            ...result.toObject(),
             links: [
                 createLink('self', `/gardens/${gardenID}/plants/${plant.id}`),
                 createLink('garden', `/gardens/${gardenID}`),
@@ -64,20 +64,17 @@ const PlantsController = {
         });
     },
 
-    getPlant: (req, res) => {
+    getPlant: async (req, res) => {
         const { gardenID, plantID } = req.params;
 
-        if (!validateXid(gardenID) || !validateXid(plantID)) {
-            return res.status(400).json({ error: 'Invalid ID format' });
-        }
+        const plant = await db.plants.getById(plantID);
 
-        const plant = db.plants.get(plantID);
         if (!plant || plant.garden_id !== gardenID) {
             return res.status(404).json({ error: 'Plant not found' });
         }
 
         res.json({
-            ...plant,
+            ...plant.toObject(),
             links: [
                 createLink('self', `/gardens/${gardenID}/plants/${plant.id}`),
                 createLink('garden', `/gardens/${gardenID}`),
@@ -87,29 +84,34 @@ const PlantsController = {
         });
     },
 
-    updatePlant: (req, res) => {
+    updatePlant: async (req, res) => {
         const { gardenID, plantID } = req.params;
+        const { name, zone_id, details } = req.body;
 
-        if (!validateXid(gardenID) || !validateXid(plantID)) {
-            return res.status(400).json({ error: 'Invalid ID format' });
-        }
 
-        const plant = db.plants.get(plantID);
+        // Check if plant exists and belongs to the garden
+        const plant = await db.plants.getById(plantID);
         if (!plant || plant.garden_id !== gardenID) {
             return res.status(404).json({ error: 'Plant not found' });
         }
 
-        const updatedPlant = {
-            ...plant,
-            ...req.body,
-            id: plantID,
-            garden_id: gardenID
-        };
+        // Check if zone exists and belongs to the garden (if zone_id is being updated)
+        if (zone_id) {
+            const zone = await db.zones.getById(zone_id);
+            if (!zone || zone.garden_id !== gardenID) {
+                return res.status(400).json({ error: 'Invalid zone_id for the specified garden' });
+            }
+        }
 
-        db.plants.set(plantID, updatedPlant);
+        const update = {};
+        if (name) update.name = name;
+        if (zone_id) update.zone_id = zone_id;
+        if (details) update.details = details;
+
+        const result = await db.plants.updateById(plantID, update);
 
         res.json({
-            ...updatedPlant,
+            ...result.toObject(),
             links: [
                 createLink('self', `/gardens/${gardenID}/plants/${plant.id}`),
                 createLink('garden', `/gardens/${gardenID}`),
@@ -119,23 +121,18 @@ const PlantsController = {
         });
     },
 
-    endDatePlant: (req, res) => {
+    endDatePlant: async (req, res) => {
         const { gardenID, plantID } = req.params;
 
-        if (!validateXid(gardenID) || !validateXid(plantID)) {
-            return res.status(400).json({ error: 'Invalid ID format' });
-        }
-
-        const plant = db.plants.get(plantID);
+        const plant = await db.plants.getById(plantID);
         if (!plant || plant.garden_id !== gardenID) {
             return res.status(404).json({ error: 'Plant not found' });
         }
 
-        plant.end_date = new Date().toISOString();
-        db.plants.set(plantID, plant);
+        const result = await db.plants.deleteById(plantID);
 
         res.json({
-            ...plant,
+            ...result.toObject(),
             links: [
                 createLink('self', `/gardens/${gardenID}/plants/${plant.id}`)
             ]
