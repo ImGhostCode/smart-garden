@@ -1,6 +1,7 @@
 const db = require('../models/database');
-const { createLink, generateXid, getMockWeatherData, getNextWaterTime } = require('../utils/helpers');
+const { createLink, generateXid, getMockWeatherData, getNextWaterTime, durationToMilliseconds } = require('../utils/helpers');
 const mqttService = require('../services/mqttService');
+const influxdbService = require('../services/influxdbService');
 
 const ZonesController = {
     getAllZones: async (req, res) => {
@@ -204,23 +205,10 @@ const ZonesController = {
 
         try {
             // Handle water action
-            if (action.water) {
-                await mqttService.sendWaterCommand(garden, zoneID, zone.position, action.water.duration);
-                console.log(`Water command sent to zone ${zone.name} (position ${zone.position}):`, action.water);
-
-                // Optimistically record water event (will be confirmed by ESP32 response)
-                // const historyRecord = {
-                //     id: generateXid(),
-                //     zone_id: zoneID,
-                //     duration: action.water.duration,
-                //     record_time: new Date().toISOString(),
-                //     status: 'commanded' // Will be updated when ESP32 confirms
-                // };
-
-                // if (!db.waterHistory.has(zoneID)) {
-                //     db.waterHistory.set(zoneID, []);
-                // }
-                // db.waterHistory.get(zoneID).push(historyRecord);
+            if (action.water && action.water.duration) {
+                const durationMs = durationToMilliseconds(action.water.duration);
+                const result = await mqttService.sendWaterCommand(garden, zoneID, zone.position, durationMs);
+                console.log('MQTT water command result:', result);
             }
 
             res.status(202);
@@ -236,7 +224,7 @@ const ZonesController = {
 
     zoneHistory: async (req, res) => {
         const { gardenID, zoneID } = req.params;
-        const { range = '72h', limit = 0 } = req.query;
+        const { range = '72h', limit = 5 } = req.query;
 
         const zone = await db.zones.getById(zoneID);
         if (!zone || zone.garden_id !== gardenID) {
@@ -248,52 +236,20 @@ const ZonesController = {
             return res.status(404).json({ error: 'Garden not found' });
         }
 
-        // try {
-        //     // Try to get history from InfluxDB first
-        //     if (mqttService.influxDB) {
-        //         const influxHistory = await mqttService.influxDB.getWaterHistory(
-        //             garden.topic_prefix,
-        //             zone.position,
-        //             range,
-        //             limit > 0 ? limit : 0
-        //         );
+        const result = await influxdbService.getWaterHistory(garden.topic_prefix, range, zoneID, limit);
 
-        //         if (influxHistory.length > 0) {
-        //             const totalMs = influxHistory.reduce((sum, record) => {
-        //                 const ms = mqttService.influxDB.parseDurationToMs(record.duration);
-        //                 return sum + ms;
-        //             }, 0);
-
-        //             return res.json({
-        //                 zone_id: zoneID,
-        //                 zone_name: zone.name,
-        //                 history: influxHistory,
-        //                 summary: {
-        //                     count: influxHistory.length,
-        //                     total_duration: `${totalMs}ms`,
-        //                     average_duration: `${Math.round(totalMs / influxHistory.length)}ms`,
-        //                     range_requested: range,
-        //                     limit_applied: limit > 0 ? limit : null,
-        //                     data_source: 'influxdb'
-        //                 }
-        //             });
+        // res.json({
+        //     "history": [
+        //         {
+        //             "duration": "15000ms",
+        //             "record_time": "2025-09-16T09:48:13.107Z"
         //         }
-        //     }
-        // } catch (error) {
-        //     console.warn('InfluxDB query failed, falling back to in-memory:', error.message);
-        // }
-
-        res.json({
-            "history": [
-                {
-                    "duration": "15000ms",
-                    "record_time": "2025-09-16T09:48:13.107Z"
-                }
-            ],
-            "count": 1,
-            "average": "15s",
-            "total": "15s"
-        });
+        //     ],
+        //     "count": 1,
+        //     "average": "15s",
+        //     "total": "15s"
+        // });
+        res.json(result);
     }
 };
 

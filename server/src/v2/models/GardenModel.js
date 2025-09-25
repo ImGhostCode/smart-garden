@@ -53,18 +53,18 @@ const gardenSchema = new mongoose.Schema({
         //     default: false
         // }
     },
-    health: {
-        status: {
-            type: String,
-            enum: ['UP', 'DOWN', 'N/A'],
-            default: 'N/A'
-        },
-        details: {
-            type: String,
-            default: 'No recent health data from garden controller'
-        },
-        last_contact: Date
-    },
+    // health: {
+    //     status: {
+    //         type: String,
+    //         enum: ['UP', 'DOWN', 'N/A'],
+    //         default: 'N/A'
+    //     },
+    //     details: {
+    //         type: String,
+    //         default: 'No recent health data from garden controller'
+    //     },
+    //     last_contact: Date
+    // },
     // temperature_humidity_data: {
     //     temperature_celsius: Number,
     //     humidity_percentage: Number,

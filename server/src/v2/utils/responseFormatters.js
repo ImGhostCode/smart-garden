@@ -18,9 +18,9 @@ function formatGardenResponse(garden, req) {
         end_date: garden.end_date,
         controller_config: garden.controller_config || {},
         next_light_action: garden.next_light_action || {},
-        health: garden.health || {
-            status: 'N/A',
-            details: 'No recent health data from garden controller',
+        health: {
+            status: 'DOWN',
+            details: 'no last contact time available',
             last_contact: null
         },
         temperature_humidity_data: garden.temperature_humidity_data || {

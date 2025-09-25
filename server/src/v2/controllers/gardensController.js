@@ -1,6 +1,8 @@
 const db = require('../models/database');
 const { formatGardenResponse } = require('../utils/responseFormatters');
 const mqttService = require('../services/mqttService');
+const influxdbService = require('../services/influxdbService');
+const e = require('express');
 
 const GardensController = {
     getAllGardens: async (req, res) => {
@@ -15,16 +17,40 @@ const GardensController = {
             // Get plant and zone counts for each garden
             const gardensWithCounts = await Promise.all(
                 gardens.map(async (garden) => {
-                    const [plantsCount, zonesCount] = await Promise.all([
+                    const [plantsCount, zonesCount,
+                        lastContact, temHumData
+                    ] = await Promise.all([
                         db.plants.getByGardenId(garden.id).then(plants =>
                             plants.filter(p => !p.end_date).length
                         ),
                         db.zones.getByGardenId(garden.id).then(zones =>
                             zones.filter(z => !z.end_date).length
-                        )
+                        ),
+                        influxdbService.getLastContact(garden.topic_prefix).then(data => data),
+                        influxdbService.getTemperatureAndHumidity(garden.topic_prefix).then(data => data)
                     ]);
 
                     const formattedGarden = formatGardenResponse(garden, req);
+                    if (lastContact) {
+                        formattedGarden.health = {
+                            // Garden is considered "UP" if it's last contact was less than 5 minutes ago
+                            status: (new Date() - new Date(lastContact)) < 5 * 60 * 1000 ? 'UP' : 'DOWN',
+                            details: 'last contact from Garden was ' + Math.round((new Date() - new Date(lastContact)) / 60000) + ' minutes ago',
+                            last_contact: lastContact
+                        };
+                    } else {
+                        formattedGarden.health = {
+                            status: 'DOWN',
+                            details: 'no last contact time available',
+                            last_contact: null
+                        };
+                    }
+                    if (temHumData) {
+                        formattedGarden.temperature_humidity_data = {
+                            temperature_celsius: temHumData.temperature,
+                            humidity_percentage: temHumData.humidity
+                        };
+                    }
                     formattedGarden.num_plants = plantsCount;
                     formattedGarden.num_zones = zonesCount;
 
@@ -47,8 +73,8 @@ const GardensController = {
         try {
             const { name, topic_prefix, max_zones, light_schedule, controller_config } = req.body;
 
-            if (controller_config != null && (controller_config.valvePins.length !== max_zones || controller_config.pumpPins.length !== max_zones)) {
-                return res.status(400).json({ error: 'controller_config valvePins and pumpPins length must match max_zones' });
+            if (controller_config != null && (controller_config.valvePins.length !== controller_config.pumpPins.length || controller_config.valvePins.length > max_zones)) {
+                return res.status(400).json({ error: 'controller_config valvePins and pumpPins length must match and be less than or equal to max_zones' });
             }
 
             const newGarden = {
@@ -62,6 +88,15 @@ const GardensController = {
 
             const savedGarden = await db.gardens.create(newGarden);
 
+            // Sent config to garden controller via MQTT
+            if (controller_config) {
+                try {
+                    await mqttService.sendUpdateAction(savedGarden, controller_config);
+                } catch (mqttError) {
+                    console.error('MQTT error sending initial config:', mqttError);
+                    // Proceed without failing the request
+                }
+            }
             // Format and return the response
             const formattedGarden = formatGardenResponse(savedGarden, req);
             formattedGarden.num_plants = 0;
@@ -88,30 +123,41 @@ const GardensController = {
             }
 
             // Get plant and zone counts
-            const [plantsCount, zonesCount] = await Promise.all([
+            const [plantsCount, zonesCount, lastContact, temHumData] = await Promise.all([
                 db.plants.getByGardenId(gardenID).then(plants =>
                     plants.filter(p => !p.end_date).length
                 ),
                 db.zones.getByGardenId(gardenID).then(zones =>
                     zones.filter(z => !z.end_date).length
-                )
+                ),
+                influxdbService.getLastContact(garden.topic_prefix).then(data => data),
+                influxdbService.getTemperatureAndHumidity(garden.topic_prefix).then(data => data)
             ]);
 
             // Format response with HATEOAS links and counts
             const formattedGarden = formatGardenResponse(garden, req);
+            if (lastContact) {
+                formattedGarden.health = {
+                    // Garden is considered "UP" if it's last contact was less than 5 minutes ago
+                    status: (new Date() - new Date(lastContact)) < 5 * 60 * 1000 ? 'UP' : 'DOWN',
+                    details: 'last contact from Garden was ' + Math.round((new Date() - new Date(lastContact)) / 60000) + ' minutes ago',
+                    last_contact: lastContact
+                };
+            } else {
+                formattedGarden.health = {
+                    status: 'DOWN',
+                    details: 'no last contact time available',
+                    last_contact: null
+                };
+            }
+            if (temHumData) {
+                formattedGarden.temperature_humidity_data = {
+                    temperature_celsius: temHumData.temperature,
+                    humidity_percentage: temHumData.humidity
+                };
+            }
             formattedGarden.num_plants = plantsCount;
             formattedGarden.num_zones = zonesCount;
-
-            // Add health information
-            formattedGarden.health = garden.health || {
-                status: 'N/A',
-                details: 'Waiting for ESP32 connection',
-                last_contact: null
-            };
-            formattedGarden.temperature_humidity_data = {
-                temperature_celsius: null,
-                humidity_percentage: null
-            };
 
             res.json(formattedGarden);
 
@@ -145,12 +191,34 @@ const GardensController = {
                 updates.light_schedule = light_schedule;
             }
 
-            if (controller_config != undefined && (controller_config.valvePins.length !== max_zones || controller_config.pumpPins.length !== max_zones)) {
-                return res.status(400).json({ error: 'controller_config valvePins and pumpPins length must match max_zones' });
-            }
-
             if (controller_config !== undefined) {
                 updates.controller_config = controller_config;
+            }
+
+            if (max_zones !== undefined && controller_config !== undefined) {
+                if (controller_config.valvePins.length !== controller_config.pumpPins.length) {
+                    return res.status(400).json({ error: 'New controller_config valvePins and pumpPins length must match' });
+                }
+                if (controller_config.valvePins.length > max_zones || controller_config.pumpPins.length > max_zones) {
+                    return res.status(400).json({ error: 'New controller_config valvePins and pumpPins length exceed new max_zones' });
+                }
+            } else if (max_zones !== undefined && controller_config === undefined) {
+                const garden = await db.gardens.getById(gardenID);
+                if (garden.controller_config) {
+                    if (garden.controller_config.valvePins.length > max_zones || garden.controller_config.pumpPins.length > max_zones) {
+                        return res.status(400).json({ error: 'Existing controller_config valvePins and pumpPins length exceed new max_zones' });
+                    }
+                }
+            } else if (max_zones === undefined && controller_config !== undefined) {
+                const garden = await db.gardens.getById(gardenID);
+                if (garden) {
+                    if (controller_config.valvePins.length !== controller_config.pumpPins.length) {
+                        return res.status(400).json({ error: 'New controller_config valvePins and pumpPins length must match' });
+                    }
+                    if (controller_config.valvePins.length > garden.max_zones || controller_config.pumpPins.length > garden.max_zones) {
+                        return res.status(400).json({ error: 'New controller_config valvePins and pumpPins length exceed existing max_zones' });
+                    }
+                }
             }
 
             const updatedGarden = await db.gardens.updateById(gardenID, updates);
@@ -158,18 +226,41 @@ const GardensController = {
                 return res.status(404).json({ error: 'Garden not found' });
             }
 
+            if (controller_config)
+                try {
+                    await mqttService.sendUpdateAction(updatedGarden, controller_config);
+                } catch (mqttError) {
+                    console.error('MQTT error sending initial config:', mqttError);
+                    // Proceed without failing the request
+                }
+
             // Get plant and zone counts
-            const [plantsCount, zonesCount] = await Promise.all([
+            const [plantsCount, zonesCount, lastContact] = await Promise.all([
                 db.plants.getByGardenId(gardenID).then(plants =>
                     plants.filter(p => !p.end_date).length
                 ),
                 db.zones.getByGardenId(gardenID).then(zones =>
                     zones.filter(z => !z.end_date).length
-                )
+                ),
+                influxdbService.getLastContact(updatedGarden.topic_prefix).then(data => data)
             ]);
 
             // Format response
             const formattedGarden = formatGardenResponse(updatedGarden, req);
+            if (lastContact) {
+                formattedGarden.health = {
+                    // Garden is considered "UP" if it's last contact was less than 5 minutes ago
+                    status: (new Date() - new Date(lastContact)) < 5 * 60 * 1000 ? 'UP' : 'DOWN',
+                    details: 'last contact from Garden was ' + Math.round((new Date() - new Date(lastContact)) / 60000) + ' minutes ago',
+                    last_contact: lastContact
+                };
+            } else {
+                formattedGarden.health = {
+                    status: 'DOWN',
+                    details: 'no last contact time available',
+                    last_contact: null
+                };
+            }
             formattedGarden.num_plants = plantsCount;
             formattedGarden.num_zones = zonesCount;
 
@@ -195,17 +286,32 @@ const GardensController = {
             }
 
             // Get plant and zone counts
-            const [plantsCount, zonesCount] = await Promise.all([
+            const [plantsCount, zonesCount, lastContact] = await Promise.all([
                 db.plants.getByGardenId(gardenID).then(plants =>
                     plants.filter(p => !p.end_date).length
                 ),
                 db.zones.getByGardenId(gardenID).then(zones =>
                     zones.filter(z => !z.end_date).length
-                )
+                ),
+                influxdbService.getLastContact(endDatedGarden.topic_prefix).then(data => data)
             ]);
 
             // Format response
             const formattedGarden = formatGardenResponse(endDatedGarden, req);
+            if (lastContact) {
+                formattedGarden.health = {
+                    // Garden is considered "UP" if it's last contact was less than 5 minutes ago
+                    status: (new Date() - new Date(lastContact)) < 5 * 60 * 1000 ? 'UP' : 'DOWN',
+                    details: 'last contact from Garden was ' + Math.round((new Date() - new Date(lastContact)) / 60000) + ' minutes ago',
+                    last_contact: lastContact
+                };
+            } else {
+                formattedGarden.health = {
+                    status: 'DOWN',
+                    details: 'no last contact time available',
+                    last_contact: null
+                };
+            }
             formattedGarden.num_plants = plantsCount;
             formattedGarden.num_zones = zonesCount;
 
@@ -233,11 +339,11 @@ const GardensController = {
 
             try {
                 if (light) {
-                    await mqttService.sendLightAction(garden, light.state);
+                    await mqttService.sendLightAction(garden, light.state, light.for_duration);
                 }
 
-                if (stop && stop.all) {
-                    await mqttService.sendStopAllAction(garden);
+                if (stop) {
+                    await mqttService.sendStopAllAction(garden, stop.all);
                 }
 
                 if (update && update.config) {

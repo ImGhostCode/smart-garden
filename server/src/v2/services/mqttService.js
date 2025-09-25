@@ -158,7 +158,7 @@ class MQTTService extends EventEmitter {
     }
 
     // Handle incoming messages from ESP32
-    handleIncomingMessage(topic, message) {
+    async handleIncomingMessage(topic, message) {
         try {
             const messageStr = message.toString();
             console.log(`Received message on ${topic}:`, messageStr);
@@ -172,14 +172,14 @@ class MQTTService extends EventEmitter {
             }
 
             // Find garden by topic prefix
-            const garden = Array.from(db.gardens.values()).find(g => g.topic_prefix === gardenPrefix);
-            if (!garden) {
+            const garden = await db.gardens.getAll({ topic_prefix: gardenPrefix, end_date: null });
+            if (!garden || garden.length === 0) {
                 console.warn(`Garden not found for topic prefix: ${gardenPrefix}`);
                 return;
             }
 
             // Handle different data types
-            this.processDataMessage(garden, dataType, messageStr);
+            this.processDataMessage(garden[0], dataType, messageStr);
 
         } catch (error) {
             console.error('Error handling MQTT message:', error);
@@ -227,49 +227,31 @@ class MQTTService extends EventEmitter {
     }
 
     // Handle health status from ESP32
-    handleHealthData(garden, message, timestamp) {
+    async handleHealthData(garden, message, timestamp) {
         try {
             // Update garden health in database
-            const updatedGarden = {
-                ...garden,
-                last_health_update: timestamp,
-                health_status: {
-                    status: 'UP',
-                    details: message || 'Garden controller responding',
-                    last_contact: timestamp,
-                    // ...healthData
-                }
-            };
 
-            db.gardens.set(garden.id, updatedGarden);
+            await influxDBService.writeHealthData(garden.topic_prefix);
 
             // Emit event for real-time updates
             this.emit('healthUpdate', garden.id, message);
 
         } catch (error) {
-            console.error('Error parsing health data:', error);
+            console.error('Error handling health data:', error);
         }
     }
 
-    // Handle temperature data
-    handleTemperatureData(garden, message, timestamp) {
+    // Handle temperature data. Example message: "temperature value=23.5"
+    async handleTemperatureData(garden, message, timestamp) {
         try {
-            const temperature = parseFloat(message);
-
-            // Write to InfluxDB
-            // if (this.influxDB) {
-            //     this.influxDB.writeTemperatureData(garden.topic_prefix, temperature);
-            // }
-
-            const updatedGarden = {
-                ...garden,
-                temperature_data: {
-                    celsius: temperature,
-                    timestamp: timestamp
-                }
-            };
-
-            db.gardens.set(garden.id, updatedGarden);
+            console.log('Temperature message:', message);
+            const temperatureString = message.split('value=')[1];
+            const temperature = parseFloat(temperatureString);
+            if (!temperatureString || isNaN(temperature)) {
+                console.warn('Invalid temperature data:', message);
+                return;
+            }
+            await influxDBService.writeTemperatureData(garden.topic_prefix, temperature);
             this.emit('temperatureUpdate', garden.id, temperature);
 
         } catch (error) {
@@ -277,25 +259,17 @@ class MQTTService extends EventEmitter {
         }
     }
 
-    // Handle humidity data
-    handleHumidityData(garden, message, timestamp) {
+    // Handle humidity data. Example message: "humidity value=55.2"
+    async handleHumidityData(garden, message, timestamp) {
         try {
-            const humidity = parseFloat(message);
-
-            // Write to InfluxDB
-            // if (this.influxDB) {
-            //     this.influxDB.writeHumidityData(garden.topic_prefix, humidity);
-            // }
-
-            const updatedGarden = {
-                ...garden,
-                humidity_data: {
-                    percentage: humidity,
-                    timestamp: timestamp
-                }
-            };
-
-            db.gardens.set(garden.id, updatedGarden);
+            console.log('Humidity message:', message);
+            const humidityString = message.split('value=')[1];
+            const humidity = parseFloat(humidityString);
+            if (!humidityString || isNaN(humidity)) {
+                console.warn('Invalid humidity data:', message);
+                return;
+            }
+            await influxDBService.writeHumidityData(garden.topic_prefix, humidity);
             this.emit('humidityUpdate', garden.id, humidity);
 
         } catch (error) {
@@ -303,78 +277,58 @@ class MQTTService extends EventEmitter {
         }
     }
 
-    // Handle water event data
-    handleWaterData(garden, message, timestamp) {
+    // Handle water event data. Example message: water,status=complete,zone=1,id=1,zone_id=1 millis=60000
+    async handleWaterData(garden, message, timestamp) {
         try {
-            const waterData = JSON.parse(message);
+            console.log('Water message:', message);
+            const status = message.split('status=')[1].split(',')[0];
+            const zoneString = message.split('zone=')[1].split(',')[0];
+            const zone = parseInt(zoneString);
+            const id = message.split('id=')[1].split(',')[0];
+            const zoneId = message.split('zone_id=')[1].split(' ')[0];
+            const millisString = message.split('millis=')[1];
+            const duration = parseInt(millisString);
 
-            // Record watering history
-            if (waterData.zone_position !== undefined) {
-                // Find zone by position
-                const zone = Array.from(db.zones.values())
-                    .find(z => z.garden_id === garden.id && z.position === waterData.zone_position);
-
-                if (zone) {
-                    const eventId = waterData.id || generateXid();
-                    // Write to InfluxDB
-                    // if (this.influxDB) {
-                    //     this.influxDB.writeWaterEvent(
-                    //         garden.topic_prefix,
-                    //         zone.position,
-                    //         waterData.duration || '0ms',
-                    //         eventId,
-                    //         waterData.status || 'complete'
-                    //     );
-                    // }
-
-                    if (!db.waterHistory.has(zone.id)) {
-                        db.waterHistory.set(zone.id, []);
-                    }
-
-                    const historyRecord = {
-                        id: generateXid(),
-                        zone_id: zone.id,
-                        duration: waterData.duration || '0ms',
-                        record_time: timestamp,
-                        status: waterData.status || 'completed',
-                        esp32_data: waterData
-                    };
-
-                    db.waterHistory.get(zone.id).push(historyRecord);
-                    this.emit('waterEvent', zone.id, waterData);
-                }
+            if (!status || isNaN(zone) || !id || isNaN(duration)) {
+                console.warn('Invalid water data:', message);
+                return;
             }
+            await influxDBService.writeWaterData(garden.topic_prefix, status, zone, id, zoneId, duration);
+            this.emit('waterEvent', garden.id, { status, zone, id, zoneId, duration });
 
         } catch (error) {
             console.error('Error parsing water data:', error);
         }
     }
 
-    // Handle light data
-    handleLightData(garden, message, timestamp) {
+    // Handle light data. Example message: {"state":"ON"} or {"state":"OFF"} or {"state":""}
+    async handleLightData(garden, message, timestamp) {
         try {
-            const lightData = JSON.parse(message);
+            console.log('Light message:', message);
+            const data = JSON.parse(message);
+            const state = data.state; // "ON", "OFF", or ""
 
-            const updatedGarden = {
-                ...garden,
-                light_status: {
-                    ...lightData,
-                    timestamp: timestamp
-                }
-            };
-
-            db.gardens.set(garden.id, updatedGarden);
-            this.emit('lightUpdate', garden.id, lightData);
-
+            await influxDBService.writeLightData(garden.topic_prefix, state);
+            this.emit('lightUpdate', garden.id, state || 'TOGGLE');
         } catch (error) {
             console.error('Error parsing light data:', error);
         }
     }
 
-    // Handle logs from ESP32
-    handleLogsData(garden, message, timestamp) {
-        console.log(`[${garden.name}] ESP32 Log:`, message);
-        this.emit('esp32Log', garden.id, message);
+    // Handle logs from ESP32. Example message: "logs message=\"garden-controller setup complete\"""
+    async handleLogsData(garden, message, timestamp) {
+        try {
+            console.log('Logs message:', message);
+            const logMessage = message.split('message=')[1].replace(/^"|"$/g, '');
+            if (!logMessage) {
+                console.warn('Invalid logs data:', message);
+                return;
+            }
+            await influxDBService.writeLogData(garden.topic_prefix, logMessage);
+            this.emit('logEvent', garden.id, logMessage);
+        } catch (error) {
+            console.error('Error parsing logs data:', error);
+        }
     }
 
     // Command methods to send to ESP32
@@ -384,56 +338,32 @@ class MQTTService extends EventEmitter {
         const topic = `${garden.topic_prefix}${this.TOPICS.COMMANDS.WATER}`;
         const eventId = generateXid();
         const command = {
-            position: zonePosition,
-            duration: duration,
-            zoneId: zonePosition,
-            id: eventId,
-            // timestamp: new Date().toISOString()
+            "duration": duration,
+            "zone_id": zoneId,
+            "position": zonePosition,
+            "event_id": eventId,
+            "source": "command"
         };
-
         // Write command to InfluxDB
-        // if (this.influxDB) {
-        //     this.influxDB.writeWaterCommand(
-        //         garden.topic_prefix,
-        //         zonePosition,
-        //         duration,
-        //         eventId,
-        //         'api'
-        //     );
-        // }
+        await influxDBService.writeWaterCommand(garden.topic_prefix, duration, eventId, zoneId, zonePosition, "command");
 
         await this.publish(topic, command);
         return eventId;
     }
 
-    // Send stop command to specific zone
-    async sendStopCommand(garden, zonePosition) {
-        const topic = `${garden.topic_prefix}${this.TOPICS.COMMANDS.STOP}`;
-        const command = {
-            zone: zonePosition,
-            timestamp: new Date().toISOString()
-        };
-
-        await this.publish(topic, command);
-    }
-
     // Send stop all command
-    async sendStopAllAction(garden) {
-        const topic = `${garden.topic_prefix}${this.TOPICS.COMMANDS.STOP_ALL}`;
+    async sendStopAllAction(garden, all = false) {
+        const topic = all ? `${garden.topic_prefix}${this.TOPICS.COMMANDS.STOP_ALL}` : `${garden.topic_prefix}${this.TOPICS.COMMANDS.STOP}`;
         await this.publish(topic, "no message");
     }
 
     // Send light command
-    async sendLightAction(garden, state) {
+    async sendLightAction(garden, state = "", forDuration = 0) {
         const topic = `${garden.topic_prefix}${this.TOPICS.COMMANDS.LIGHT}`;
         const command = {
-            state: state, // "true", "false", or ""
-            // timestamp: new Date().toISOString()
+            "state": state, // "ON" or "OFF"
+            "for_duration": forDuration
         };
-
-        // if (duration) {
-        //     command.for_duration = duration;
-        // }
 
         await this.publish(topic, command);
     }
@@ -442,8 +372,14 @@ class MQTTService extends EventEmitter {
     async sendUpdateAction(garden, config) {
         const topic = `${garden.topic_prefix}${this.TOPICS.COMMANDS.UPDATE_CONFIG}`;
         const command = {
-            ...config,
-            // timestamp: new Date().toISOString()
+            "num_zones": config.valvePins.length,
+            "valve_pins": config.valvePins,
+            "pump_pins": config.pumpPins,
+            "light": config.lightPin !== undefined,
+            "light_pin": config.lightPin,
+            "temp_humidity": config.tempHumidityPin !== undefined,
+            "temp_humidity_pin": config.tempHumidityPin,
+            "temp_humidity_interval": config.tempHumidityInterval
         };
 
         await this.publish(topic, command);

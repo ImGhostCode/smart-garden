@@ -53,6 +53,23 @@ const validMonthToNumber = (month) => {
   }
 };
 
+// Convert duration string (e.g. "1h30m") to milliseconds
+const durationToMilliseconds = (duration) => {
+  if (typeof duration === 'number') return duration;
+  if (typeof duration !== 'string') return 0;
+  const regex = /(\d+)([smhd])/g;
+  let match;
+  let totalMs = 0;
+  const unitToMs = { s: 1000, m: 60000, h: 3600000, d: 86400000 };
+
+  while ((match = regex.exec(duration)) !== null) {
+    const value = parseInt(match[1], 10);
+    const unit = match[2];
+    totalMs += value * unitToMs[unit];
+  }
+  return totalMs;
+};
+
 module.exports = {
   generateXid,
   createLink,
@@ -60,5 +77,6 @@ module.exports = {
   addTimestamps,
   getMockWeatherData,
   getNextWaterTime,
-  validMonthToNumber
+  validMonthToNumber,
+  durationToMilliseconds
 };

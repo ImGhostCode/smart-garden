@@ -84,7 +84,7 @@ const initializeMQTT = () => {
         console.log(`[${gardenId}] Light update:`, lightData);
     });
 
-    mqttService.on('esp32Log', (gardenId, logMessage) => {
+    mqttService.on('logEvent', (gardenId, logMessage) => {
         console.log(`[ESP32-${gardenId}]`, logMessage);
     });
 };
