@@ -28,9 +28,32 @@ router.get('/:waterScheduleID',
         waterScheduleID: schemas.pathParams.waterScheduleID
     })),
     validateQuery(Joi.object(schemas.queryParams).keys({
-        exclude_weather_data: schemas.queryParams.excludeWeatherData
+        exclude_weather_data: schemas.queryParams.excludeWeatherData,
+        skip_count: Joi.number().integer().min(0).optional().description('Number of watering cycles to skip')
     })),
     WaterSchedulesController.getWaterSchedule);
+
+// GET /water_schedules/:waterScheduleID/preview - Preview execution of water schedule
+router.get('/:waterScheduleID/preview',
+    validateParams(Joi.object({
+        waterScheduleID: schemas.pathParams.waterScheduleID
+    })),
+    validateQuery(Joi.object({
+        skip_count: Joi.number().integer().min(0).optional().description('Number of watering cycles to skip')
+    })),
+    WaterSchedulesController.previewExecution);
+
+// POST /water_schedules/:waterScheduleID/execute - Execute water schedule with advanced logic
+router.post('/:waterScheduleID/execute',
+    validateParams(Joi.object({
+        waterScheduleID: schemas.pathParams.waterScheduleID
+    })),
+    validateBody(Joi.object({
+        skip_count: Joi.number().integer().min(0).optional().description('Number of watering cycles to skip'),
+        force_execution: Joi.boolean().optional().description('Force execution even if conditions suggest skipping'),
+        simulate: Joi.boolean().optional().description('Simulate execution without actually watering')
+    })),
+    WaterSchedulesController.executeWaterSchedule);
 
 // PATCH /water_schedules/:waterScheduleID - Update water schedule
 router.patch('/:waterScheduleID',

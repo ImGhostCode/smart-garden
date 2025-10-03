@@ -116,7 +116,7 @@ function formatZoneResponse(zone, req, includeWeatherData = true) {
  */
 function formatWaterScheduleResponse(waterSchedule, req, includeWeatherData = true) {
     const response = {
-        id: waterSchedule.id,
+        id: waterSchedule._id,
         name: waterSchedule.name,
         description: waterSchedule.description,
         duration: waterSchedule.duration,
@@ -127,11 +127,11 @@ function formatWaterScheduleResponse(waterSchedule, req, includeWeatherData = tr
         next_water: {
             time: null, // Will be calculated by controller
             duration: waterSchedule.duration,
-            water_schedule_id: waterSchedule.id,
+            water_schedule_id: waterSchedule._id,
             message: 'Next scheduled watering'
         },
         links: [
-            { rel: 'self', href: `/water_schedules/${waterSchedule.id}` }
+            { rel: 'self', href: `/water_schedules/${waterSchedule._id}` }
         ]
     };
 

@@ -334,7 +334,7 @@ class MQTTService extends EventEmitter {
     // Command methods to send to ESP32
 
     // Send water command and log to InfluxDB
-    async sendWaterCommand(garden, zoneId, zonePosition, duration) {
+    async sendWaterCommand(garden, zoneId, zonePosition, duration, source) {
         const topic = `${garden.topic_prefix}${this.TOPICS.COMMANDS.WATER}`;
         const eventId = generateXid();
         const command = {
@@ -342,10 +342,10 @@ class MQTTService extends EventEmitter {
             "zone_id": zoneId,
             "position": zonePosition,
             "event_id": eventId,
-            "source": "command"
+            "source": source
         };
         // Write command to InfluxDB
-        await influxDBService.writeWaterCommand(garden.topic_prefix, duration, eventId, zoneId, zonePosition, "command");
+        await influxDBService.writeWaterCommand(garden.topic_prefix, duration, eventId, zoneId, zonePosition, source);
 
         await this.publish(topic, command);
         return eventId;

@@ -207,7 +207,7 @@ const ZonesController = {
             // Handle water action
             if (action.water && action.water.duration) {
                 const durationMs = durationToMilliseconds(action.water.duration);
-                const result = await mqttService.sendWaterCommand(garden, zoneID, zone.position, durationMs);
+                const result = await mqttService.sendWaterCommand(garden, zoneID, zone.position, durationMs, "command");
                 console.log('MQTT water command result:', result);
             }
 

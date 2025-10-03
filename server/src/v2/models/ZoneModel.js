@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { xidPattern } = require('../utils/validation');
 // const { xidPattern } = require('../utils/validation');
 
 // Zone Schema

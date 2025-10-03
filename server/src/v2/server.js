@@ -14,6 +14,7 @@ const gardenRoutes = require('./routes/gardens');
 const plantRoutes = require('./routes/plants');
 const zoneRoutes = require('./routes/zones');
 const waterScheduleRoutes = require('./routes/waterSchedules');
+const schedulerRoutes = require('./routes/scheduler');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -124,16 +125,39 @@ app.use('/gardens', gardenRoutes);
 app.use('/gardens', plantRoutes);
 app.use('/gardens', zoneRoutes);
 app.use('/water_schedules', waterScheduleRoutes);
+app.use('/scheduler', schedulerRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-    res.json({
-        status: 'OK',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        mqtt_status: mqttService.getConnectionStatus(),
-        database_status: db.getConnectionStatus()
-    });
+    try {
+        const cronScheduler = require('./services/cronScheduler');
+        const activeJobs = cronScheduler.getActiveJobs();
+
+        res.json({
+            status: 'OK',
+            timestamp: new Date().toISOString(),
+            uptime: process.uptime(),
+            mqtt_status: mqttService.getConnectionStatus(),
+            database_status: db.getConnectionStatus(),
+            scheduler_status: {
+                active: true,
+                active_jobs_count: activeJobs.length,
+                next_execution: activeJobs.length > 0 ? activeJobs[0].next_execution : null
+            }
+        });
+    } catch (error) {
+        res.json({
+            status: 'OK',
+            timestamp: new Date().toISOString(),
+            uptime: process.uptime(),
+            mqtt_status: mqttService.getConnectionStatus(),
+            database_status: db.getConnectionStatus(),
+            scheduler_status: {
+                active: false,
+                error: error.message
+            }
+        });
+    }
 });
 
 // MQTT status endpoint
@@ -217,6 +241,17 @@ app.listen(PORT, async () => {
         initializeMQTT();
     }, 1000);
 
+    // Initialize Cron Scheduler after database is ready
+    setTimeout(async () => {
+        const cronScheduler = require('./services/cronScheduler');
+        const success = await cronScheduler.initialize();
+        if (success) {
+            console.log('✓ Cron scheduler initialized successfully');
+        } else {
+            console.error('✗ Failed to initialize cron scheduler');
+        }
+    }, 2000);
+
     console.log(`Garden App Server is running on port ${PORT}`);
     console.log(`Health check: http://localhost:${PORT}/health`);
     console.log('\nAvailable endpoints:');
@@ -247,6 +282,16 @@ app.listen(PORT, async () => {
     console.log('  GET    /water_schedules/:waterScheduleID');
     console.log('  PATCH  /water_schedules/:waterScheduleID');
     console.log('  DELETE /water_schedules/:waterScheduleID');
+    console.log('  GET    /water_schedules/:waterScheduleID/preview');
+    console.log('  POST   /water_schedules/:waterScheduleID/execute');
+    console.log('\nScheduler:');
+    console.log('  GET    /scheduler');
+    console.log('  POST   /scheduler/initialize');
+    console.log('  POST   /scheduler/stop');
+    console.log('  POST   /scheduler/water_schedules/:id/schedule');
+    console.log('  DELETE /scheduler/water_schedules/:id/schedule');
+    console.log('  PUT    /scheduler/water_schedules/:id/schedule');
+    console.log('  POST   /scheduler/water_schedules/:id/trigger');
 });
 
 module.exports = app;

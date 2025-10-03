@@ -210,7 +210,7 @@ class InfluxDBService {
     }
 
     // Write water command
-    async writeWaterCommand(topicPrefix, duration, id, zoneId, position, source = 'api') {
+    async writeWaterCommand(topicPrefix, duration, id, zoneId, position, source) {
         try {
             const point = new Point('water_command')
                 .tag('topic', `${topicPrefix}/command/water`)
