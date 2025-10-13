@@ -1,0 +1,164 @@
+### Cron Scheduler Testing
+
+# Get scheduler status and active jobs
+GET http://localhost:3000/scheduler
+Content-Type: application/json
+
+###
+
+# Initialize/reinitialize the scheduler
+POST http://localhost:3000/scheduler/initialize
+Content-Type: application/json
+
+###
+
+# Create a test water schedule that will be auto-scheduled
+POST http://localhost:3000/water_schedules?exclude_weather_data=true
+Content-Type: application/json
+
+{
+    "name": "Daily Evening Watering",
+    "description": "Automated daily watering at 8:00 PM",
+    "duration": "10m",
+    "interval": "24h",
+    "start_time": "20:00:00+07:00",
+    "weather_control": {
+        "temperature_control": {
+            "baseline_value": 22,
+            "factor": 0.7,
+            "range": 8
+        },
+        "rain_control": {
+            "baseline_value": 1.5,
+            "factor": 0.8,
+            "range": 4.0
+        }
+    },
+    "active_period": {
+        "start_month": "Mar",
+        "end_month": "May"
+    }
+}
+
+###
+
+# Create a test schedule with complex interval (every 6 hours)
+POST http://localhost:3000/water_schedules
+Content-Type: application/json
+
+{
+    "name": "4x Daily Greenhouse Watering",
+    "description": "Frequent watering for greenhouse plants",
+    "duration": "5m",
+    "interval": "6h",
+    "start_time": "07:30:00+00:00"
+}
+
+###
+
+# Get scheduler status again to see active jobs
+GET http://localhost:3000/scheduler
+Content-Type: application/json
+
+###
+
+# Manually trigger a water schedule (test execution)
+POST http://localhost:3000/scheduler/water_schedules/68de80dc1a38491918156281/trigger
+Content-Type: application/json
+
+{
+    "force": false
+}
+
+###
+
+# Force trigger a water schedule (ignores conditions)
+POST http://localhost:3000/scheduler/water_schedules/68de80dc1a38491918156281/trigger
+Content-Type: application/json
+
+{
+    "force": true
+}
+
+###
+
+# Schedule a specific water schedule (if not already scheduled)
+POST http://localhost:3000/scheduler/water_schedules/68d762a480dde98bcd697099/schedule
+Content-Type: application/json
+
+###
+
+# Reschedule a water schedule (useful after updates)
+PUT http://localhost:3000/scheduler/water_schedules/68d762a480dde98bcd697099/schedule
+Content-Type: application/json
+
+###
+
+# Unschedule a specific water schedule
+DELETE http://localhost:3000/scheduler/water_schedules/68d762a480dde98bcd697099/schedule
+Content-Type: application/json
+
+###
+
+# Get all water schedules to see scheduling status
+GET http://localhost:3000/water_schedules
+Content-Type: application/json
+
+###
+
+# Update a water schedule (should auto-reschedule)
+PATCH http://localhost:3000/water_schedules/68de801e1a3849191815627f
+Content-Type: application/json
+
+{
+    "interval": "24h",
+    "start_time": "20:50:00+07:00"
+}
+
+###
+
+# Stop all scheduled jobs
+POST http://localhost:3000/scheduler/stop
+Content-Type: application/json
+
+###
+
+# Reinitialize scheduler
+POST http://localhost:3000/scheduler/initialize
+Content-Type: application/json
+
+###
+
+# Test execution preview with complex weather schedule
+POST http://localhost:3000/water_schedules
+Content-Type: application/json
+
+{
+    "name": "Test Complex Schedule",
+    "description": "For testing complex cron patterns",
+    "duration": "15m",
+    "interval": "72h",
+    "start_time": "05:45:00-08:00",
+    "weather_control": {
+        "temperature_control": {
+            "baseline_value": 25,
+            "factor": 0.9,
+            "range": 12
+        },
+        "rain_control": {
+            "baseline_value": 3.0,
+            "factor": 0.85,
+            "range": 6.0
+        }
+    },
+    "active_period": {
+        "start_month": "Apr",
+        "end_month": "Nov"
+    }
+}
+
+###
+
+# Test health check to see all services
+GET http://localhost:3000/health
+Content-Type: application/json

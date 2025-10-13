@@ -3,47 +3,93 @@
 @host = {{hostname}}:{{port}}
 
 # Zones:
-GET    {{host}}/gardens/68c57aac78e37f35b582064e/zones?end_dated=true&exclude_weather_data=true
+GET    {{host}}/gardens/68de7e98ae6796d18a268a34/zones?end_dated=false&exclude_weather_data=false
 ###
-POST   {{host}}/gardens/68c57aac78e37f35b582064e/zones?exclude_weather_data=true
+POST   {{host}}/gardens/68de7e98ae6796d18a268a34/zones?exclude_weather_data=true
 Content-Type: application/json
 
 {
-  "name": "Raised Bed 2",
+  "name": "Shrubs",
   "details": {
-    "description": "raised bed containing assorted vegetables 2",
-    "notes": "near the west wall of the yard, receiving morning light and afternoon shade 2"
+    "description": "This zone has a few shrubs that need water more frequently"
   },
-  "position": 3,
-  "skip_count": 5,
-  "water_schedule_ids": []
+  "position": 2,
+  "skip_count": 3,
+  "water_schedule_ids": [
+    "68de80dc1a38491918156281"
+  ]
 }
+
 ###
-GET    {{host}}/gardens/68c57aac78e37f35b582064e/zones/68c8274982d47429c2cf5ee7?exclude_weather_data=false
-###
-PATCH  {{host}}/gardens/68c57aac78e37f35b582064e/zones/68c8274982d47429c2cf5ee7?exclude_weather_data=true
+POST   {{host}}/gardens/68de7e98ae6796d18a268a34/zones?exclude_weather_data=true
 Content-Type: application/json
 
 {
-  "name": "Raised Bed 1",
+  "name": "Trees",
   "details": {
-    "description": "raised bed containing assorted vegetables 2",
-    "notes": "near the west wall of the yard, receiving morning light and afternoon shade 2"
+    "description": "This zone controls watering to two trees that are watered deeply"
   },
   "position": 0,
   "skip_count": 0,
-  "water_schedule_ids": []
+  "water_schedule_ids": [
+    "68de82101a38491918156283",
+    "68de83cb66de8a502e0e4334"
+  ]
+}
+
+###
+POST   {{host}}/gardens/68de7f1a1a3849191815627d/zones?exclude_weather_data=true
+Content-Type: application/json
+
+{
+  "name": "Zone 1",
+  "details": {
+    "description": "This is zone 1 in garden 2"
+  },
+  "position": 0,
+  "skip_count": 1,
+  "water_schedule_ids": [
+    "68de801e1a3849191815627f"
+  ]
+}
+###
+GET    {{host}}/gardens/68de7e98ae6796d18a268a34/zones/68de8783b78657a4ab281c2e?exclude_weather_data=false
+###
+PATCH  {{host}}/gardens/68de7e98ae6796d18a268a34/zones/68de8783b78657a4ab281c2e?exclude_weather_data=true
+Content-Type: application/json
+
+{
+  "details": {
+    "description": "This zone controls watering to two trees that are watered deeply"
+  },
+  "name": "Trees",
+  "position": 0,
+  "water_schedule_ids": [
+    "68de82101a38491918156283",
+    "68de83cb66de8a502e0e4334"
+  ],
+  "skip_count": 1,
+  "weather_data": {
+    "rain": {
+      "mm": 2.5,
+      "scale_factor": 0.8
+    },
+    "average_temperature": {
+      "celsius": 22.5,
+      "scale_factor": 1
+    }
+  }
 }
 ###
 DELETE {{host}}/gardens/68c57aac78e37f35b582064e/zones/68c8275782d47429c2cf5eed?exclude_weather_data=false
 ###
-POST   {{host}}/gardens/68c57aac78e37f35b582064e/zones/68c8274982d47429c2cf5ee7/action
+POST   {{host}}/gardens/68de7e98ae6796d18a268a34/zones/68de8783b78657a4ab281c2e/action
 Content-Type: application/json
 
 {
   "water": {
-    "duration": "15m"
+    "duration": "5m"
   }
 }
 ###
-GET    {{host}}/gardens/68c57aac78e37f35b582064e/zones/68c8274982d47429c2cf5ee7/history?range=72h&limit=10
+GET    {{host}}/gardens/68de7e98ae6796d18a268a34/zones/68de8783b78657a4ab281c2e/history?range=72h&limit=10

@@ -2,62 +2,136 @@
 @port = 3000
 @host = {{hostname}}:{{port}}
 ### Water Schedules:
-GET    {{host}}/water_schedules?end_dated=true&exclude_weather_data=true
+GET    {{host}}/water_schedules?end_dated=false&exclude_weather_data=true
+
 ###
 POST   {{host}}/water_schedules?exclude_weather_data=true
 Content-Type: application/json
 
 {
-  "duration": "5000ms",
-  "interval": "30h",
-  "start_time": "19:00:00-07:00",
-  "weather_control": {
-    "rain_control": {
-      "baseline_value": 0,
-      "factor": 0,
-      "range": 0
-    },
-    "temperature_control": {
-      "baseline_value": 0,
-      "factor": 0,
-      "range": 0
+  "name": "Morning Lawn",
+  "description": "Water lawn every morning",
+  "duration": "15m",
+  "interval": "24h",
+  "start_time": "06:00:00+07:00",
+   "weather_control": {
+        "temperature_control": {
+            "baseline_value": 25,
+            "factor": 0.9,
+            "range": 12
+        },
+        "rain_control": {
+            "baseline_value": 3.0,
+            "factor": 0.85,
+            "range": 6.0
+        }
     }
-  },
-  "active_period": {
-    "start_month": "Mar",
-    "end_month": "Apr"
-  },
-  "name": "Watering Schedule 3",
-  "description": "Morning watering schedule"
 }
+
 ###
-GET    {{host}}/water_schedules/68ca39aa956e21e13a38e006?exclude_weather_data=false
-###
-PATCH  {{host}}/water_schedules/68ca39aa956e21e13a38e006?exclude_weather_data=true
+POST   {{host}}/water_schedules?exclude_weather_data=true
 Content-Type: application/json
 
 {
-  "duration": "12000ms",
-  "interval": "72h",
-  "start_time": "23:00:00-07:00",
+  "name": "Shrubs",
+  "description": "Water shrubs every 5 days",
+  "duration": "45m",
+  "interval": "120h",
+  "start_time": "22:00:00+07:00",
   "weather_control": {
-    "rain_control": {
-      "baseline_value": 0,
-      "factor": 0,
-      "range": 0
-    },
-    "temperature_control": {
-      "baseline_value": 0,
-      "factor": 0,
-      "range": 0
+        "temperature_control": {
+            "baseline_value": 25,
+            "factor": 0.9,
+            "range": 12
+        },
+        "rain_control": {
+            "baseline_value": 3.0,
+            "factor": 0.85,
+            "range": 6.0
+        }
     }
-  },
-    "active_period": {
-    "start_month": "Mar",
-    "end_month": "May"
-  },
-  "name": "Watering Schedule 1 Updated",
-  "description": "string"
+}
+
+###
+POST   {{host}}/water_schedules?exclude_weather_data=true
+Content-Type: application/json
+
+{
+  "name": "Summer Trees",
+  "description": "Water deeply every 10 days",
+  "duration": "90m",
+  "interval": "240h",
+  "start_time": "22:00:00+07:00",
+ "weather_control": {
+        "temperature_control": {
+            "baseline_value": 30,
+            "factor": 0.7,
+            "range": 15
+        },
+        "rain_control": {
+            "baseline_value": 2.0,
+            "factor": 0.8,
+            "range": 5.0
+        }
+    },
+  "active_period": {
+    "start_month": "Apr",
+    "end_month": "Sep"
+  }
+}
+
+###
+POST   {{host}}/water_schedules?exclude_weather_data=true
+Content-Type: application/json
+
+{
+  "name": "Winter Trees",
+  "description": "Water deeply and infrequently in the winter",
+  "duration": "1h",
+  "interval": "480h",
+  "start_time": "19:00:00+07:00",
+  "active_period": {
+    "start_month": "Oct",
+    "end_month": "Mar"
+  }
 }
 ###
-DELETE {{host}}/water_schedules/68ca39197866c41a32a6561f?exclude_weather_data=false
+GET    {{host}}/water_schedules/68de80dc1a38491918156281?exclude_weather_data=false
+###
+PATCH  {{host}}/water_schedules/68e0a5a7e70e2b4593d16c79?exclude_weather_data=true
+Content-Type: application/json
+
+{
+  "name": "Morning Lawn",
+  "description": "Water lawn every morning",
+  "duration": "15m",
+  "interval": "24h",
+  "start_time": "07:00:00+07:00",
+  "weather_control": {
+    "rain_control": {
+      "baseline_value": 3,
+      "factor": 0.85,
+      "range": 6
+    },
+    "temperature_control": {
+      "baseline_value": 25,
+      "factor": 0.9,
+      "range": 12
+    }
+  }
+}
+###
+DELETE {{host}}/water_schedules/68e244eb681d52cf1e8b34af?exclude_weather_data=false
+
+###
+GET   {{host}}/water_schedules/68de80dc1a38491918156281/preview?skip_count=0
+
+###
+POST   {{host}}/water_schedules/68e0a5a7e70e2b4593d16c79/execute
+Content-Type: application/json
+
+{
+  "skip_count": 0,
+  "force_execution": true,
+  "simulate": false
+}

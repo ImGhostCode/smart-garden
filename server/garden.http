@@ -2,29 +2,31 @@
 @port = 3000
 @host = {{hostname}}:{{port}}
 ### Gardens:
+GET {{host}}/health
+###
 GET    {{host}}/gardens?end_dated=false
 ###
 POST   {{host}}/gardens
 Content-Type: application/json
 
 {
-  "name": "Garden 5",
-  "topic_prefix": "garden5",
-  "max_zones": 1,
+  "name": "Indoor Seed Starting",
+  "topic_prefix": "seed-garden",
+  "max_zones": 3,
   "light_schedule": {
-    "duration": "14h",
-    "start_time": "23:00:00-07:00"
+    "duration": "16h",
+    "start_time": "06:00:00+07:00"
   },
   "controller_config": {
-    "valvePins": [1],
-    "pumpPins": [2],
-    "lightPin": 3,
-    "tempHumidityPin": 4,
-    "tempHumidityInterval": 10000
+    "valvePins": [1,2,3],
+    "pumpPins": [4,5,6],
+    "lightPin": 7,
+    "tempHumidityPin": 8,
+    "tempHumidityInterval": 15000
   }
 }
 ###
-GET    {{host}}/gardens/68c550b1ea8f770bb5112dec
+GET    {{host}}/gardens/68c57a8a78e37f35b582064a
 ###
 PATCH  {{host}}/gardens/68c57aac78e37f35b582064e
 Content-Type: application/json
@@ -35,31 +37,32 @@ Content-Type: application/json
   "max_zones": 2,
   "light_schedule": {
     "duration": "14h",
-    "start_time": "23:00:00-07:00"
+    "start_time": "21:00:00-07:00"
   },
   "controller_config": {
     "valvePins": [1,2],
-    "pumpPins": [3,4],
-    "lightPin": 5,
-    "tempHumidityPin": 6,
-    "tempHumidityInterval": 15000
+    "pumpPins": [5,6],
+    "lightPin": 9,
+    "tempHumidityPin": 10,
+    "tempHumidityInterval": 10000
   }
 }
 ###
-DELETE {{host}}/gardens/68c550b1ea8f770bb5112dec
+DELETE {{host}}/gardens/68cbe14c49d2c049a5f415ec
 ###
 POST   {{host}}/gardens/68c57aac78e37f35b582064e/action
 Content-Type: application/json
 
 {
   "light": {
-    "state": "OFF"
+    "state": "",
+    "for_duration": "30s"
   },
   "stop": {
-    "all": false
+    "all": true
   },
   "update": {
-    "config":true,
+    "config":false,
     "controller_config": {
       "max_zones": 2,
       "valvePins": [1,2],

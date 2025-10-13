@@ -1,5 +1,6 @@
 const db = require('../models/database');
-const { createLink, generateXid, getMockWeatherData, getNextWaterTime, durationToMilliseconds } = require('../utils/helpers');
+const { createLink, getMockWeatherData, durationToMilliseconds } = require('../utils/helpers');
+const { getNextActiveWaterSchedule, getNextWaterDetails } = require('../utils/waterScheduleHelpers');
 const mqttService = require('../services/mqttService');
 const influxdbService = require('../services/influxdbService');
 
@@ -13,25 +14,46 @@ const ZonesController = {
         }
 
         const weatherData = exclude_weather_data !== 'true' ? getMockWeatherData() : undefined;
-
         const zones = await db.zones.getAll(filters);
 
         res.json({
-            items: zones.map(zone => ({
-                ...zone.toObject(),
-                links: [
-                    createLink('self', `/gardens/${gardenID}/zones/${zone.id}`),
-                    createLink('garden', `/gardens/${gardenID}`),
-                    createLink('action', `/gardens/${gardenID}/zones/${zone.id}/action`),
-                    createLink('history', `/gardens/${gardenID}/zones/${zone.id}/history`)
-                ],
-                weather_data: weatherData,
-                next_water: {
-                    time: getNextWaterTime(),
-                    duration: '15m',
-                    water_schedule_id: zone.water_schedule_ids?.[0] || generateXid(),
-                    message: 'Next scheduled watering'
+            items: await Promise.all(zones.map(async (zone) => {
+                // Get next active water schedule for this zone
+                const nextSchedule = await getNextActiveWaterSchedule(zone.water_schedule_ids || []);
+
+                let nextWaterDetails;
+                if (nextSchedule) {
+                    nextWaterDetails = getNextWaterDetails(
+                        nextSchedule,
+                        exclude_weather_data === 'true'
+                    );
+
+                    // Apply skip count if present
+                    if (zone.skip_count && zone.skip_count > 0) {
+                        nextWaterDetails.message = `skip_count ${zone.skip_count} affected the time`;
+                        //A adjust the time based on skip count: skip_count * interval
+                        if (nextWaterDetails.time) {
+                            nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + zone.skip_count * durationToMilliseconds(nextSchedule.interval));
+                        }
+                    }
+                } else {
+                    nextWaterDetails = {
+                        time: null,
+                        message: 'No active water schedules'
+                    };
                 }
+
+                return {
+                    ...zone.toObject(),
+                    links: [
+                        createLink('self', `/gardens/${gardenID}/zones/${zone.id}`),
+                        createLink('garden', `/gardens/${gardenID}`),
+                        createLink('action', `/gardens/${gardenID}/zones/${zone.id}/action`),
+                        createLink('history', `/gardens/${gardenID}/zones/${zone.id}/history`)
+                    ],
+                    weather_data: weatherData,
+                    next_water: nextWaterDetails
+                };
             }))
         });
     },
@@ -93,6 +115,29 @@ const ZonesController = {
         }
 
         const weatherData = exclude_weather_data !== 'true' ? getMockWeatherData() : undefined;
+        const nextSchedule = await getNextActiveWaterSchedule(zone.water_schedule_ids || []);
+
+        let nextWaterDetails;
+        if (nextSchedule) {
+            nextWaterDetails = getNextWaterDetails(
+                nextSchedule,
+                exclude_weather_data === 'true'
+            );
+
+            // Apply skip count if present
+            if (zone.skip_count && zone.skip_count > 0) {
+                nextWaterDetails.message = `skip_count ${zone.skip_count} affected the time`;
+                //A adjust the time based on skip count: skip_count * interval
+                if (nextWaterDetails.time) {
+                    nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + zone.skip_count * durationToMilliseconds(nextSchedule.interval));
+                }
+            }
+        } else {
+            nextWaterDetails = {
+                time: null,
+                message: 'No active water schedules'
+            };
+        }
 
         res.json({
             ...zone.toObject(),
@@ -103,12 +148,7 @@ const ZonesController = {
                 createLink('history', `/gardens/${gardenID}/zones/${zone.id}/history`)
             ],
             weather_data: weatherData,
-            next_water: {
-                time: getNextWaterTime(),
-                duration: '15m',
-                water_schedule_id: zone.water_schedule_ids?.[0] || generateXid(),
-                message: 'Next scheduled watering'
-            }
+            next_water: nextWaterDetails
         });
     },
 
@@ -152,7 +192,24 @@ const ZonesController = {
         const updatedZone = await db.zones.updateById(zoneID, updates);
 
         const weatherData = exclude_weather_data !== 'true' ? getMockWeatherData() : undefined;
+        const nextSchedule = await getNextActiveWaterSchedule(updatedZone.water_schedule_ids || []);
 
+        let nextWaterDetails;
+        if (nextSchedule) {
+            nextWaterDetails = getNextWaterDetails(
+                nextSchedule,
+                exclude_weather_data === 'true'
+            );
+
+            // Apply skip count if present
+            if (updatedZone.skip_count && updatedZone.skip_count > 0) {
+                nextWaterDetails.message = `skip_count ${updatedZone.skip_count} affected the time`;
+                //A adjust the time based on skip count: skip_count * interval
+                if (nextWaterDetails.time) {
+                    nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + updatedZone.skip_count * durationToMilliseconds(nextSchedule.interval));
+                }
+            }
+        }
         res.json({
             ...updatedZone.toObject(),
             links: [
@@ -162,12 +219,7 @@ const ZonesController = {
                 createLink('history', `/gardens/${gardenID}/zones/${zone.id}/history`)
             ],
             weather_data: weatherData,
-            next_water: {
-                time: getNextWaterTime(),
-                duration: '15m',
-                water_schedule_id: zone.water_schedule_ids?.[0] || generateXid(),
-                message: 'Next scheduled watering'
-            }
+            next_water: nextWaterDetails
         });
     },
 
@@ -237,18 +289,6 @@ const ZonesController = {
         }
 
         const result = await influxdbService.getWaterHistory(garden.topic_prefix, range, zoneID, limit);
-
-        // res.json({
-        //     "history": [
-        //         {
-        //             "duration": "15000ms",
-        //             "record_time": "2025-09-16T09:48:13.107Z"
-        //         }
-        //     ],
-        //     "count": 1,
-        //     "average": "15s",
-        //     "total": "15s"
-        // });
         res.json(result);
     }
 };
