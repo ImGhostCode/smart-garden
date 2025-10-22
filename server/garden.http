@@ -1,6 +1,7 @@
 @hostname = http://localhost
 @port = 3000
 @host = {{hostname}}:{{port}}
+@gardenId = 68de7e98ae6796d18a268a34
 ### Gardens:
 GET {{host}}/health
 ###
@@ -14,8 +15,8 @@ Content-Type: application/json
   "topic_prefix": "seed-garden",
   "max_zones": 3,
   "light_schedule": {
-    "duration": "16h",
-    "start_time": "06:00:00+07:00"
+    "duration": "10h",
+    "start_time": "18:00:00+07:00"
   },
   "controller_config": {
     "valvePins": [1,2,3],
@@ -26,41 +27,56 @@ Content-Type: application/json
   }
 }
 ###
-GET    {{host}}/gardens/68c57a8a78e37f35b582064a
+GET    {{host}}/gardens/68de7f1a1a3849191815627d
 ###
-PATCH  {{host}}/gardens/68c57aac78e37f35b582064e
+PATCH  {{host}}/gardens/68de7f1a1a3849191815627d
 Content-Type: application/json
 
 {
-  "name": "Garden 5 updated",
-  "topic_prefix": "garden5",
-  "max_zones": 2,
+  "name": "Indoor Seed Starting",
+  "topic_prefix": "seed-garden",
+  "max_zones": 3,
   "light_schedule": {
-    "duration": "14h",
-    "start_time": "21:00:00-07:00"
+    "duration": "10h",
+    "start_time": "18:00:00+07:00",
+    "adhoc_on_time": "2024-12-31T18:00:00+07:00"
   },
   "controller_config": {
-    "valvePins": [1,2],
-    "pumpPins": [5,6],
-    "lightPin": 9,
-    "tempHumidityPin": 10,
-    "tempHumidityInterval": 10000
+    "valvePins": [1,2,3],
+    "pumpPins": [4,5,6],
+    "lightPin": 7,
+    "tempHumidityPin": 8,
+    "tempHumidityInterval": 15000
   }
 }
 ###
 DELETE {{host}}/gardens/68cbe14c49d2c049a5f415ec
 ###
-POST   {{host}}/gardens/68c57aac78e37f35b582064e/action
+POST   {{host}}/gardens/{{gardenId}}/action
 Content-Type: application/json
 
 {
   "light": {
-    "state": "",
-    "for_duration": "30s"
-  },
+    "state": "OFF",
+    "for_duration": "1h"
+  }
+}
+
+###
+POST   {{host}}/gardens/68c57aac78e37f35b582064e/action
+Content-Type: application/json
+
+{
   "stop": {
     "all": true
-  },
+  }
+}
+
+###
+POST   {{host}}/gardens/68c57aac78e37f35b582064e/action
+Content-Type: application/json
+
+{
   "update": {
     "config":false,
     "controller_config": {
@@ -71,5 +87,18 @@ Content-Type: application/json
       "tempHumidityPin": 6,
       "tempHumidityInterval": 20000
     }
+  }
+}
+###
+POST   {{host}}/gardens/68f78c18a8e9bee0fe517546/action
+Content-Type: application/json
+
+{
+  "light": {
+    "state": "OFF",
+    "for_duration": "1h"
+  },
+  "stop": {
+    "all": true
   }
 }

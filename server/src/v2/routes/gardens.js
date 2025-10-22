@@ -54,4 +54,21 @@ router.post('/:gardenID/action',
     GardensController.gardenAction
 );
 
+// Light Schedule Routes
+// POST /gardens/:gardenID/light-schedule - Schedule light actions
+router.post('/:gardenID/light-schedule',
+    validateParams(Joi.object({
+        gardenID: schemas.pathParams.gardenID
+    })),
+    GardensController.scheduleLightActions
+);
+
+// PUT /gardens/:gardenID/light-schedule/reset - Reset light schedule
+router.put('/:gardenID/light-schedule/reset',
+    validateParams(Joi.object({
+        gardenID: schemas.pathParams.gardenID
+    })),
+    GardensController.resetLightSchedule
+);
+
 module.exports = router;

@@ -2,7 +2,7 @@ const db = require('../models/database');
 const { formatGardenResponse } = require('../utils/responseFormatters');
 const mqttService = require('../services/mqttService');
 const influxdbService = require('../services/influxdbService');
-const e = require('express');
+const cronScheduler = require('../services/cronScheduler');
 
 const GardensController = {
     getAllGardens: async (req, res) => {
@@ -18,7 +18,7 @@ const GardensController = {
             const gardensWithCounts = await Promise.all(
                 gardens.map(async (garden) => {
                     const [plantsCount, zonesCount,
-                        lastContact, temHumData
+                        lastContact, temHumData, nextOnTime, nextOffTime
                     ] = await Promise.all([
                         db.plants.getByGardenId(garden.id).then(plants =>
                             plants.filter(p => !p.end_date).length
@@ -27,7 +27,9 @@ const GardensController = {
                             zones.filter(z => !z.end_date).length
                         ),
                         influxdbService.getLastContact(garden.topic_prefix).then(data => data),
-                        influxdbService.getTemperatureAndHumidity(garden.topic_prefix).then(data => data)
+                        influxdbService.getTemperatureAndHumidity(garden.topic_prefix).then(data => data),
+                        cronScheduler.getNextLightTime(garden, 'ON'),
+                        cronScheduler.getNextLightTime(garden, 'OFF')
                     ]);
 
                     const formattedGarden = formatGardenResponse(garden, req);
@@ -49,6 +51,29 @@ const GardensController = {
                         formattedGarden.temperature_humidity_data = {
                             temperature_celsius: temHumData.temperature,
                             humidity_percentage: temHumData.humidity
+                        };
+                    }
+                    if (nextOnTime && nextOffTime) {
+                        if (nextOnTime < nextOffTime) {
+                            formattedGarden.next_light_action = {
+                                action: 'ON',
+                                time: nextOnTime
+                            };
+                        } else {
+                            formattedGarden.next_light_action = {
+                                action: 'OFF',
+                                time: nextOffTime
+                            };
+                        }
+                    } else if (nextOnTime) {
+                        formattedGarden.next_light_action = {
+                            action: 'ON',
+                            time: nextOnTime
+                        };
+                    } else if (nextOffTime) {
+                        formattedGarden.next_light_action = {
+                            action: 'OFF',
+                            time: nextOffTime
                         };
                     }
                     formattedGarden.num_plants = plantsCount;
@@ -73,6 +98,18 @@ const GardensController = {
         try {
             const { name, topic_prefix, max_zones, light_schedule, controller_config } = req.body;
 
+            if (light_schedule != null) {
+                // Check if duration is valid < 24 hours
+                const durationMatch = light_schedule.duration.match(/^(\d+h)?(\d+m)?(\d+s)?$/);
+                const hours = durationMatch[1] ? parseInt(durationMatch[1]) : 0;
+                const minutes = durationMatch[2] ? parseInt(durationMatch[2]) : 0;
+                const seconds = durationMatch[3] ? parseInt(durationMatch[3]) : 0;
+                const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
+                if (totalSeconds <= 0 || totalSeconds >= 86400) {
+                    return res.status(400).json({ error: 'light_schedule duration must be greater than 0 and less than or equal to 24 hours' });
+                }
+            }
+
             if (controller_config != null && (controller_config.valvePins.length !== controller_config.pumpPins.length || controller_config.valvePins.length > max_zones)) {
                 return res.status(400).json({ error: 'controller_config valvePins and pumpPins length must match and be less than or equal to max_zones' });
             }
@@ -95,6 +132,14 @@ const GardensController = {
                 } catch (mqttError) {
                     console.error('MQTT error sending initial config:', mqttError);
                     // Proceed without failing the request
+                }
+            }
+
+            if (light_schedule) {
+                try {
+                    await cronScheduler.scheduleLightActions(savedGarden);
+                } catch (scheduleError) {
+                    console.error('Scheduling light error:', scheduleError);
                 }
             }
             // Format and return the response
@@ -123,7 +168,8 @@ const GardensController = {
             }
 
             // Get plant and zone counts
-            const [plantsCount, zonesCount, lastContact, temHumData] = await Promise.all([
+            const [plantsCount, zonesCount, lastContact, temHumData, nextOnTime, nextOffTime
+            ] = await Promise.all([
                 db.plants.getByGardenId(gardenID).then(plants =>
                     plants.filter(p => !p.end_date).length
                 ),
@@ -131,7 +177,9 @@ const GardensController = {
                     zones.filter(z => !z.end_date).length
                 ),
                 influxdbService.getLastContact(garden.topic_prefix).then(data => data),
-                influxdbService.getTemperatureAndHumidity(garden.topic_prefix).then(data => data)
+                influxdbService.getTemperatureAndHumidity(garden.topic_prefix).then(data => data),
+                cronScheduler.getNextLightTime(garden, 'ON'),
+                cronScheduler.getNextLightTime(garden, 'OFF')
             ]);
 
             // Format response with HATEOAS links and counts
@@ -154,6 +202,29 @@ const GardensController = {
                 formattedGarden.temperature_humidity_data = {
                     temperature_celsius: temHumData.temperature,
                     humidity_percentage: temHumData.humidity
+                };
+            }
+            if (nextOnTime && nextOffTime) {
+                if (nextOnTime < nextOffTime) {
+                    formattedGarden.next_light_action = {
+                        action: 'ON',
+                        time: nextOnTime
+                    };
+                } else {
+                    formattedGarden.next_light_action = {
+                        action: 'OFF',
+                        time: nextOffTime
+                    };
+                }
+            } else if (nextOnTime) {
+                formattedGarden.next_light_action = {
+                    action: 'ON',
+                    time: nextOnTime
+                };
+            } else if (nextOffTime) {
+                formattedGarden.next_light_action = {
+                    action: 'OFF',
+                    time: nextOffTime
                 };
             }
             formattedGarden.num_plants = plantsCount;
@@ -188,6 +259,24 @@ const GardensController = {
             }
 
             if (light_schedule !== undefined) {
+                // Check if duration is valid < 24 hours
+                const durationMatch = light_schedule.duration.match(/^(\d+h)?(\d+m)?(\d+s)?$/);
+                const hours = durationMatch[1] ? parseInt(durationMatch[1]) : 0;
+                const minutes = durationMatch[2] ? parseInt(durationMatch[2]) : 0;
+                const seconds = durationMatch[3] ? parseInt(durationMatch[3]) : 0;
+                const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
+                if (totalSeconds <= 0 || totalSeconds >= 86400) {
+                    return res.status(400).json({ error: 'light_schedule duration must be greater than 0 and less than or equal to 24 hours' });
+                }
+
+                if (light_schedule.adhoc_on_time) {
+                    const adhocTime = new Date(light_schedule.adhoc_on_time);
+                    // Check if adhoc_on_time is greater than now
+                    if (isNaN(adhocTime.getTime()) || adhocTime <= new Date()) {
+                        return res.status(400).json({ error: 'light_schedule adhoc_on_time must be a valid ISO 8601 date string in the future' });
+                    }
+                }
+
                 updates.light_schedule = light_schedule;
             }
 
@@ -226,23 +315,36 @@ const GardensController = {
                 return res.status(404).json({ error: 'Garden not found' });
             }
 
-            if (controller_config)
+            if (controller_config) {
                 try {
                     await mqttService.sendUpdateAction(updatedGarden, controller_config);
                 } catch (mqttError) {
                     console.error('MQTT error sending initial config:', mqttError);
                     // Proceed without failing the request
                 }
+            }
+
+            if (light_schedule) {
+                try {
+                    await cronScheduler.scheduleLightActions(updatedGarden);
+                } catch (scheduleError) {
+                    console.error('Scheduling error:', scheduleError);
+                }
+            }
 
             // Get plant and zone counts
-            const [plantsCount, zonesCount, lastContact] = await Promise.all([
+            const [plantsCount, zonesCount, lastContact
+                , nextOnTime, nextOffTime
+            ] = await Promise.all([
                 db.plants.getByGardenId(gardenID).then(plants =>
                     plants.filter(p => !p.end_date).length
                 ),
                 db.zones.getByGardenId(gardenID).then(zones =>
                     zones.filter(z => !z.end_date).length
                 ),
-                influxdbService.getLastContact(updatedGarden.topic_prefix).then(data => data)
+                influxdbService.getLastContact(updatedGarden.topic_prefix).then(data => data),
+                cronScheduler.getNextLightTime(updatedGarden, 'ON'),
+                cronScheduler.getNextLightTime(updatedGarden, 'OFF')
             ]);
 
             // Format response
@@ -259,6 +361,29 @@ const GardensController = {
                     status: 'DOWN',
                     details: 'no last contact time available',
                     last_contact: null
+                };
+            }
+            if (nextOnTime && nextOffTime) {
+                if (nextOnTime < nextOffTime) {
+                    formattedGarden.next_light_action = {
+                        action: 'ON',
+                        time: nextOnTime
+                    };
+                } else {
+                    formattedGarden.next_light_action = {
+                        action: 'OFF',
+                        time: nextOffTime
+                    };
+                }
+            } else if (nextOnTime) {
+                formattedGarden.next_light_action = {
+                    action: 'ON',
+                    time: nextOnTime
+                };
+            } else if (nextOffTime) {
+                formattedGarden.next_light_action = {
+                    action: 'OFF',
+                    time: nextOffTime
                 };
             }
             formattedGarden.num_plants = plantsCount;
@@ -285,15 +410,21 @@ const GardensController = {
                 return res.status(404).json({ error: 'Garden not found' });
             }
 
+            const cronScheduler = require('../services/cronScheduler');
+            cronScheduler.removeLightJobsByGardenId(endDatedGarden._id.toString());
+
             // Get plant and zone counts
-            const [plantsCount, zonesCount, lastContact] = await Promise.all([
+            const [plantsCount, zonesCount, lastContact, nextOnTime, nextOffTime
+            ] = await Promise.all([
                 db.plants.getByGardenId(gardenID).then(plants =>
                     plants.filter(p => !p.end_date).length
                 ),
                 db.zones.getByGardenId(gardenID).then(zones =>
                     zones.filter(z => !z.end_date).length
                 ),
-                influxdbService.getLastContact(endDatedGarden.topic_prefix).then(data => data)
+                influxdbService.getLastContact(endDatedGarden.topic_prefix).then(data => data),
+                cronScheduler.getNextLightTime(endDatedGarden, 'ON'),
+                cronScheduler.getNextLightTime(endDatedGarden, 'OFF')
             ]);
 
             // Format response
@@ -310,6 +441,29 @@ const GardensController = {
                     status: 'DOWN',
                     details: 'no last contact time available',
                     last_contact: null
+                };
+            }
+            if (nextOnTime && nextOffTime) {
+                if (nextOnTime < nextOffTime) {
+                    formattedGarden.next_light_action = {
+                        action: 'ON',
+                        time: nextOnTime
+                    };
+                } else {
+                    formattedGarden.next_light_action = {
+                        action: 'OFF',
+                        time: nextOffTime
+                    };
+                }
+            } else if (nextOnTime) {
+                formattedGarden.next_light_action = {
+                    action: 'ON',
+                    time: nextOnTime
+                };
+            } else if (nextOffTime) {
+                formattedGarden.next_light_action = {
+                    action: 'OFF',
+                    time: nextOffTime
                 };
             }
             formattedGarden.num_plants = plantsCount;
@@ -340,6 +494,9 @@ const GardensController = {
             try {
                 if (light) {
                     await mqttService.sendLightAction(garden, light.state, light.for_duration);
+                    if (light.for_duration) {
+                        await cronScheduler.scheduleLightDelay(garden, light.state, light.for_duration);
+                    }
                 }
 
                 if (stop) {
@@ -367,6 +524,77 @@ const GardensController = {
             res.status(500).json({
                 error: 'Internal server error',
                 message: 'Failed to execute garden action'
+            });
+        }
+    },
+
+    // Light Schedule Management
+    scheduleLightActions: async (req, res) => {
+        try {
+            const { gardenID } = req.params;
+
+            // Verify garden exists and has light_schedule
+            const garden = await db.gardens.getById(gardenID);
+            if (!garden) {
+                return res.status(404).json({ error: 'Garden not found' });
+            }
+
+            if (!garden.light_schedule || !garden.light_schedule.duration || !garden.light_schedule.start_time) {
+                return res.status(400).json({
+                    error: 'Garden must have complete light_schedule configuration (duration and start_time)'
+                });
+            }
+
+            try {
+                await cronScheduler.scheduleLightActions(garden);
+
+                res.json({
+                    message: 'Light schedule created successfully',
+                    garden_id: gardenID,
+                    next_light_on: await cronScheduler.getNextLightTime(garden, 'ON'),
+                    next_light_off: await cronScheduler.getNextLightTime(garden, 'OFF')
+                });
+
+            } catch (scheduleError) {
+                console.error('Scheduling error:', scheduleError);
+                res.status(500).json({
+                    error: 'Failed to schedule light actions',
+                    message: scheduleError.message
+                });
+            }
+
+        } catch (error) {
+            console.error('Error scheduling light actions:', error);
+            res.status(500).json({
+                error: 'Internal server error',
+                message: 'Failed to schedule light actions'
+            });
+        }
+    },
+
+    resetLightSchedule: async (req, res) => {
+        try {
+            const { gardenID } = req.params;
+
+            // Verify garden exists
+            const garden = await db.gardens.getById(gardenID);
+            if (!garden) {
+                return res.status(404).json({ error: 'Garden not found' });
+            }
+
+            await cronScheduler.resetLightSchedule(garden);
+
+            res.json({
+                message: 'Light schedule reset successfully',
+                garden_id: gardenID,
+                next_light_on: await cronScheduler.getNextLightTime(garden, 'ON'),
+                next_light_off: await cronScheduler.getNextLightTime(garden, 'OFF')
+            });
+        } catch (error) {
+            console.error('Error resetting light schedule:', error);
+            res.status(500).json({
+                error: 'Internal server error',
+                message: 'Failed to reset light schedule'
             });
         }
     },

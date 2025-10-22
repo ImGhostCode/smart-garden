@@ -1,0 +1,85 @@
+### Test Light Schedule API Endpoints
+
+# Set environment
+@hostname = http://localhost
+@port = 3000
+@host = {{hostname}}:{{port}}
+@baseUrl = {{hostname}}:{{port}}
+@gardenId = 68de7e98ae6796d18a268a34
+# @gardenId = 68ef26c22f90b0d103d39572
+
+### 1. Create a garden with light schedule
+POST {{baseUrl}}/gardens
+Content-Type: application/json
+
+{
+    "name": "Test Light Garden",
+    "topic_prefix": "light-garden-01",
+    "max_zones": 2,
+    "light_schedule": {
+        "duration": "12h",
+        "start_time": "06:00:00+07:00"
+    },
+    "controller_config": {
+        "valvePins": [2, 3],
+        "pumpPins": [4, 5],
+        "lightPin": 13,
+        "tempHumidityPin": 14,
+        "tempHumidityInterval": 5000
+    }
+}
+
+### 2. Schedule light actions for the garden
+POST {{baseUrl}}/gardens/{{gardenId}}/light-schedule
+Content-Type: application/json
+
+### 3. Reset light schedule
+PUT {{baseUrl}}/gardens/{{gardenId}}/light-schedule/reset
+
+### 4. Update garden with adhoc on time (after regular schedule)
+PATCH {{baseUrl}}/gardens/{{gardenId}}
+Content-Type: application/json
+
+{
+    "light_schedule": {
+        "duration": "12h",
+        "start_time": "06:00:00+07:00",
+        "adhoc_on_time": "2025-10-22T09:00:00+07:00"
+    }
+}
+
+### 5.1. Update garden with adhoc on time (BEFORE regular schedule - should delay regular by 24h)
+PATCH {{baseUrl}}/gardens/{{gardenId}}
+Content-Type: application/json
+
+{
+    "light_schedule": {
+        "duration": "12h", 
+        "start_time": "06:00:00+07:00",
+        "adhoc_on_time": "2025-10-21T21:15:00+07:00"
+    }
+}
+
+### 7. Manual light action (immediate)
+POST {{baseUrl}}/gardens/{{gardenId}}/action
+Content-Type: application/json
+
+{
+    "light": {
+        "state": "ON"
+    }
+}
+
+### 8. Manual light action with duration (turn off after 30 minutes)
+POST {{baseUrl}}/gardens/{{gardenId}}/action
+Content-Type: application/json
+
+{
+    "light": {
+        "state": "OFF",
+        "for_duration": "1h"
+    }
+}
+
+### 9. Get garden details (including light schedule)
+GET {{baseUrl}}/gardens/{{gardenId}}

@@ -361,7 +361,7 @@ class MQTTService extends EventEmitter {
     async sendLightAction(garden, state = "", forDuration = 0) {
         const topic = `${garden.topic_prefix}${this.TOPICS.COMMANDS.LIGHT}`;
         const command = {
-            "state": state, // "ON" or "OFF"
+            "state": state, // "ON" or "OFF" or ""
             "for_duration": forDuration
         };
 

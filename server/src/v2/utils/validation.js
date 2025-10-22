@@ -7,6 +7,10 @@ const xidPattern = /^[0-9a-v]{24}$/;
 // Duration validation pattern (supports formats like "72h", "30m", "15s", "15000ms")
 const durationPattern = /^(\d+(\.\d+)?)(ns|μs|ms|s|m|h)$/;
 
+// Light duration pattern (e.g., "14h", "30m", "1h30m")
+// const lightDurationPattern = /^(\d+h)?(\d+m)?$/;
+const lightDurationPattern = /^(\d+h)?(\d+m)?(\d+s)?$/;
+
 // Time validation pattern (HH:MM:SS with optional timezone offset)
 const timePattern = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]([+-][0-1][0-9]:[0-5][0-9])?$/;;
 
@@ -183,7 +187,7 @@ const schemas = {
         }),
         max_zones: Joi.number().integer().min(1).required(),
         light_schedule: Joi.object({
-            duration: Joi.string().pattern(durationPattern).required().messages({
+            duration: Joi.string().pattern(lightDurationPattern).required().messages({
                 'string.pattern.base': 'Duration must be in valid format (e.g., "14h", "30m", "15s")'
             }),
             start_time: Joi.string().pattern(timePattern).required().messages({
@@ -215,13 +219,13 @@ const schemas = {
         }),
         max_zones: Joi.number().integer().min(1).optional(),
         light_schedule: Joi.object({
-            duration: Joi.string().pattern(durationPattern).required().messages({
+            duration: Joi.string().pattern(lightDurationPattern).required().messages({
                 'string.pattern.base': 'Duration must be in valid format (e.g., "14h", "30m", "15s")'
             }),
             start_time: Joi.string().pattern(timePattern).required().messages({
                 'string.pattern.base': 'Time must be in HH:MM:SS format with optional timezone offset'
             }),
-            // adhoc_on_time: Joi.string().isoDate().optional(),
+            adhoc_on_time: Joi.string().isoDate().optional(),
         }).optional(),
         // temperature_humidity_sensor: Joi.boolean().optional(),
         controller_config: Joi.object({

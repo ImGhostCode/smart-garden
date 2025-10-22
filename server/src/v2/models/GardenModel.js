@@ -32,7 +32,7 @@ const gardenSchema = new mongoose.Schema({
             validate: {
                 validator: function (v) {
                     // Validate duration format (e.g., "14h", "30m", "1h30m")
-                    return !v || /^\d+[hms](\d+[ms])?$/.test(v);
+                    return !v || /^(\d+h)?(\d+m)?(\d+s)?$/.test(v);
                 },
                 message: 'Duration must be in valid format (e.g., "14h", "30m")'
             }
@@ -45,9 +45,19 @@ const gardenSchema = new mongoose.Schema({
                     return !v || /^\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/.test(v);
                 },
                 message: 'Start time must be in format "HH:MM:SS±HH:MM"'
-            }
+            },
+            default: null
         },
-        // adhoc_on_time: Date,
+        adhoc_on_time: {
+            type: String,
+            validate: {
+                validator: function (v) {
+                    // Validate time format (e.g., "23:00:00-07:00")
+                    return !v || /^\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/.test(v);
+                },
+                message: 'Adhoc on time must be in format "HH:MM:SS±HH:MM"'
+            }
+        }
         // temperature_humidity_sensor: {
         //     type: Boolean,
         //     default: false
@@ -69,13 +79,6 @@ const gardenSchema = new mongoose.Schema({
     //     temperature_celsius: Number,
     //     humidity_percentage: Number,
     //     timestamp: Date
-    // },
-    // next_light_action: {
-    //     time: Date,
-    //     state: {
-    //         type: String,
-    //         enum: ['ON', 'OFF', '']
-    //     }
     // },
     end_date: {
         type: Date,
