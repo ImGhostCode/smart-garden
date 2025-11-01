@@ -15,6 +15,11 @@ const scaleControlSchema = new mongoose.Schema({
     range: {
         type: Number,
         required: true
+    },
+    client_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'WeatherClientConfig',
+        required: true
     }
 }, { _id: false });
 

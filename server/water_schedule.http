@@ -18,12 +18,14 @@ Content-Type: application/json
         "temperature_control": {
             "baseline_value": 25,
             "factor": 0.9,
-            "range": 12
+            "range": 12,
+            "client_id": "68e1f4b4681d52cf1e8b34b0"
         },
         "rain_control": {
             "baseline_value": 3.0,
             "factor": 0.85,
-            "range": 6.0
+            "range": 6.0,
+            "client_id": "68e1f4b4681d52cf1e8b34b0"
         }
     }
 }
@@ -42,12 +44,14 @@ Content-Type: application/json
         "temperature_control": {
             "baseline_value": 25,
             "factor": 0.9,
-            "range": 12
+            "range": 12,
+            "client_id": "68e1f4b4681d52cf1e8b34b0"
         },
         "rain_control": {
             "baseline_value": 3.0,
             "factor": 0.85,
-            "range": 6.0
+            "range": 6.0,
+            "client_id": "68e1f4b4681d52cf1e8b34b0"
         }
     }
 }
@@ -66,12 +70,14 @@ Content-Type: application/json
         "temperature_control": {
             "baseline_value": 30,
             "factor": 0.7,
-            "range": 15
+            "range": 15,
+            "client_id": "68e1f4b4681d52cf1e8b34b0"
         },
         "rain_control": {
             "baseline_value": 2.0,
             "factor": 0.8,
-            "range": 5.0
+            "range": 5.0,
+            "client_id": "68e1f4b4681d52cf1e8b34b0"
         }
     },
   "active_period": {
@@ -111,12 +117,14 @@ Content-Type: application/json
     "rain_control": {
       "baseline_value": 3,
       "factor": 0.85,
-      "range": 6
+      "range": 6,
+      "client_id": "68e1f4b4681d52cf1e8b34b0"
     },
     "temperature_control": {
       "baseline_value": 25,
       "factor": 0.9,
-      "range": 12
+      "range": 12,
+      "client_id": "68e1f4b4681d52cf1e8b34b0"
     }
   }
 }

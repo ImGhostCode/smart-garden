@@ -15,6 +15,7 @@ const plantRoutes = require('./routes/plants');
 const zoneRoutes = require('./routes/zones');
 const waterScheduleRoutes = require('./routes/waterSchedules');
 const schedulerRoutes = require('./routes/scheduler');
+const weatherClientsRoutes = require('./routes/weatherClients');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -126,6 +127,7 @@ app.use('/gardens', plantRoutes);
 app.use('/gardens', zoneRoutes);
 app.use('/water_schedules', waterScheduleRoutes);
 app.use('/scheduler', schedulerRoutes);
+app.use('/weather_clients', weatherClientsRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -292,6 +294,12 @@ app.listen(PORT, async () => {
     console.log('  DELETE /scheduler/water_schedules/:id/schedule');
     console.log('  PUT    /scheduler/water_schedules/:id/schedule');
     console.log('  POST   /scheduler/water_schedules/:id/trigger');
+    console.log('Weather Clients:');
+    console.log('  GET    /weather_clients');
+    console.log('  POST   /weather_clients');
+    console.log('  GET    /weather_clients/:weatherClientID');
+    console.log('  PATCH  /weather_clients/:weatherClientID');
+    console.log('  DELETE /weather_clients/:weatherClientID');
 });
 
 module.exports = app;

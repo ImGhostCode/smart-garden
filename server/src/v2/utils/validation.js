@@ -1,5 +1,6 @@
 const { config } = require('dotenv');
 const Joi = require('joi');
+const { create } = require('../models/GardenModel');
 
 // MongoDB ObjectId pattern (24 hex characters)
 const xidPattern = /^[0-9a-v]{24}$/;
@@ -332,12 +333,14 @@ const schemas = {
             rain_control: Joi.object({
                 baseline_value: Joi.number().required(),
                 factor: Joi.number().min(0).max(1).required(),
-                range: Joi.number().required()
+                range: Joi.number().min(0).required(),
+                client_id: Joi.string().pattern(xidPattern).required()
             }).optional(),
             temperature_control: Joi.object({
                 baseline_value: Joi.number().required(),
                 factor: Joi.number().min(0).max(1).required(),
-                range: Joi.number().required()
+                range: Joi.number().min(0).required(),
+                client_id: Joi.string().pattern(xidPattern).required()
             }).optional()
         }).optional(),
         active_period: Joi.object({
@@ -362,12 +365,14 @@ const schemas = {
             rain_control: Joi.object({
                 baseline_value: Joi.number().required(),
                 factor: Joi.number().min(0).max(1).required(),
-                range: Joi.number().required()
+                range: Joi.number().min(0).required(),
+                client_id: Joi.string().pattern(xidPattern).required()
             }).optional(),
             temperature_control: Joi.object({
                 baseline_value: Joi.number().required(),
                 factor: Joi.number().min(0).max(1).required(),
-                range: Joi.number().required()
+                range: Joi.number().min(0).required(),
+                client_id: Joi.string().pattern(xidPattern).required()
             }).optional()
         }).optional(),
         active_period: Joi.object({
@@ -376,6 +381,98 @@ const schemas = {
         }).optional(),
         name: Joi.string().optional(),
         description: Joi.string().optional()
+    }).min(1).messages({
+        'object.min': 'At least one field must be provided for update'
+    }),
+
+    // Weather Client Config requests
+    createWeatherClientRequest: Joi.object({
+        type: Joi.string().valid('netatmo', 'fake').required(),
+        options: Joi.when('type', {
+            switch: [
+                {
+                    is: 'fake',
+                    then: Joi.object({
+                        rain_mm: Joi.number().required().messages({
+                            'any.required': 'rain_mm is required for fake weather client'
+                        }),
+                        rain_interval: Joi.string().pattern(durationPattern).required().messages({
+                            'string.pattern.base': 'rain_interval must be in valid duration format (e.g., "24h", "30m")',
+                            'any.required': 'rain_interval is required for fake weather client'
+                        }),
+                        avg_high_temperature: Joi.number().required().messages({
+                            'any.required': 'avg_high_temperature is required for fake weather client'
+                        }),
+                        error: Joi.string().optional().allow('')
+                    }).required()
+                },
+                {
+                    is: 'netatmo',
+                    then: Joi.object({
+                        station_id: Joi.string().optional(),
+                        station_name: Joi.string().optional(),
+                        rain_module_id: Joi.string().optional(),
+                        rain_module_type: Joi.string().optional(),
+                        outdoor_module_id: Joi.string().optional(),
+                        outdoor_module_type: Joi.string().optional(),
+                        authentication: Joi.object({
+                            // access_token: Joi.string().optional(),
+                            refresh_token: Joi.string().required(),
+                            // expiration_date: Joi.string().isoDate().optional()
+                        }).required(),
+                        client_id: Joi.string().required(),
+                        client_secret: Joi.string().required()
+                    }).or('station_id', 'station_name')
+                        .or('rain_module_id', 'rain_module_type')
+                        .or('outdoor_module_id', 'outdoor_module_type')
+                        .messages({
+                            'object.missing': 'Missing required fields: Either (station_id or station_name) AND (rain_module_id or rain_module_type) AND (outdoor_module_id or outdoor_module_type) must be provided'
+                        }).required()
+                }
+            ]
+        }).required()
+    }),
+
+    updateWeatherClientRequest: Joi.object({
+        type: Joi.string().valid('netatmo', 'fake').required(),
+        options: Joi.when('type', {
+            switch: [
+                {
+                    is: 'fake',
+                    then: Joi.object({
+                        rain_mm: Joi.number().optional(),
+                        rain_interval: Joi.string().pattern(durationPattern).optional().messages({
+                            'string.pattern.base': 'rain_interval must be in valid duration format (e.g., "24h", "30m")'
+                        }),
+                        avg_high_temperature: Joi.number().optional(),
+                        error: Joi.string().optional().allow('')
+                    }).min(1).messages({
+                        'object.min': 'At least one field must be provided for fake weather client options update'
+                    })
+                },
+                {
+                    is: 'netatmo',
+                    then: Joi.object({
+                        station_id: Joi.string().optional(),
+                        station_name: Joi.string().optional(),
+                        rain_module_id: Joi.string().optional(),
+                        rain_module_type: Joi.string().optional(),
+                        outdoor_module_id: Joi.string().optional(),
+                        outdoor_module_type: Joi.string().optional(),
+                        authentication: Joi.object({
+                            access_token: Joi.string().optional(),
+                            refresh_token: Joi.string().optional(),
+                            expiration_date: Joi.string().isoDate().optional()
+                        }).optional(),
+                        client_id: Joi.string().optional(),
+                        client_secret: Joi.string().optional()
+                    }).min(1).messages({
+                        'object.min': 'At least one field must be provided for netatmo weather client options update'
+                    })
+                }
+            ],
+            otherwise: Joi.object().optional()
+        }).optional()
     }).min(1).messages({
         'object.min': 'At least one field must be provided for update'
     }),
@@ -404,6 +501,9 @@ const schemas = {
         }),
         waterScheduleID: Joi.string().pattern(xidPattern).required().messages({
             'string.pattern.base': 'Water Schedule ID must be a 24 character XID format'
+        }),
+        weatherClientID: Joi.string().pattern(xidPattern).required().messages({
+            'string.pattern.base': 'Weather Client ID must be a 24 character XID format'
         })
     }
 };

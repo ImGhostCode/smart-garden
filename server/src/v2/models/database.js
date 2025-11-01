@@ -3,6 +3,7 @@ const Garden = require('./GardenModel');
 const Plant = require('./PlantModel');
 const Zone = require('./ZoneModel');
 const WaterSchedule = require('./WaterScheduleModel');
+const WeatherClientConfig = require('./WeatherClientConfigModel.js');
 
 // MongoDB database interface
 const db = {
@@ -25,6 +26,7 @@ const db = {
         Plant,
         Zone,
         WaterSchedule,
+        WeatherClientConfig
     },
 
     // Enhanced helper methods for easier controller usage
@@ -241,7 +243,40 @@ const db = {
             return await this.getAll();
         }
     },
+    weatherClientConfigs: {
+        async getAll(filters = {}) {
+            return await WeatherClientConfig.find(filters);
+        },
 
+        async getById(id) {
+            return await WeatherClientConfig.findOne({ _id: id, end_date: null });
+        },
+
+        async getByWaterScheduleId(waterScheduleId) {
+            // return await WeatherClientConfig.find({ waterScheduleId, end_date: null });
+        },
+
+        async create(data) {
+            const weatherClientConfig = new WeatherClientConfig(data);
+            return await weatherClientConfig.save({ timestamps: true });
+        },
+
+        async updateById(id, data) {
+            return await WeatherClientConfig.findOneAndUpdate(
+                { _id: id, type: data.type, end_date: null },
+                { ...data, updated_at: new Date() },
+                { new: true }
+            );
+        },
+
+        async deleteById(id) {
+            return await WeatherClientConfig.findOneAndUpdate(
+                { _id: id, end_date: null },
+                { end_date: new Date() },
+                { new: true }
+            );
+        },
+    }
 };
 
 module.exports = db;

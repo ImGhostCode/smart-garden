@@ -1,0 +1,77 @@
+@hostname = http://localhost
+@port = 3000
+@host = {{hostname}}:{{port}}
+### Weater Clients API ###:
+GET    {{host}}/weather_clients?end_dated=false
+###
+POST   {{host}}/weather_clients
+Content-Type: application/json
+
+{
+  "type": "fake",
+  "options": {
+    "rain_mm": 25.4,
+    "rain_interval": "24h",
+    "avg_high_temperature": 80.0,
+    "error": ""
+  }
+}
+###
+POST   {{host}}/weather_clients
+Content-Type: application/json
+
+{
+  "type": "netatmo",
+  "options": {
+    "station_id": "STATION_ID",
+    "station_name": "Weather Station",
+    "rain_module_id": "RAIN_MODULE_ID",
+    "rain_module_type": "Smart Rain Gauge",
+    "outdoor_module_id": "OUTDOOR_MODULE_ID",
+    "outdoor_module_type": "Outdoor Module",
+    "authentication": {
+      "refresh_token": "REFRESH_TOKEN"
+    },
+    "client_id": "CLIENT_ID",
+    "client_secret": "CLIENT_SECRET"
+  }
+}
+###
+GET    {{host}}/weather_clients/690588bc31116ae2f99f21ac
+###
+PATCH  {{host}}/weather_clients/690588bc31116ae2f99f21ac
+Content-Type: application/json
+
+{
+  "type": "fake",
+  "options": {
+    "rain_mm": 26.4,
+    "rain_interval": "24h",
+    "avg_high_temperature": 80.0,
+    "error": "test error 1"
+  }
+}
+###
+PATCH  {{host}}/weather_clients/690588a431116ae2f99f21aa
+Content-Type: application/json
+
+{
+  "type": "netatmo",
+  "options": {
+    "station_id": "STATION_ID",
+    "station_name": "Weather Station",
+    "rain_module_id": "RAIN_MODULE_ID",
+    "rain_module_type": "Smart Rain Gauge",
+    "outdoor_module_id": "OUTDOOR_MODULE_ID",
+    "outdoor_module_type": "Outdoor Module",
+    "authentication": {
+      "access_token": "ACCESS_TOKEN",
+      "refresh_token": "REFRESH_TOKEN",
+      "expiration_date": "2023-01-01T15:00:00Z"
+    },
+    "client_id": "CLIENT_ID",
+    "client_secret": "CLIENT_SECRET"
+  }
+}
+###
+DELETE {{host}}/weather_clients/69058ce59f2df4a4e1658bd0
