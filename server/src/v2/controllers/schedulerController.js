@@ -197,7 +197,7 @@ const SchedulerController = {
                             await cronScheduler.executeWaterAction(
                                 garden, zone,
                                 waterSchedule, {
-                                duration: require('../utils/helpers').durationToMilliseconds(waterSchedule.duration),
+                                duration: require('../utils/helpers').durationToMillis(waterSchedule.duration),
                                 scaleFactor: 1,
                                 reason: 'manual_trigger_forced'
                             });

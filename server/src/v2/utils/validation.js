@@ -1,6 +1,4 @@
-const { config } = require('dotenv');
 const Joi = require('joi');
-const { create } = require('../models/GardenModel');
 
 // MongoDB ObjectId pattern (24 hex characters)
 const xidPattern = /^[0-9a-v]{24}$/;

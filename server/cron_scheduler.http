@@ -63,7 +63,7 @@ Content-Type: application/json
 ###
 
 # Manually trigger a water schedule (test execution)
-POST http://localhost:3000/scheduler/water_schedules/68de80dc1a38491918156281/trigger
+POST http://localhost:3000/scheduler/water_schedules/68de83cb66de8a502e0e4334/trigger
 Content-Type: application/json
 
 {
@@ -73,7 +73,7 @@ Content-Type: application/json
 ###
 
 # Force trigger a water schedule (ignores conditions)
-POST http://localhost:3000/scheduler/water_schedules/68de80dc1a38491918156281/trigger
+POST http://localhost:3000/scheduler/water_schedules/68de83cb66de8a502e0e4334/trigger
 Content-Type: application/json
 
 {
@@ -83,13 +83,13 @@ Content-Type: application/json
 ###
 
 # Schedule a specific water schedule (if not already scheduled)
-POST http://localhost:3000/scheduler/water_schedules/68d762a480dde98bcd697099/schedule
+POST http://localhost:3000/scheduler/water_schedules/68de80dc1a38491918156281/schedule
 Content-Type: application/json
 
 ###
 
 # Reschedule a water schedule (useful after updates)
-PUT http://localhost:3000/scheduler/water_schedules/68d762a480dde98bcd697099/schedule
+PUT http://localhost:3000/scheduler/water_schedules/68de80dc1a38491918156281/schedule
 Content-Type: application/json
 
 ###

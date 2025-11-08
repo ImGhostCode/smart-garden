@@ -27,7 +27,7 @@ Content-Type: application/json
   }
 }
 ###
-GET    {{host}}/gardens/68de7f1a1a3849191815627d
+GET    {{host}}/gardens/{{gardenId}}
 ###
 PATCH  {{host}}/gardens/68de7f1a1a3849191815627d
 Content-Type: application/json
@@ -58,12 +58,12 @@ Content-Type: application/json
 {
   "light": {
     "state": "OFF",
-    "for_duration": "1h"
+    "for_duration": "30s"
   }
 }
 
 ###
-POST   {{host}}/gardens/68c57aac78e37f35b582064e/action
+POST   {{host}}/gardens/{{gardenId}}/action
 Content-Type: application/json
 
 {

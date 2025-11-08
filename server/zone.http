@@ -81,7 +81,7 @@ Content-Type: application/json
   }
 }
 ###
-DELETE {{host}}/gardens/68c57aac78e37f35b582064e/zones/68c8275782d47429c2cf5eed?exclude_weather_data=false
+DELETE {{host}}/gardens/68c57aac78e37f35b582064e/zones/68c8275782d47429c2cf5eed
 ###
 POST   {{host}}/gardens/68de7e98ae6796d18a268a34/zones/68de8783b78657a4ab281c2e/action
 Content-Type: application/json

@@ -1,5 +1,6 @@
 const db = require('../models/database');
 const { createLink } = require('../utils/helpers');
+const WeatherClient = require('../services/weatherClientService');
 
 const WeatherClientsController = {
     getAllWeatherClients: async (req, res) => {
@@ -143,7 +144,39 @@ const WeatherClientsController = {
                 message: 'Failed to delete weather client configuration'
             });
         }
-    }
+    },
+    testWeatherClient: async (req, res) => {
+        const { weatherClientID } = req.params;
+        try {
+            const client = await db.weatherClientConfigs.getById(weatherClientID);
+            if (!client) {
+                return res.status(404).json({
+                    error: 'Weather client configuration not found'
+                });
+            }
+            const weatherClient = new WeatherClient(client.toObject());
+            const rainSinceMs = 72 * 60 * 60 * 1000; // Last 72 hours
+
+            const totalRain = await weatherClient.getTotalRain(rainSinceMs);
+
+            const avgHighTemperature = await weatherClient.getAverageHighTemperature(rainSinceMs);
+
+            res.json({
+                rain: {
+                    mm: totalRain,
+                },
+                temperature: {
+                    celsius: avgHighTemperature,
+                }
+            });
+
+        } catch (error) {
+            res.status(500).json({
+                error: 'Internal Server Error',
+                messsage: 'Failed to retrieve weather client configuration'
+            });
+        }
+    },
 }
 
 module.exports = WeatherClientsController;

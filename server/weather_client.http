@@ -37,7 +37,7 @@ Content-Type: application/json
   }
 }
 ###
-GET    {{host}}/weather_clients/690588bc31116ae2f99f21ac
+GET    {{host}}/weather_clients/690588a431116ae2f99f21aa
 ###
 PATCH  {{host}}/weather_clients/690588bc31116ae2f99f21ac
 Content-Type: application/json
@@ -48,7 +48,7 @@ Content-Type: application/json
     "rain_mm": 26.4,
     "rain_interval": "24h",
     "avg_high_temperature": 80.0,
-    "error": "test error 1"
+    "error": ""
   }
 }
 ###
@@ -75,3 +75,9 @@ Content-Type: application/json
 }
 ###
 DELETE {{host}}/weather_clients/69058ce59f2df4a4e1658bd0
+
+### Test Netatmo client
+GET {{host}}/weather_clients/690588a431116ae2f99f21aa/test
+
+### Test Fake client
+GET {{host}}/weather_clients/690588bc31116ae2f99f21ac/test

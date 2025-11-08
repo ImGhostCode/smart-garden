@@ -25,6 +25,13 @@ router.get('/:weatherClientID',
     })),
     WeatherClientsController.getWeatherClient);
 
+// GET /:weatherClientID/test - Get sample data from specific weather client
+router.get('/:weatherClientID/test',
+    validateParams(Joi.object({
+        weatherClientID: schemas.pathParams.weatherClientID
+    })),
+    WeatherClientsController.testWeatherClient);
+
 // PATCH /:weatherClientID - Update weather client
 router.patch('/:weatherClientID',
     validateParams(Joi.object({

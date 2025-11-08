@@ -1,8 +1,9 @@
 const db = require('../models/database');
-const { createLink, getMockWeatherData, durationToMilliseconds } = require('../utils/helpers');
+const { createLink, durationToMillis } = require('../utils/helpers');
 const { getNextActiveWaterSchedule, getNextWaterDetails } = require('../utils/waterScheduleHelpers');
 const mqttService = require('../services/mqttService');
 const influxdbService = require('../services/influxdbService');
+const { getWeatherData } = require('../utils/weatherHelper');
 
 const ZonesController = {
     getAllZones: async (req, res) => {
@@ -13,13 +14,17 @@ const ZonesController = {
             filters.end_date = null;
         }
 
-        const weatherData = exclude_weather_data !== 'true' ? getMockWeatherData() : undefined;
+
         const zones = await db.zones.getAll(filters);
 
         res.json({
             items: await Promise.all(zones.map(async (zone) => {
                 // Get next active water schedule for this zone
                 const nextSchedule = await getNextActiveWaterSchedule(zone.water_schedule_ids || []);
+                let weatherData;
+                if (nextSchedule.hasWeatherControl() && nextSchedule.end_date == null && exclude_weather_data !== 'true') {
+                    weatherData = await getWeatherData(nextSchedule);
+                }
 
                 let nextWaterDetails;
                 if (nextSchedule) {
@@ -33,7 +38,7 @@ const ZonesController = {
                         nextWaterDetails.message = `skip_count ${zone.skip_count} affected the time`;
                         //A adjust the time based on skip count: skip_count * interval
                         if (nextWaterDetails.time) {
-                            nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + zone.skip_count * durationToMilliseconds(nextSchedule.interval));
+                            nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + zone.skip_count * durationToMillis(nextSchedule.interval));
                         }
                     }
                 } else {
@@ -114,8 +119,11 @@ const ZonesController = {
             return res.status(404).json({ error: 'Zone not found' });
         }
 
-        const weatherData = exclude_weather_data !== 'true' ? getMockWeatherData() : undefined;
         const nextSchedule = await getNextActiveWaterSchedule(zone.water_schedule_ids || []);
+        let weatherData;
+        if (nextSchedule.hasWeatherControl() && nextSchedule.end_date == null && exclude_weather_data !== 'true') {
+            weatherData = await getWeatherData(nextSchedule);
+        }
 
         let nextWaterDetails;
         if (nextSchedule) {
@@ -129,7 +137,7 @@ const ZonesController = {
                 nextWaterDetails.message = `skip_count ${zone.skip_count} affected the time`;
                 //A adjust the time based on skip count: skip_count * interval
                 if (nextWaterDetails.time) {
-                    nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + zone.skip_count * durationToMilliseconds(nextSchedule.interval));
+                    nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + zone.skip_count * durationToMillis(nextSchedule.interval));
                 }
             }
         } else {
@@ -191,8 +199,11 @@ const ZonesController = {
 
         const updatedZone = await db.zones.updateById(zoneID, updates);
 
-        const weatherData = exclude_weather_data !== 'true' ? getMockWeatherData() : undefined;
         const nextSchedule = await getNextActiveWaterSchedule(updatedZone.water_schedule_ids || []);
+        let weatherData;
+        if (nextSchedule.hasWeatherControl() && nextSchedule.end_date == null && exclude_weather_data !== 'true') {
+            weatherData = await getWeatherData(nextSchedule);
+        }
 
         let nextWaterDetails;
         if (nextSchedule) {
@@ -206,7 +217,7 @@ const ZonesController = {
                 nextWaterDetails.message = `skip_count ${updatedZone.skip_count} affected the time`;
                 //A adjust the time based on skip count: skip_count * interval
                 if (nextWaterDetails.time) {
-                    nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + updatedZone.skip_count * durationToMilliseconds(nextSchedule.interval));
+                    nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + updatedZone.skip_count * durationToMillis(nextSchedule.interval));
                 }
             }
         }
@@ -258,7 +269,7 @@ const ZonesController = {
         try {
             // Handle water action
             if (action.water && action.water.duration) {
-                const durationMs = durationToMilliseconds(action.water.duration);
+                const durationMs = durationToMillis(action.water.duration);
                 const result = await mqttService.sendWaterCommand(garden, zoneID, zone.position, durationMs, "command");
                 console.log('MQTT water command result:', result);
             }

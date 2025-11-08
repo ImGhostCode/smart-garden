@@ -1,15 +1,16 @@
 const cron = require('node-cron');
 const db = require('../models/database');
 const {
-    calculateNextWaterTime,
-    calculateEffectiveWateringDuration,
-    getMockWeatherData,
-    isActiveTime,
-    formatDuration,
-    durationToMilliseconds
+    millisToDuration,
+    durationToMillis
 } = require('../utils/helpers');
-const { log } = require('winston');
+const {
+    calculateEffectiveWateringDuration,
+    isActiveTime,
+    calculateNextWaterTime,
+} = require('../utils/waterScheduleHelpers');
 const mqttService = require('./mqttService');
+const { getWeatherData } = require('../utils/weatherHelper');
 
 class CronScheduler {
     constructor() {
@@ -120,7 +121,10 @@ class CronScheduler {
             }
 
             // Get weather data and calculate effective watering
-            const weatherData = getMockWeatherData();
+            let weatherData;
+            if (waterSchedule.hasWeatherControl()) {
+                weatherData = await getWeatherData(waterSchedule);
+            }
 
             // TODO: Get skip count from zone data or database
             const skipCount = zone.skip_count || 0;
@@ -141,7 +145,7 @@ class CronScheduler {
                 water_schedule_id: waterScheduleId,
                 executed_at: new Date().toISOString(),
                 duration_ms: effectiveWatering.duration,
-                duration_formatted: formatDuration(effectiveWatering.duration),
+                duration_formatted: millisToDuration(effectiveWatering.duration),
                 scale_factor: effectiveWatering.scaleFactor,
                 reason: effectiveWatering.reason,
                 weather_data: weatherData,
@@ -171,7 +175,7 @@ class CronScheduler {
         this.logger.log(`   Garden: ${garden.name} (${garden._id})`);
         this.logger.log(`   Zone: ${zone.name} (Position ${zone.position})`);
         this.logger.log(`   Schedule: ${waterSchedule.name}`);
-        this.logger.log(`   Duration: ${formatDuration(effectiveWatering.duration)}`);
+        this.logger.log(`   Duration: ${millisToDuration(effectiveWatering.duration)}`);
         this.logger.log(`   Scale Factor: ${effectiveWatering.scaleFactor}`);
 
         // Get zones associated with this water schedule
@@ -180,7 +184,7 @@ class CronScheduler {
                 garden,
                 zone._id.toString(),
                 zone.position,
-                durationToMilliseconds(effectiveWatering.duration),
+                durationToMillis(effectiveWatering.duration),
                 "scheduled"
             );
             console.log('MQTT water command result:', result);
@@ -332,7 +336,7 @@ class CronScheduler {
             const [, hours, minutes] = timeMatch;
 
             // Parse duration
-            const durationMs = durationToMilliseconds(garden.light_schedule.duration);
+            const durationMs = durationToMillis(garden.light_schedule.duration);
             const durationHours = Math.floor(durationMs / (1000 * 60 * 60));
             const durationMinutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
 
@@ -532,8 +536,8 @@ class CronScheduler {
         }
 
         // Parse delay duration
-        const delayMs = durationToMilliseconds(delayDuration);
-        const lightDurationMs = durationToMilliseconds(garden.light_schedule.duration);
+        const delayMs = durationToMillis(delayDuration);
+        const lightDurationMs = durationToMillis(garden.light_schedule.duration);
 
         if (delayMs > lightDurationMs) {
             throw new Error('Unable to execute delay that lasts longer than light_schedule');

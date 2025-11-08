@@ -8,7 +8,8 @@ const Joi = require('joi');
 // GET /:gardenID/zones - Get all zones (with optional query params)
 router.get('/:gardenID/zones',
     validateQuery(Joi.object(schemas.queryParams).keys({
-        end_dated: schemas.queryParams.endDated
+        end_dated: schemas.queryParams.endDated,
+        exclude_weater_data: schemas.queryParams.excludeWeatherData
     })),
     ZonesController.getAllZones
 );
@@ -23,7 +24,10 @@ router.post('/:gardenID/zones',
 router.get('/:gardenID/zones/:zoneID',
     validateParams(Joi.object({
         gardenID: schemas.pathParams.gardenID,
-        zoneID: schemas.pathParams.zoneID
+        zoneID: schemas.pathParams.zoneID,
+    })),
+    validateQuery(Joi.object({
+        exclude_weater_data: schemas.queryParams.excludeWeatherData
     })),
     ZonesController.getZone
 );
@@ -33,6 +37,9 @@ router.patch('/:gardenID/zones/:zoneID',
     validateParams(Joi.object({
         gardenID: schemas.pathParams.gardenID,
         zoneID: schemas.pathParams.zoneID
+    })),
+    validateQuery(Joi.object({
+        exclude_weater_data: schemas.queryParams.excludeWeatherData
     })),
     validateBody(schemas.updateZoneRequest),
     ZonesController.updateZone

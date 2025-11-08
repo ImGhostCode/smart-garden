@@ -23,6 +23,34 @@ const scaleControlSchema = new mongoose.Schema({
     }
 }, { _id: false });
 
+// Scale calculates and returns the multiplier based on the input value
+scaleControlSchema.methods.scale = function (actualValue) {
+    let diff = actualValue - this.baseline_value;
+    let r = this.range;
+    if (diff > r) {
+        diff = r;
+    }
+    if (diff < -r) {
+        diff = -r;
+    }
+    return (diff / r) * (this.factor) + 1;
+}
+
+// InvertedScaleDownOnly calculates and returns the multiplier based on the input value, but is inverted
+// so higher input values cause scaling < 1. Also it will only scale in this direction
+scaleControlSchema.methods.invertedScaleDownOnly = function (actualValue) {
+    // If the baseline is not reached, just scale 1
+    if (actualValue < this.baseline_value) {
+        return 1;
+    }
+    let diff = actualValue - this.baseline_value;
+    let r = this.range;
+    if (diff > r) {
+        diff = r;
+    }
+    return 1 - (diff / r) * (1 - this.factor);
+}
+
 const weatherControlSchema = new mongoose.Schema({
     rain_control: scaleControlSchema,
     temperature_control: scaleControlSchema
@@ -99,6 +127,24 @@ const waterScheduleSchema = new mongoose.Schema({
 }, {
     timestamps: true
 });
+
+
+// HasRainControl is used to determine if rain conditions should be checked before watering the Zone
+waterScheduleSchema.methods.hasRainControl = function () {
+    return this.weather_control != null &&
+        this.weather_control.rain_control != null;
+}
+
+// HasTemperatureControl is used to determine if configuration is available for environmental scaling
+waterScheduleSchema.methods.hasTemperatureControl = function () {
+    return this.weather_control != null &&
+        this.weather_control.temperature_control != null;
+}
+
+waterScheduleSchema.methods.hasWeatherControl = function () {
+    return this.hasRainControl() || this.hasTemperatureControl();
+}
+
 // Add compound indexes for better query performance
 // waterScheduleSchema.index({ end_date: 1 });
 module.exports = mongoose.model('WaterSchedule', waterScheduleSchema);

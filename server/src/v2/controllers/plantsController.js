@@ -1,5 +1,5 @@
 const db = require('../models/database');
-const { validateXid, addTimestamps, createLink, generateXid, getNextWaterTime } = require('../utils/helpers');
+const { createLink, getMockNextWaterTime } = require('../utils/helpers');
 
 const PlantsController = {
     getAllPlants: async (req, res) => {
@@ -23,7 +23,7 @@ const PlantsController = {
                     createLink('garden', `/gardens/${gardenID}`),
                     createLink('zone', `/gardens/${gardenID}/zones/${plant.zone_id}`)
                 ],
-                next_water_time: getNextWaterTime()
+                next_water_time: getMockNextWaterTime()
             }))
         });
     },
@@ -60,7 +60,7 @@ const PlantsController = {
                 createLink('garden', `/gardens/${gardenID}`),
                 createLink('zone', `/gardens/${gardenID}/zones/${plant.zone_id}`)
             ],
-            next_water_time: getNextWaterTime()
+            next_water_time: getMockNextWaterTime()
         });
     },
 
@@ -80,7 +80,7 @@ const PlantsController = {
                 createLink('garden', `/gardens/${gardenID}`),
                 createLink('zone', `/gardens/${gardenID}/zones/${plant.zone_id}`)
             ],
-            next_water_time: getNextWaterTime()
+            next_water_time: getMockNextWaterTime()
         });
     },
 
@@ -117,7 +117,7 @@ const PlantsController = {
                 createLink('garden', `/gardens/${gardenID}`),
                 createLink('zone', `/gardens/${gardenID}/zones/${plant.zone_id}`)
             ],
-            next_water_time: getNextWaterTime()
+            next_water_time: getMockNextWaterTime()
         });
     },
 
