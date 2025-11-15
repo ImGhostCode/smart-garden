@@ -29,7 +29,7 @@ const getWeatherData = async (waterSchedule) => {
 
     } catch (error) {
         console.error('Error getting weather data:', error);
-        throw new Error('Unable to get weather data from weather clients');
+        // throw new Error('Unable to get weather data from weather clients');
     }
 
     return weatherData;
@@ -45,7 +45,7 @@ const getRainData = async (waterSchedule) => {
         return totalRain;
     } catch (error) {
         console.error('Error getting rain data:', error);
-        throw new Error('Unable to get rain data from weather client');
+        // throw new Error('Unable to get rain data from weather client');
     }
 };
 
@@ -59,7 +59,7 @@ const getTemperatureData = async (waterSchedule) => {
         return totalRain;
     } catch (error) {
         console.error('Error getting temperature data:', error);
-        throw new Error('Unable to get average high temperature from weather client');
+        // throw new Error('Unable to get average high temperature from weather client');
     }
 };
 

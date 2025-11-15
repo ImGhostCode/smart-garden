@@ -1,5 +1,5 @@
-const express = require('express');
-const router = express.Router();
+const { Router } = require('express');
+const router = Router();
 const Joi = require('joi');
 const { schemas, validateBody, validateParams, validateQuery } = require('../utils/validation');
 const WeatherClientsController = require('../controllers/weatherClientsController');
@@ -21,21 +21,21 @@ router.post('/',
 // GET /:weatherClientID - Get specific weather client
 router.get('/:weatherClientID',
     validateParams(Joi.object({
-        weatherClientID: schemas.pathParams.weatherClientID
+        weatherClientID: schemas.pathParams.id
     })),
     WeatherClientsController.getWeatherClient);
 
 // GET /:weatherClientID/test - Get sample data from specific weather client
 router.get('/:weatherClientID/test',
     validateParams(Joi.object({
-        weatherClientID: schemas.pathParams.weatherClientID
+        weatherClientID: schemas.pathParams.id
     })),
     WeatherClientsController.testWeatherClient);
 
 // PATCH /:weatherClientID - Update weather client
 router.patch('/:weatherClientID',
     validateParams(Joi.object({
-        weatherClientID: schemas.pathParams.weatherClientID
+        weatherClientID: schemas.pathParams.id
     })),
     validateBody(schemas.updateWeatherClientRequest),
     WeatherClientsController.updateWeatherClient);
@@ -43,7 +43,7 @@ router.patch('/:weatherClientID',
 // DELETE /:weatherClientID - End-date weather client
 router.delete('/:weatherClientID',
     validateParams(Joi.object({
-        weatherClientID: schemas.pathParams.weatherClientID
+        weatherClientID: schemas.pathParams.id
     })),
     WeatherClientsController.endDateWeatherClient);
 

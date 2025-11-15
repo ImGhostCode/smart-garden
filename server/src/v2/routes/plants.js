@@ -1,5 +1,5 @@
-const express = require('express');
-const router = express.Router();
+const { Router } = require('express');
+const router = Router();
 const PlantsController = require('../controllers/plantsController');
 const Joi = require('joi');
 const { schemas, validateBody, validateParams, validateQuery } = require('../utils/validation');
@@ -9,7 +9,7 @@ const { schemas, validateBody, validateParams, validateQuery } = require('../uti
 // GET /gardens/:gardenID/plants
 router.get('/:gardenID/plants',
     validateParams(Joi.object({
-        gardenID: schemas.pathParams.gardenID
+        gardenID: schemas.pathParams.id
     })),
     validateQuery(Joi.object(schemas.queryParams).keys({
         end_dated: schemas.queryParams.endDated,
@@ -19,7 +19,7 @@ router.get('/:gardenID/plants',
 // POST /gardens/:gardenID/plants
 router.post('/:gardenID/plants',
     validateParams(Joi.object({
-        gardenID: schemas.pathParams.gardenID
+        gardenID: schemas.pathParams.id
     })),
     validateBody(schemas.createPlantRequest),
     PlantsController.addPlant);
@@ -27,16 +27,16 @@ router.post('/:gardenID/plants',
 // GET /gardens/:gardenID/plants/:plantID
 router.get('/:gardenID/plants/:plantID',
     validateParams(Joi.object({
-        gardenID: schemas.pathParams.gardenID,
-        plantID: schemas.pathParams.plantID
+        gardenID: schemas.pathParams.id,
+        plantID: schemas.pathParams.id
     })),
     PlantsController.getPlant);
 
 // PATCH /gardens/:gardenID/plants/:plantID
 router.patch('/:gardenID/plants/:plantID',
     validateParams(Joi.object({
-        gardenID: schemas.pathParams.gardenID,
-        plantID: schemas.pathParams.plantID
+        gardenID: schemas.pathParams.id,
+        plantID: schemas.pathParams.id
     })),
     validateBody(schemas.updatePlantRequest),
     PlantsController.updatePlant);
@@ -44,8 +44,8 @@ router.patch('/:gardenID/plants/:plantID',
 // DELETE /gardens/:gardenID/plants/:plantID
 router.delete('/:gardenID/plants/:plantID',
     validateParams(Joi.object({
-        gardenID: schemas.pathParams.gardenID,
-        plantID: schemas.pathParams.plantID
+        gardenID: schemas.pathParams.id,
+        plantID: schemas.pathParams.id
     })),
     PlantsController.endDatePlant);
 

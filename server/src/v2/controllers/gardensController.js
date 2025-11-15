@@ -83,7 +83,7 @@ const GardensController = {
                 })
             );
 
-            res.json(gardensWithCounts);
+            return res.json(gardensWithCounts);
 
         } catch (error) {
             console.error('Error getting gardens:', error);
@@ -147,7 +147,7 @@ const GardensController = {
             formattedGarden.num_plants = 0;
             formattedGarden.num_zones = 0;
 
-            res.status(201).json(formattedGarden);
+            return res.status(201).json(formattedGarden);
 
         } catch (error) {
             console.error('Error creating garden:', error);

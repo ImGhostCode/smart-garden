@@ -1,7 +1,7 @@
-const mongoose = require('mongoose');
+const { Schema, model } = require('mongoose');
 const { durationPattern, timePattern } = require('../utils/validation');
 
-const scaleControlSchema = new mongoose.Schema({
+const scaleControlSchema = new Schema({
     baseline_value: {
         type: Number,
         required: true
@@ -17,13 +17,24 @@ const scaleControlSchema = new mongoose.Schema({
         required: true
     },
     client_id: {
-        type: mongoose.Schema.Types.ObjectId,
+        type: Schema.Types.ObjectId,
         ref: 'WeatherClientConfig',
         required: true
     }
 }, { _id: false });
 
 // Scale calculates and returns the multiplier based on the input value
+/* 
+    Example:
+    baseline_value = 20 (degrees)
+    factor = 1.5
+    range = 10
+    actualValue = 25
+
+    diff = 25 - 20 = 5
+    r = 10
+    (5 / 10) * 1.5 + 1 = 1.75
+*/
 scaleControlSchema.methods.scale = function (actualValue) {
     let diff = actualValue - this.baseline_value;
     let r = this.range;
@@ -38,6 +49,16 @@ scaleControlSchema.methods.scale = function (actualValue) {
 
 // InvertedScaleDownOnly calculates and returns the multiplier based on the input value, but is inverted
 // so higher input values cause scaling < 1. Also it will only scale in this direction
+/*
+    Example:
+    baseline_value = 50 (mm of rain)
+    factor = 0.5
+    range = 20
+    actualValue = 60
+    diff = 60 - 50 = 10
+    r = 20
+    1 - (10 / 20) * (1 - 0.5) = 0.75
+*/
 scaleControlSchema.methods.invertedScaleDownOnly = function (actualValue) {
     // If the baseline is not reached, just scale 1
     if (actualValue < this.baseline_value) {
@@ -51,13 +72,13 @@ scaleControlSchema.methods.invertedScaleDownOnly = function (actualValue) {
     return 1 - (diff / r) * (1 - this.factor);
 }
 
-const weatherControlSchema = new mongoose.Schema({
+const weatherControlSchema = new Schema({
     rain_control: scaleControlSchema,
     temperature_control: scaleControlSchema
 }, { _id: false });
 
 
-const activePeriodSchema = new mongoose.Schema({
+const activePeriodSchema = new Schema({
     start_month: {
         type: String,
         required: true,
@@ -72,7 +93,7 @@ const activePeriodSchema = new mongoose.Schema({
 
 
 // WaterSchedule Schema
-const waterScheduleSchema = new mongoose.Schema({
+const waterScheduleSchema = new Schema({
     name: {
         type: String,
         required: true,
@@ -88,7 +109,6 @@ const waterScheduleSchema = new mongoose.Schema({
         validate: {
             validator: function (v) {
                 // Duration format validation (e.g., "15000ms", "15m", "1h")
-                // return /^\d+(ms|s|m|h)$/.test(v);
                 return durationPattern.test(v);
             },
             message: 'Duration must be in valid format (e.g., "15000ms", "15m")'
@@ -100,7 +120,6 @@ const waterScheduleSchema = new mongoose.Schema({
         validate: {
             validator: function (v) {
                 // Duration format validation for intervals (e.g., "72h", "24h")
-                // return /^\d+(ms|s|m|h)$/.test(v);
                 return durationPattern.test(v);
             },
             message: 'Interval must be in valid duration format (e.g., "72h")'
@@ -112,7 +131,6 @@ const waterScheduleSchema = new mongoose.Schema({
         validate: {
             validator: function (v) {
                 // Time format validation
-                // return /^\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/.test(v);
                 return timePattern.test(v);
             },
             message: 'Start time must be in format "HH:MM:SS±HH:MM"'
@@ -147,4 +165,4 @@ waterScheduleSchema.methods.hasWeatherControl = function () {
 
 // Add compound indexes for better query performance
 // waterScheduleSchema.index({ end_date: 1 });
-module.exports = mongoose.model('WaterSchedule', waterScheduleSchema);
+module.exports = model('WaterSchedule', waterScheduleSchema);

@@ -11,7 +11,7 @@ const {
 const {
     getNextWaterDetails,
     isActiveTime,
-    calculateEffectiveWateringDuration
+    calEffectiveWateringDuration
 } = require('../utils/waterScheduleHelpers');
 
 const WaterSchedulesController = {
@@ -96,7 +96,6 @@ const WaterSchedulesController = {
 
             try {
                 // Auto-schedule the new water schedule with cron
-                const cronScheduler = require('../services/cronScheduler');
                 await cronScheduler.scheduleWaterAction(result);
                 nextWaterDetails = await getNextWaterDetails(
                     result,
@@ -200,7 +199,6 @@ const WaterSchedulesController = {
 
             try {
                 // Reschedule the updated water schedule with cron
-                const cronScheduler = require('../services/cronScheduler');
                 await cronScheduler.resetWaterSchedule(updatedSchedule);
                 nextWaterDetails = await getNextWaterDetails(
                     updatedSchedule,
@@ -237,7 +235,6 @@ const WaterSchedulesController = {
             const deletedWaterSchedule = await db.waterSchedules.deleteById(waterScheduleID);
 
             // Remove from cron scheduler
-            const cronScheduler = require('../services/cronScheduler');
             const unscheduled = cronScheduler.removeJobById(waterScheduleID);
 
             res.json({
@@ -271,7 +268,7 @@ const WaterSchedulesController = {
             const executedAt = new Date().toISOString();
 
             // Calculate effective watering parameters
-            const effectiveWatering = calculateEffectiveWateringDuration(
+            const effectiveWatering = calEffectiveWateringDuration(
                 schedule, weatherData, skip_count
             );
 
@@ -387,7 +384,7 @@ const WaterSchedulesController = {
             const includeZones = include_zones === 'true';
 
             // Calculate what would happen if executed now
-            const effectiveWatering = calculateEffectiveWateringDuration(
+            const effectiveWatering = calEffectiveWateringDuration(
                 schedule, weatherData, skipCount
             );
 

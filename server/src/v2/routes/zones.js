@@ -1,5 +1,5 @@
-const express = require('express');
-const router = express.Router();
+const { Router } = require('express');
+const router = Router();
 const ZonesController = require('../controllers/zonesController');
 const { schemas, validateBody, validateParams, validateQuery } = require('../utils/validation');
 const Joi = require('joi');
@@ -23,8 +23,8 @@ router.post('/:gardenID/zones',
 // GET /:gardenID/zones/:zoneID - Get specific zone
 router.get('/:gardenID/zones/:zoneID',
     validateParams(Joi.object({
-        gardenID: schemas.pathParams.gardenID,
-        zoneID: schemas.pathParams.zoneID,
+        gardenID: schemas.pathParams.id,
+        zoneID: schemas.pathParams.id,
     })),
     validateQuery(Joi.object({
         exclude_weater_data: schemas.queryParams.excludeWeatherData
@@ -35,8 +35,8 @@ router.get('/:gardenID/zones/:zoneID',
 // PATCH /:gardenID/zones/:zoneID - Update zone
 router.patch('/:gardenID/zones/:zoneID',
     validateParams(Joi.object({
-        gardenID: schemas.pathParams.gardenID,
-        zoneID: schemas.pathParams.zoneID
+        gardenID: schemas.pathParams.id,
+        zoneID: schemas.pathParams.id
     })),
     validateQuery(Joi.object({
         exclude_weater_data: schemas.queryParams.excludeWeatherData
@@ -48,8 +48,8 @@ router.patch('/:gardenID/zones/:zoneID',
 // DELETE /zones/:gardenID - End-date zone
 router.delete('/:gardenID/zones/:zoneID',
     validateParams(Joi.object({
-        gardenID: schemas.pathParams.gardenID,
-        zoneID: schemas.pathParams.zoneID
+        gardenID: schemas.pathParams.id,
+        zoneID: schemas.pathParams.id
     })),
     ZonesController.endDateZone
 );
@@ -57,8 +57,8 @@ router.delete('/:gardenID/zones/:zoneID',
 // POST /:gardenID/zones/:zoneId/action - Execute zone action
 router.post('/:gardenID/zones/:zoneID/action',
     validateParams(Joi.object({
-        gardenID: schemas.pathParams.gardenID,
-        zoneID: schemas.pathParams.zoneID
+        gardenID: schemas.pathParams.id,
+        zoneID: schemas.pathParams.id
     })),
     validateBody(schemas.zoneAction),
     ZonesController.zoneAction
@@ -67,8 +67,8 @@ router.post('/:gardenID/zones/:zoneID/action',
 // GET /:gardenID/zones/:zoneID/history - Get zone history (with optional query params)
 router.get('/:gardenID/zones/:zoneID/history',
     validateParams(Joi.object({
-        gardenID: schemas.pathParams.gardenID,
-        zoneID: schemas.pathParams.zoneID
+        gardenID: schemas.pathParams.id,
+        zoneID: schemas.pathParams.id
     })),
     validateQuery(Joi.object({
         range: schemas.queryParams.range.optional(),

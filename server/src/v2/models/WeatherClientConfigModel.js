@@ -1,6 +1,6 @@
-const mongoose = require('mongoose');
+const { Schema, model } = require('mongoose');
 
-const weatherClientConfigSchema = new mongoose.Schema({
+const weatherClientConfigSchema = new Schema({
     type: {
         type: String,
         required: true,
@@ -18,4 +18,4 @@ const weatherClientConfigSchema = new mongoose.Schema({
     timestamps: true
 });
 
-module.exports = mongoose.model('WeatherClientConfig', weatherClientConfigSchema);
+module.exports = model('WeatherClientConfig', weatherClientConfigSchema);

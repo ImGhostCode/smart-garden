@@ -1,8 +1,8 @@
-const mongoose = require('mongoose');
+const { Schema, model } = require('mongoose');
 const { xidPattern } = require('../utils/validation');
 
 // Plant Schema
-const plantSchema = new mongoose.Schema({
+const plantSchema = new Schema({
     name: {
         type: String,
         required: true,
@@ -61,4 +61,4 @@ const plantSchema = new mongoose.Schema({
 // Add compound indexes for better query performance
 // plantSchema.index({ garden_id: 1, end_date: 1 });
 // plantSchema.index({ zone_id: 1, end_date: 1 });
-module.exports = mongoose.model('Plant', plantSchema);
+module.exports = model('Plant', plantSchema);

@@ -354,26 +354,6 @@ class InfluxDBService {
         }
     }
 
-    // // Helper function to parse duration string to milliseconds
-    // parseDurationToMs(duration) {
-    //     if (typeof duration === 'number') return duration;
-    //     if (typeof duration !== 'string') return 0;
-
-    //     const match = duration.match(/^(\d+(?:\.\d+)?)(ms|s|m|h)?$/);
-    //     if (!match) return 0;
-
-    //     const value = parseFloat(match[1]);
-    //     const unit = match[2] || 'ms';
-
-    //     switch (unit) {
-    //         case 'ms': return value;
-    //         case 's': return value * 1000;
-    //         case 'm': return value * 60 * 1000;
-    //         case 'h': return value * 60 * 60 * 1000;
-    //         default: return value;
-    //     }
-    // }
-
     // Flush and close connections
     async close() {
         try {

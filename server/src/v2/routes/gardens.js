@@ -1,6 +1,6 @@
-const express = require('express');
+const { Router } = require('express');
 const Joi = require('joi');
-const router = express.Router();
+const router = Router();
 const GardensController = require('../controllers/gardensController');
 const { schemas, validateBody, validateParams, validateQuery } = require('../utils/validation');
 
@@ -23,7 +23,7 @@ router.post('/',
 // GET /gardens/:gardenID - Get specific garden
 router.get('/:gardenID',
     validateParams(Joi.object({
-        gardenID: schemas.pathParams.gardenID
+        gardenID: schemas.pathParams.id
     })),
     GardensController.getGarden
 );
@@ -31,7 +31,7 @@ router.get('/:gardenID',
 // PATCH /gardens/:gardenID - Update garden
 router.patch('/:gardenID',
     validateParams(Joi.object({
-        gardenID: schemas.pathParams.gardenID
+        gardenID: schemas.pathParams.id
     })),
     validateBody(schemas.updateGardenRequest),
     GardensController.updateGarden
@@ -40,7 +40,7 @@ router.patch('/:gardenID',
 // DELETE /gardens/:gardenID - End-date garden
 router.delete('/:gardenID',
     validateParams(Joi.object({
-        gardenID: schemas.pathParams.gardenID
+        gardenID: schemas.pathParams.id
     })),
     GardensController.endDateGarden
 );
@@ -48,7 +48,7 @@ router.delete('/:gardenID',
 // POST /gardens/:gardenID/action - Execute garden action
 router.post('/:gardenID/action',
     validateParams(Joi.object({
-        gardenID: schemas.pathParams.gardenID
+        gardenID: schemas.pathParams.id
     })),
     validateBody(schemas.gardenAction),
     GardensController.gardenAction
@@ -58,7 +58,7 @@ router.post('/:gardenID/action',
 // POST /gardens/:gardenID/light-schedule - Schedule light actions
 router.post('/:gardenID/light-schedule',
     validateParams(Joi.object({
-        gardenID: schemas.pathParams.gardenID
+        gardenID: schemas.pathParams.id
     })),
     GardensController.scheduleLightActions
 );
@@ -66,7 +66,7 @@ router.post('/:gardenID/light-schedule',
 // PUT /gardens/:gardenID/light-schedule/reset - Reset light schedule
 router.put('/:gardenID/light-schedule/reset',
     validateParams(Joi.object({
-        gardenID: schemas.pathParams.gardenID
+        gardenID: schemas.pathParams.id
     })),
     GardensController.resetLightSchedule
 );

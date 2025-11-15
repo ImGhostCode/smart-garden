@@ -1,5 +1,5 @@
-const express = require('express');
-const router = express.Router();
+const { Router } = require('express');
+const router = Router();
 const WaterSchedulesController = require('../controllers/waterSchedulesController');
 const Joi = require('joi');
 const { schemas, validateBody, validateParams, validateQuery } = require('../utils/validation');
@@ -25,7 +25,7 @@ router.post('/',
 // GET /water_schedules/:waterScheduleID - Get specific water schedule
 router.get('/:waterScheduleID',
     validateParams(Joi.object({
-        waterScheduleID: schemas.pathParams.waterScheduleID
+        waterScheduleID: schemas.pathParams.id
     })),
     validateQuery(Joi.object(schemas.queryParams).keys({
         exclude_weather_data: schemas.queryParams.excludeWeatherData,
@@ -36,7 +36,7 @@ router.get('/:waterScheduleID',
 // GET /water_schedules/:waterScheduleID/preview - Preview execution of water schedule
 router.get('/:waterScheduleID/preview',
     validateParams(Joi.object({
-        waterScheduleID: schemas.pathParams.waterScheduleID
+        waterScheduleID: schemas.pathParams.id
     })),
     validateQuery(Joi.object({
         skip_count: Joi.number().integer().min(0).optional().description('Number of watering cycles to skip')
@@ -46,7 +46,7 @@ router.get('/:waterScheduleID/preview',
 // POST /water_schedules/:waterScheduleID/execute - Execute water schedule with advanced logic
 router.post('/:waterScheduleID/execute',
     validateParams(Joi.object({
-        waterScheduleID: schemas.pathParams.waterScheduleID
+        waterScheduleID: schemas.pathParams.id
     })),
     validateBody(Joi.object({
         skip_count: Joi.number().integer().min(0).optional().description('Number of watering cycles to skip'),
@@ -58,7 +58,7 @@ router.post('/:waterScheduleID/execute',
 // PATCH /water_schedules/:waterScheduleID - Update water schedule
 router.patch('/:waterScheduleID',
     validateParams(Joi.object({
-        waterScheduleID: schemas.pathParams.waterScheduleID
+        waterScheduleID: schemas.pathParams.id
     })),
     validateQuery(Joi.object(schemas.queryParams).keys({
         exclude_weather_data: schemas.queryParams.excludeWeatherData
@@ -69,7 +69,7 @@ router.patch('/:waterScheduleID',
 // DELETE /water_schedules/:waterScheduleID - End-date water schedule
 router.delete('/:waterScheduleID',
     validateParams(Joi.object({
-        waterScheduleID: schemas.pathParams.waterScheduleID
+        waterScheduleID: schemas.pathParams.id
     })),
     validateQuery(Joi.object(schemas.queryParams).keys({
         exclude_weather_data: schemas.queryParams.excludeWeatherData

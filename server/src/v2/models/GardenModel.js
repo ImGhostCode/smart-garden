@@ -1,6 +1,6 @@
-const mongoose = require('mongoose');
+const { Schema, model } = require('mongoose');
 
-const gardenSchema = new mongoose.Schema({
+const gardenSchema = new Schema({
     name: {
         type: String,
         required: true,
@@ -58,28 +58,7 @@ const gardenSchema = new mongoose.Schema({
                 message: 'Adhoc on time must be in format "HH:MM:SS±HH:MM"'
             }
         }
-        // temperature_humidity_sensor: {
-        //     type: Boolean,
-        //     default: false
-        // }
     },
-    // health: {
-    //     status: {
-    //         type: String,
-    //         enum: ['UP', 'DOWN', 'N/A'],
-    //         default: 'N/A'
-    //     },
-    //     details: {
-    //         type: String,
-    //         default: 'No recent health data from garden controller'
-    //     },
-    //     last_contact: Date
-    // },
-    // temperature_humidity_data: {
-    //     temperature_celsius: Number,
-    //     humidity_percentage: Number,
-    //     timestamp: Date
-    // },
     end_date: {
         type: Date,
         default: null
@@ -96,4 +75,4 @@ const gardenSchema = new mongoose.Schema({
 });
 // Add compound indexes for better query performance
 // gardenSchema.index({ _id: 1, topic_prefix: 1, end_date: 1 });
-module.exports = mongoose.model('Garden', gardenSchema);
+module.exports = model('Garden', gardenSchema);

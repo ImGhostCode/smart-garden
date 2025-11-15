@@ -4,7 +4,7 @@ const { millisToDuration, durationToSeconds } = require("./helpers");
  * Format a Garden document for GardenResponse
  */
 function formatGardenResponse(garden, req) {
-    const baseUrl = `${req.protocol}://${req.get('Host')}`;
+    // const baseUrl = `${req.protocol}://${req.get('Host')}`;
 
     return {
         id: garden.id,
@@ -16,15 +16,8 @@ function formatGardenResponse(garden, req) {
         end_date: garden.end_date,
         controller_config: garden.controller_config || {},
         next_light_action: garden.next_light_action || {},
-        health: {
-            status: 'DOWN',
-            details: 'no last contact time available',
-            last_contact: null
-        },
-        temperature_humidity_data: garden.temperature_humidity_data || {
-            temperature_celsius: null,
-            humidity_percentage: null
-        },
+        health: null,
+        temperature_humidity_data: null,
         num_plants: 0, // Will be populated by controller
         num_zones: 0,  // Will be populated by controller
         plants: {
@@ -66,91 +59,6 @@ function formatPlantResponse(plant, req) {
 }
 
 /**
- * Format a Zone document for ZoneResponse
- */
-function formatZoneResponse(zone, req, includeWeatherData = true) {
-    const response = {
-        id: zone.id,
-        name: zone.name,
-        details: zone.details || {},
-        position: zone.position,
-        skip_count: zone.skip_count || 0,
-        water_schedule_ids: zone.water_schedule_ids || [],
-        created_at: zone.created_at,
-        end_date: zone.end_date,
-        next_water: {
-            time: null, // Will be calculated by controller
-            duration: null,
-            water_schedule_id: null,
-            message: 'No scheduled watering'
-        },
-        links: [
-            { rel: 'self', href: `/gardens/${zone.garden_id}/zones/${zone.id}` },
-            { rel: 'garden', href: `/gardens/${zone.garden_id}` },
-            { rel: 'action', href: `/gardens/${zone.garden_id}/zones/${zone.id}/action` },
-            { rel: 'history', href: `/gardens/${zone.garden_id}/zones/${zone.id}/history` }
-        ]
-    };
-
-    // Add weather data if requested
-    if (includeWeatherData) {
-        response.weather_data = {
-            rain: {
-                mm: 0,
-                scale_factor: 1.0
-            },
-            average_temperature: {
-                celsius: 20,
-                scale_factor: 1.0
-            }
-        };
-    }
-
-    return response;
-}
-
-/**
- * Format a WaterSchedule document for WaterScheduleResponse
- */
-function formatWaterScheduleResponse(waterSchedule, req, includeWeatherData = true) {
-    const response = {
-        id: waterSchedule._id,
-        name: waterSchedule.name,
-        description: waterSchedule.description,
-        duration: waterSchedule.duration,
-        interval: waterSchedule.interval,
-        start_time: waterSchedule.start_time,
-        weather_control: waterSchedule.weather_control || {},
-        end_date: waterSchedule.end_date,
-        next_water: {
-            time: null, // Will be calculated by controller
-            duration: waterSchedule.duration,
-            water_schedule_id: waterSchedule._id,
-            message: 'Next scheduled watering'
-        },
-        links: [
-            { rel: 'self', href: `/water_schedules/${waterSchedule._id}` }
-        ]
-    };
-
-    // Add weather data if requested
-    if (includeWeatherData) {
-        response.weather_data = {
-            rain: {
-                mm: 0,
-                scale_factor: 1.0
-            },
-            average_temperature: {
-                celsius: 20,
-                scale_factor: 1.0
-            }
-        };
-    }
-
-    return response;
-}
-
-/**
  * Format WaterHistory documents for WaterHistoryResponse
  */
 function formatWaterHistoryResponse(historyItems, totalCount) {
@@ -172,8 +80,5 @@ function formatWaterHistoryResponse(historyItems, totalCount) {
 
 module.exports = {
     formatGardenResponse,
-    formatPlantResponse,
-    formatZoneResponse,
-    formatWaterScheduleResponse,
     formatWaterHistoryResponse,
 };

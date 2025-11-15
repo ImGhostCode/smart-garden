@@ -5,9 +5,9 @@ const {
     durationToMillis
 } = require('../utils/helpers');
 const {
-    calculateEffectiveWateringDuration,
+    calEffectiveWateringDuration,
     isActiveTime,
-    calculateNextWaterTime,
+    calculateNextWaterTime
 } = require('../utils/waterScheduleHelpers');
 const mqttService = require('./mqttService');
 const { getWeatherData } = require('../utils/weatherHelper');
@@ -22,7 +22,7 @@ class CronScheduler {
      * Schedule a water schedule using cron
      */
     async scheduleWaterAction(waterSchedule) {
-        this.logger.log(`Creating cron job for water schedule: ${waterSchedule.name} (${waterSchedule._id})`);
+        // this.logger.log(`Creating cron job for water schedule: ${waterSchedule.name} (${waterSchedule._id})`);
 
         // Remove existing job if it exists
         this.removeJobById(waterSchedule._id.toString());
@@ -97,6 +97,12 @@ class CronScheduler {
         jobLogger.log(`Executing scheduled water action for schedule: ${waterScheduleId}`);
 
         try {
+            if (zone.skip_count !== undefined && zone.skip_count > 0) {
+                jobLogger.log(`Skipping watering for zone ${zone.name} due to skip_count (${zone.skip_count})`);
+                await db.zones.updateById(zone._id.toString(), { skip_count: zone.skip_count - 1 });
+                return;
+            }
+
             // Get fresh water schedule data
             const waterSchedule = await db.waterSchedules.getById(waterScheduleId);
             if (!waterSchedule) {
@@ -111,14 +117,12 @@ class CronScheduler {
             }
 
             // Check if it's actually time to water (for all intervals)
-            const jobInfo = this.scheduledJobs.get(waterScheduleId);
-            if (jobInfo) {
-                const shouldExecuteNow = await this.shouldExecuteNow(waterSchedule);
-                if (!shouldExecuteNow) {
-                    jobLogger.log(`Skipping water schedule ${waterScheduleId} - not time yet based on interval`);
-                    return; // Not time yet
-                }
+            const shouldExecuteNow = this.shouldExecuteNow(waterSchedule);
+            if (!shouldExecuteNow) {
+                jobLogger.log(`Skipping water schedule ${waterScheduleId} - not time yet based on interval`);
+                return; // Not time yet
             }
+
 
             // Get weather data and calculate effective watering
             let weatherData;
@@ -129,7 +133,7 @@ class CronScheduler {
             // TODO: Get skip count from zone data or database
             const skipCount = zone.skip_count || 0;
 
-            const effectiveWatering = calculateEffectiveWateringDuration(
+            const effectiveWatering = calEffectiveWateringDuration(
                 waterSchedule,
                 weatherData,
                 skipCount
@@ -180,14 +184,14 @@ class CronScheduler {
 
         // Get zones associated with this water schedule
         try {
-            const result = await mqttService.sendWaterCommand(
+            await mqttService.sendWaterCommand(
                 garden,
                 zone._id.toString(),
                 zone.position,
                 durationToMillis(effectiveWatering.duration),
                 "scheduled"
             );
-            console.log('MQTT water command result:', result);
+            // console.log('MQTT water command result:', result);
         } catch (error) {
             console.error('Failed to send zone action to ESP32:', error);
             res.status(500).json({
@@ -200,12 +204,10 @@ class CronScheduler {
     /**
      * Check if it's time to execute for complex intervals
      */
-    async shouldExecuteNow(waterSchedule) {
+    shouldExecuteNow(waterSchedule) {
         try {
-            const nextWaterTime = new Date(calculateNextWaterTime(waterSchedule));
-            console.log('Next water time: %s', nextWaterTime.toISOString());
+            const nextWaterTime = calculateNextWaterTime(waterSchedule);
             const now = new Date();
-
             // Allow execution within 1 minute window
             const timeDiff = Math.abs(nextWaterTime.getTime() - now.getTime());
             return timeDiff < 60000; // Within 1 minute
@@ -272,8 +274,6 @@ class CronScheduler {
 
             // Convert to Date object if needed
             const nextTime = nextRun instanceof Date ? nextRun : new Date(nextRun);
-
-            console.log(`Next execution for ${waterScheduleId}: ${nextTime.toISOString()}`);
             return nextTime;
 
         } catch (error) {
@@ -402,7 +402,6 @@ class CronScheduler {
                 const nextOnJob = await this.getNextLightJob(garden, 'ON', false);
                 if (nextOnJob) {
                     const nextOnTime = await nextOnJob.task.getNextRun();
-
                     // If nextOnTime is before AdhocOnTime, delay it by 24 hours
                     if (nextOnTime && nextOnTime.getTime() < adhocTime.getTime()) {
                         this.logger.log('Next ON time is before the adhoc time, so delaying it by 24 hours');
@@ -441,12 +440,11 @@ class CronScheduler {
      */
     async scheduleAdhocLightAction(garden) {
         if (!garden.light_schedule.adhoc_on_time) {
-            throw new Error('Unable to schedule adhoc light schedule without LightSchedule.AdhocOnTime');
+            throw new Error('Unable to schedule adhoc light schedule without light_schedule.adhoc_on_time');
         }
 
         // Remove existing adhoc Jobs for this Garden
         await this.removeAdhocJobsByGardenId(garden._id.toString());
-        this.logger.log('Removed existing adhoc light Jobs');
 
         const adhocTime = new Date(garden.light_schedule.adhoc_on_time);
         const adhocJobId = `light_${garden._id}_ADHOC`;
@@ -463,7 +461,6 @@ class CronScheduler {
                 this.logger.error('Error executing scheduled adhoc LightAction:', error);
             }
 
-            this.logger.log('Removing AdhocOnTime');
             try {
                 const currentGarden = await db.gardens.getById(garden._id.toString());
                 await db.gardens.updateById(garden._id.toString(), {
@@ -472,6 +469,7 @@ class CronScheduler {
                         adhoc_on_time: null
                     }
                 });
+                this.logger.log('Removed AdhocOnTime');
             } catch (error) {
                 this.logger.error('Error saving Garden after removing AdhocOnTime:', error);
             }
@@ -529,8 +527,6 @@ class CronScheduler {
      * Schedule light delay - handles a LightAction that requests delaying turning a light on
      */
     async scheduleLightDelay(garden, state, delayDuration) {
-        this.logger.log(`Scheduling light delay for garden: ${garden.name}, duration: ${delayDuration}`);
-
         if (state !== 'OFF') {
             throw new Error('Unable to use delay when state is not OFF');
         }
@@ -609,7 +605,7 @@ class CronScheduler {
         this.logger.log(`Updating ${state} job start time by ${delayMs}ms for garden: ${garden.name}`);
 
         // Get current next run time
-        const currentNextRun = await jobInfo.task.getNextRun();
+        const currentNextRun = jobInfo.task.getNextRun();
         if (!currentNextRun) {
             throw new Error(`Unable to get next execution time for ${state} job`);
         }
@@ -680,7 +676,7 @@ class CronScheduler {
                 jobInfo.action === state &&
                 (jobInfo.type === 'light' || jobInfo.type === 'light_adhoc' || jobInfo.type === 'light_delayed')) {
 
-                const nextRun = await jobInfo.task.getNextRun();
+                const nextRun = jobInfo.task.getNextRun();
                 if (nextRun) {
                     matchingJobs.push({
                         jobId,

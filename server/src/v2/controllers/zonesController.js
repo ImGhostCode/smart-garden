@@ -14,7 +14,6 @@ const ZonesController = {
             filters.end_date = null;
         }
 
-
         const zones = await db.zones.getAll(filters);
 
         res.json({

@@ -14,7 +14,6 @@ const getCronScheduler = () => {
 };
 
 /**
- * Helper function similar to Go's GetNextWaterDetails
  * Gets next water time and applies weather scaling
  */
 const getNextWaterDetails = async (waterSchedule, excludeWeatherData = false) => {
@@ -56,7 +55,6 @@ const getNextWaterDetails = async (waterSchedule, excludeWeatherData = false) =>
 };
 
 /**
- * Helper function similar to Go's GetNextActiveWaterSchedule
  * Finds the water schedule with the earliest next execution time
  */
 const getNextActiveWaterSchedule = async (waterScheduleIds) => {
@@ -112,7 +110,7 @@ const scaleWateringDuration = async (waterSchedule) => {
             scaleFactor *= tempScaleFactor;
         } catch (error) {
             console.error('Error getting TemperatureControl scale factor:', error);
-            throw new Error('Failed to get TemperatureControl scale factor');
+            // throw new Error('Failed to get TemperatureControl scale factor');
         }
     }
 
@@ -130,7 +128,7 @@ const scaleWateringDuration = async (waterSchedule) => {
         }
         catch (error) {
             console.error('Error getting RainControl scale factor:', error);
-            throw new Error('Failed to get RainControl scale factor');
+            // throw new Error('Failed to get RainControl scale factor');
         }
     }
 
@@ -139,7 +137,7 @@ const scaleWateringDuration = async (waterSchedule) => {
 }
 
 // Internal helper method for calculating effective watering duration
-const calculateEffectiveWateringDuration = (schedule, weatherData, skipCount = 0) => {
+const calEffectiveWateringDuration = (schedule, weatherData, skipCount = 0) => {
     const originalDuration = durationToMillis(schedule.duration);
 
     // Check skip count first
@@ -231,35 +229,6 @@ const getMockNextWaterTime = () => {
 // Calculate the next water time based on schedule properties
 const calculateNextWaterTime = (schedule) => {
     const now = new Date();
-    const currentMonth = now.getMonth() + 1; // JavaScript months are 0-indexed
-
-    // Check if we're in active period (if defined)
-    if (schedule.active_period) {
-        const startMonth = validMonthToNumber(schedule.active_period.start_month);
-        const endMonth = validMonthToNumber(schedule.active_period.end_month);
-
-        // Handle year-spanning periods (e.g., Nov to Mar)
-        const isInActivePeriod = startMonth <= endMonth
-            ? (currentMonth >= startMonth && currentMonth <= endMonth)
-            : (currentMonth >= startMonth || currentMonth <= endMonth);
-
-        if (!isInActivePeriod) {
-            // Find next start of active period
-            let nextActiveMonth;
-            if (startMonth <= endMonth) {
-                // Same year period
-                nextActiveMonth = currentMonth <= endMonth ? startMonth + 1 : startMonth;
-            } else {
-                // Year-spanning period
-                nextActiveMonth = currentMonth <= endMonth ? startMonth : startMonth;
-            }
-
-            const nextYear = nextActiveMonth <= currentMonth ? now.getFullYear() + 1 : now.getFullYear();
-            const nextActiveDate = new Date(nextYear, nextActiveMonth - 1, 1);
-            return nextActiveDate.toISOString();
-        }
-    }
-
     // Parse start_time (format: "HH:MM:SS±HH:MM")
     const timeMatch = schedule.start_time.match(/^(\d{2}):(\d{2}):(\d{2})([+-])(\d{2}):(\d{2})$/);
     if (!timeMatch) {
@@ -358,27 +327,7 @@ const calculateNextWaterTime = (schedule) => {
         nextExecution = testExecution;
     }
 
-    // Double-check we're still in active period for the calculated date
-    if (schedule.active_period) {
-        const nextMonth = nextExecution.getMonth() + 1;
-        const startMonth = validMonthToNumber(schedule.active_period.start_month);
-        const endMonth = validMonthToNumber(schedule.active_period.end_month);
-
-        const isInActivePeriod = startMonth <= endMonth
-            ? (nextMonth >= startMonth && nextMonth <= endMonth)
-            : (nextMonth >= startMonth || nextMonth <= endMonth);
-
-        if (!isInActivePeriod) {
-            // Find next start of active period
-            const nextActiveYear = nextMonth > endMonth && startMonth <= endMonth ? nextExecution.getFullYear() + 1 : nextExecution.getFullYear();
-            const nextActivePeriodStart = new Date(nextActiveYear, startMonth - 1, 1);
-            nextActivePeriodStart.setUTCHours(startHour, startMinute, startSecond, 0);
-            const nextActivePeriodUTC = new Date(nextActivePeriodStart.getTime() - timezoneOffset);
-            return nextActivePeriodUTC.toISOString();
-        }
-    }
-
-    return nextExecution.toISOString();
+    return nextExecution;
 };
 
 // Check if current time is within active period
@@ -407,8 +356,8 @@ module.exports = {
     getNextWaterDetails,
     getNextActiveWaterSchedule,
     scaleWateringDuration,
-    calculateEffectiveWateringDuration,
+    calEffectiveWateringDuration,
     getMockNextWaterTime,
-    calculateNextWaterTime,
-    isActiveTime
+    isActiveTime,
+    calculateNextWaterTime
 };

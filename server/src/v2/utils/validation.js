@@ -19,65 +19,6 @@ const validMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 
 // Base schemas
 const schemas = {
-    // Basic types
-    xid: Joi.string().pattern(xidPattern).required().messages({
-        'string.pattern.base': 'ID must be a 24 character XID format'
-    }),
-
-    optionalXid: Joi.string().pattern(xidPattern).optional().messages({
-        'string.pattern.base': 'ID must be a 24 character XID format'
-    }),
-
-    duration: Joi.string().pattern(durationPattern).required().messages({
-        'string.pattern.base': 'Duration must be in valid format (e.g., "14h", "30m", "15s")'
-    }),
-
-    time: Joi.string().pattern(timePattern).required().messages({
-        'string.pattern.base': 'Time must be in HH:MM:SS format with optional timezone offset'
-    }),
-
-    // Light state enum
-    lightState: Joi.string().valid('ON', 'OFF', '').optional(),
-
-    // Scale Control schema
-    scaleControl: Joi.object({
-        baseline_value: Joi.number().required(),
-        factor: Joi.number().min(0).max(1).required(),
-        range: Joi.number().required()
-    }).optional(),
-
-    // Weather Control schema
-    weatherControl: Joi.object({
-        rain_control: Joi.object({
-            baseline_value: Joi.number().required(),
-            factor: Joi.number().min(0).max(1).required(),
-            range: Joi.number().required()
-        }).optional(),
-        temperature_control: Joi.object({
-            baseline_value: Joi.number().required(),
-            factor: Joi.number().min(0).max(1).required(),
-            range: Joi.number().required()
-        }).optional()
-    }).optional(),
-
-    // Garden Actions
-    lightAction: Joi.object({
-        state: Joi.string().valid('ON', 'OFF', '').optional(),
-        for_duration: Joi.string().pattern(durationPattern).when('state', {
-            is: 'OFF',
-            then: Joi.optional(),
-            otherwise: Joi.forbidden().messages({
-                'any.unknown': 'for_duration can only be used with state=OFF'
-            })
-        }).messages({
-            'string.pattern.base': 'Duration must be in valid format (e.g., "14h", "30m", "15s")'
-        })
-    }).optional(),
-
-    stopAction: Joi.object({
-        all: Joi.boolean().optional()
-    }).optional(),
-
     gardenAction: Joi.object({
         light: Joi.object({
             state: Joi.string().valid('ON', 'OFF', '').optional(),
@@ -126,13 +67,6 @@ const schemas = {
         'object.missing': 'Either light, stop or update action must be provided'
     }),
 
-    // Zone Actions
-    waterAction: Joi.object({
-        duration: Joi.string().pattern(durationPattern).required().messages({
-            'string.pattern.base': 'Duration must be in valid format (e.g., "14h", "30m", "15s")'
-        })
-    }).required(),
-
     zoneAction: Joi.object({
         water: Joi.object({
             duration: Joi.string().pattern(durationPattern).required().messages({
@@ -141,34 +75,7 @@ const schemas = {
         }).required()
     }).required(),
 
-    // Plant Details
-    plantDetails: Joi.object({
-        description: Joi.string().optional(),
-        notes: Joi.string().optional(),
-        time_to_harvest: Joi.string().optional(),
-        count: Joi.number().integer().min(0).optional()
-    }).optional(),
-
-    // Zone Details
-    zoneDetails: Joi.object({
-        description: Joi.string().optional(),
-        notes: Joi.string().optional()
-    }).optional(),
-
-    // Light Schedule
-    lightSchedule: Joi.object({
-        duration: Joi.string().pattern(durationPattern).required().messages({
-            'string.pattern.base': 'Duration must be in valid format (e.g., "14h", "30m", "15s")'
-        }),
-        start_time: Joi.string().pattern(timePattern).required().messages({
-            'string.pattern.base': 'Time must be in HH:MM:SS format with optional timezone offset'
-        }),
-        adhoc_on_time: Joi.string().isoDate().optional(),
-        temperature_humidity_sensor: Joi.boolean().optional()
-    }).optional(),
-
     // Request Body Schemas
-
     // Garden requests
     createGardenRequest: Joi.object({
         name: Joi.string().min(1).max(255).required().messages({
@@ -194,7 +101,6 @@ const schemas = {
             }),
             // adhoc_on_time: Joi.string().isoDate().optional(),
         }).optional(),
-        // temperature_humidity_sensor: Joi.boolean().optional(),
         controller_config: Joi.object({
             valvePins: Joi.array().items(Joi.number().integer().min(0).required()).required(),
             pumpPins: Joi.array().items(Joi.number().integer().min(0).required()).required(),
@@ -488,21 +394,9 @@ const schemas = {
     // Path parameter schemas
     pathParams: {
         // MongoDB ObjectId pattern (24 hex characters)
-        gardenID: Joi.string().pattern(xidPattern).required().messages({
-            'string.pattern.base': 'Garden ID must be a 24 character XID format'
+        id: Joi.string().pattern(xidPattern).required().messages({
+            'string.pattern.base': 'ID must be a 24 character XID format'
         }),
-        plantID: Joi.string().pattern(xidPattern).required().messages({
-            'string.pattern.base': 'Plant ID must be a 24 character XID format'
-        }),
-        zoneID: Joi.string().pattern(xidPattern).required().messages({
-            'string.pattern.base': 'Zone ID must be a 24 character XID format'
-        }),
-        waterScheduleID: Joi.string().pattern(xidPattern).required().messages({
-            'string.pattern.base': 'Water Schedule ID must be a 24 character XID format'
-        }),
-        weatherClientID: Joi.string().pattern(xidPattern).required().messages({
-            'string.pattern.base': 'Weather Client ID must be a 24 character XID format'
-        })
     }
 };
 

@@ -244,7 +244,7 @@ class MQTTService extends EventEmitter {
     // Handle temperature data. Example message: "temperature value=23.5"
     async handleTemperatureData(garden, message, timestamp) {
         try {
-            console.log('Temperature message:', message);
+            // console.log('Temperature message:', message);
             const temperatureString = message.split('value=')[1];
             const temperature = parseFloat(temperatureString);
             if (!temperatureString || isNaN(temperature)) {
@@ -262,7 +262,7 @@ class MQTTService extends EventEmitter {
     // Handle humidity data. Example message: "humidity value=55.2"
     async handleHumidityData(garden, message, timestamp) {
         try {
-            console.log('Humidity message:', message);
+            // console.log('Humidity message:', message);
             const humidityString = message.split('value=')[1];
             const humidity = parseFloat(humidityString);
             if (!humidityString || isNaN(humidity)) {
@@ -280,7 +280,7 @@ class MQTTService extends EventEmitter {
     // Handle water event data. Example message: water,status=complete,zone=1,id=1,zone_id=1 millis=60000
     async handleWaterData(garden, message, timestamp) {
         try {
-            console.log('Water message:', message);
+            // console.log('Water message:', message);
             const status = message.split('status=')[1].split(',')[0];
             const zoneString = message.split('zone=')[1].split(',')[0];
             const zone = parseInt(zoneString);
@@ -304,7 +304,7 @@ class MQTTService extends EventEmitter {
     // Handle light data. Example message: {"state":"ON"} or {"state":"OFF"} or {"state":""}
     async handleLightData(garden, message, timestamp) {
         try {
-            console.log('Light message:', message);
+            // console.log('Light message:', message);
             const data = JSON.parse(message);
             const state = data.state; // "ON", "OFF", or ""
 
@@ -318,7 +318,7 @@ class MQTTService extends EventEmitter {
     // Handle logs from ESP32. Example message: "logs message=\"garden-controller setup complete\"""
     async handleLogsData(garden, message, timestamp) {
         try {
-            console.log('Logs message:', message);
+            // console.log('Logs message:', message);
             const logMessage = message.split('message=')[1].replace(/^"|"$/g, '');
             if (!logMessage) {
                 console.warn('Invalid logs data:', message);
