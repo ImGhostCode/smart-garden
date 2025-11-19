@@ -1,3 +1,5 @@
+const { ApiError } = require("./apiResponse");
+
 class NetatmoClient {
     constructor(options, storageCallback = () => { }) {
         this.baseURI = process.env.NETATMO_BASE_URL || 'https://app.netatmo.net';
@@ -5,7 +7,7 @@ class NetatmoClient {
         this.storageCallback = storageCallback;
 
         if (!this.config.authentication || !this.config.client_id || !this.config.client_secret) {
-            throw new Error('Authentication and client credentials are required');
+            throw new ApiError(400, 'Authentication and client credentials are required');
         }
 
         if (!this.config.station_id || !this.config.rain_module_id || !this.config.outdoor_module_id) {
@@ -20,7 +22,7 @@ class NetatmoClient {
         const station = data.body.devices.find(
             s => s.station_name === this.config.station_name
         );
-        if (!station) throw new Error(`No station found with name "${this.config.station_name}"`);
+        if (!station) throw new ApiError(404, `No station found with name "${this.config.station_name}"`);
         this.config.station_id = station._id;
 
         for (const module of station.modules) {
@@ -33,10 +35,10 @@ class NetatmoClient {
         }
 
         if (!this.config.rain_module_id) {
-            throw new Error(`No rain module found with name "${this.config.rain_module_name}"`);
+            throw new ApiError(404, `No rain module found with name "${this.config.rain_module_name}"`);
         }
         if (!this.config.outdoor_module_id) {
-            throw new Error(`No outdoor module found with name "${this.config.outdoor_module_name}"`);
+            throw new ApiError(404, `No outdoor module found with name "${this.config.outdoor_module_name}"`);
         }
 
         console.log(`Set device IDs: station_id=${this.config.station_id}, rain_module_id=${this.config.rain_module_id}, outdoor_module_id=${this.config.outdoor_module_id}`);
@@ -61,7 +63,7 @@ class NetatmoClient {
         });
 
         if (!response.ok) {
-            throw new Error(`Failed to fetch station data: ${response.status}`);
+            throw new ApiError(response.status, `Failed to fetch station data: ${response.status}`);
         }
 
         return await response.json();
@@ -93,7 +95,7 @@ class NetatmoClient {
 
         const data = await response.json();
         if (!response.ok) {
-            throw new Error(`Token refresh failed: ${response.status} - ${JSON.stringify(data)}`);
+            throw new ApiError(response.status, `Token refresh failed: ${response.status} - ${JSON.stringify(data)}`);
         }
 
         const newExpirationDate = new Date(Date.now() + data.expires_in * 1000).toISOString();
@@ -154,7 +156,7 @@ class NetatmoClient {
 
         const data = await response.json();
         if (!response.ok) {
-            throw new Error(`Unexpected status ${response.status} with body: ${JSON.stringify(data)}`);
+            throw new ApiError(response.status, `Unexpected status ${response.status} with body: ${JSON.stringify(data)}`);
         }
         console.log(`Fetched measures: ${JSON.stringify(data)}`);
         const result = {};

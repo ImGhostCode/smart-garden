@@ -1,14 +1,14 @@
 const cronScheduler = require('../services/cronScheduler');
 const db = require('../models/database');
 const { createLink } = require('../utils/helpers');
+const { ApiSuccess, ApiError } = require('../utils/apiResponse');
 
 const SchedulerController = {
     // Get scheduler status and active jobs
-    getSchedulerStatus: async (req, res) => {
+    getSchedulerStatus: async (req, res, next) => {
         try {
             const activeJobs = cronScheduler.getActiveJobs();
-
-            res.json({
+            const response = new ApiSuccess(200, "Scheduler status retrieved successfully", {
                 scheduler: {
                     status: 'active',
                     active_jobs_count: activeJobs.length,
@@ -21,17 +21,14 @@ const SchedulerController = {
                     createLink('stop_all', '/scheduler/stop')
                 ]
             });
+            return res.json(response);
         } catch (error) {
-            console.error('Error getting scheduler status:', error);
-            res.status(500).json({
-                error: 'Failed to get scheduler status',
-                details: error.message
-            });
+            next(error);
         }
     },
 
     // Initialize/reinitialize the scheduler
-    initializeScheduler: async (req, res) => {
+    initializeScheduler: async (req, res, next) => {
         try {
             // Stop existing jobs first
             cronScheduler.stopAllJobs();
@@ -41,149 +38,118 @@ const SchedulerController = {
 
             if (success) {
                 const activeJobs = cronScheduler.getActiveJobs();
-                res.json({
-                    message: 'Scheduler initialized successfully',
+                return res.json(new ApiSuccess(200, 'Scheduler initialized successfully', {
                     active_jobs_count: activeJobs.length,
                     active_jobs: activeJobs,
                     initialized_at: new Date().toISOString()
-                });
+                }));
             } else {
-                res.status(500).json({
-                    error: 'Failed to initialize scheduler'
-                });
+                throw new ApiError(500, 'Failed to initialize scheduler');
             }
         } catch (error) {
-            console.error('Error initializing scheduler:', error);
-            res.status(500).json({
-                error: 'Failed to initialize scheduler',
-                details: error.message
-            });
+            next(error);
         }
     },
 
     // Stop all scheduled jobs
-    stopAllJobs: async (req, res) => {
+    stopAllJobs: async (req, res, next) => {
         try {
             cronScheduler.stopAllJobs();
-            res.json({
-                message: 'All scheduled jobs stopped',
+            return res.json(new ApiSuccess(200, 'All scheduled jobs stopped', {
                 stopped_at: new Date().toISOString()
-            });
+            }));
         } catch (error) {
-            console.error('Error stopping jobs:', error);
-            res.status(500).json({
-                error: 'Failed to stop jobs',
-                details: error.message
-            });
+            next(error);
         }
     },
 
     // Schedule a specific water schedule
-    scheduleWaterSchedule: async (req, res) => {
+    scheduleWaterSchedule: async (req, res, next) => {
         const { waterScheduleId } = req.params;
 
         try {
             const waterSchedule = await db.waterSchedules.getById(waterScheduleId);
             if (!waterSchedule) {
-                return res.status(404).json({ error: 'Water schedule not found' });
+                throw new ApiError(404, 'Water schedule not found');
             }
 
             const success = await cronScheduler.scheduleWaterAction(waterSchedule);
 
             if (success) {
                 const nextExecution = cronScheduler.getNextExecutionTime(waterScheduleId);
-                res.json({
-                    message: 'Water schedule scheduled successfully',
+
+                return res.json(new ApiSuccess(200, 'Water schedule scheduled successfully', {
                     water_schedule_id: waterScheduleId,
                     water_schedule_name: waterSchedule.name,
                     next_execution: nextExecution,
                     scheduled_at: new Date().toISOString()
-                });
+                }));
             } else {
-                res.status(500).json({
-                    error: 'Failed to schedule water schedule'
-                });
+                throw new ApiError(500, 'Failed to schedule water schedule');
             }
         } catch (error) {
-            console.error('Error scheduling water schedule:', error);
-            res.status(500).json({
-                error: 'Failed to schedule water schedule',
-                details: error.message
-            });
+            next(error);
         }
     },
 
     // Unschedule a specific water schedule
-    unscheduleWaterSchedule: async (req, res) => {
+    unscheduleWaterSchedule: async (req, res, next) => {
         const { waterScheduleId } = req.params;
 
         try {
             const success = cronScheduler.removeJobById(waterScheduleId);
 
             if (success) {
-                res.json({
-                    message: 'Water schedule unscheduled successfully',
+                return res.json(new ApiSuccess(200, 'Water schedule unscheduled successfully', {
                     water_schedule_id: waterScheduleId,
                     unscheduled_at: new Date().toISOString()
-                });
+                }));
             } else {
-                res.status(404).json({
-                    error: 'No scheduled job found for this water schedule'
-                });
+                throw new ApiError(500, 'Failed to unschedule water schedule');
             }
         } catch (error) {
-            console.error('Error unscheduling water schedule:', error);
-            res.status(500).json({
-                error: 'Failed to unschedule water schedule',
-                details: error.message
-            });
+            next(error);
         }
     },
 
     // Reschedule a water schedule (useful after updates)
-    rescheduleWaterSchedule: async (req, res) => {
+    rescheduleWaterSchedule: async (req, res, next) => {
         const { waterScheduleId } = req.params;
 
         try {
             const waterSchedule = await db.waterSchedules.getById(waterScheduleId);
             if (!waterSchedule) {
-                return res.status(404).json({ error: 'Water schedule not found' });
+                throw new ApiError(404, 'Water schedule not found');
             }
 
             const success = await cronScheduler.resetWaterSchedule(waterSchedule);
 
             if (success) {
                 const nextExecution = cronScheduler.getNextExecutionTime(waterScheduleId);
-                res.json({
-                    message: 'Water schedule rescheduled successfully',
+
+                return res.json(new ApiSuccess(200, 'Water schedule rescheduled successfully', {
                     water_schedule_id: waterScheduleId,
                     water_schedule_name: waterSchedule.name,
                     next_execution: nextExecution,
                     rescheduled_at: new Date().toISOString()
-                });
+                }));
             } else {
-                res.status(500).json({
-                    error: 'Failed to reschedule water schedule'
-                });
+                throw new ApiError(500, 'Failed to reschedule water schedule');
             }
         } catch (error) {
-            console.error('Error rescheduling water schedule:', error);
-            res.status(500).json({
-                error: 'Failed to reschedule water schedule',
-                details: error.message
-            });
+            next(error);
         }
     },
 
     // Manual trigger of a water schedule (bypasses cron)
-    triggerWaterSchedule: async (req, res) => {
+    triggerWaterSchedule: async (req, res, next) => {
         const { waterScheduleId } = req.params;
         const { force } = req.body;
 
         try {
             const waterSchedule = await db.waterSchedules.getById(waterScheduleId);
             if (!waterSchedule) {
-                return res.status(404).json({ error: 'Water schedule not found' });
+                throw new ApiError(404, 'Water schedule not found');
             }
 
             const gardens = await db.gardens.getAll({ end_date: null });
@@ -211,19 +177,14 @@ const SchedulerController = {
                 }
             }
 
-            res.json({
-                message: 'Water schedule triggered successfully',
+            return res.json(new ApiSuccess(200, 'Water schedule triggered successfully', {
                 water_schedule_id: waterScheduleId,
                 water_schedule_name: waterSchedule.name,
                 triggered_at: new Date().toISOString(),
                 force_execution: force || false
-            });
+            }));
         } catch (error) {
-            console.error('Error triggering water schedule:', error);
-            res.status(500).json({
-                error: 'Failed to trigger water schedule',
-                details: error.message
-            });
+            next(error);
         }
     }
 };

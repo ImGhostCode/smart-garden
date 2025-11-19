@@ -11,6 +11,7 @@ const {
 } = require('../utils/waterScheduleHelpers');
 const mqttService = require('./mqttService');
 const { getWeatherData } = require('../utils/weatherHelper');
+const { ApiError } = require('../utils/apiResponse');
 
 class CronScheduler {
     constructor() {
@@ -194,10 +195,7 @@ class CronScheduler {
             // console.log('MQTT water command result:', result);
         } catch (error) {
             console.error('Failed to send zone action to ESP32:', error);
-            res.status(500).json({
-                error: 'Failed to communicate with garden controller',
-                details: error.message
-            });
+            throw new ApiError(500, 'Failed to communicate with garden controller');
         }
     }
 
@@ -275,7 +273,6 @@ class CronScheduler {
             // Convert to Date object if needed
             const nextTime = nextRun instanceof Date ? nextRun : new Date(nextRun);
             return nextTime;
-
         } catch (error) {
             this.logger.error('Error getting next execution time:', error);
             return null;
@@ -320,106 +317,101 @@ class CronScheduler {
      */
     async scheduleLightActions(garden) {
         if (!garden.light_schedule || !garden.light_schedule.start_time || !garden.light_schedule.duration) {
-            throw new Error('Garden must have complete light_schedule configuration');
+            throw new ApiError(400, 'Garden must have complete light_schedule configuration');
         }
 
         // Remove existing light jobs for this garden
         this.removeLightJobsByGardenId(garden._id.toString());
 
-        try {
-            // Parse start_time to get hour and minute
-            const timeMatch = garden.light_schedule.start_time.match(/^(\d{2}):(\d{2}):(\d{2})/);
-            if (!timeMatch) {
-                throw new Error(`Invalid start_time format: ${garden.light_schedule.start_time}`);
-            }
-
-            const [, hours, minutes] = timeMatch;
-
-            // Parse duration
-            const durationMs = durationToMillis(garden.light_schedule.duration);
-            const durationHours = Math.floor(durationMs / (1000 * 60 * 60));
-            const durationMinutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
-
-            // Calculate OFF time
-            const offHours = (parseInt(hours) + durationHours) % 24;
-            const offMinutes = (parseInt(minutes) + durationMinutes) % 60;
-
-            // Create cron patterns for daily schedule
-            const onCronPattern = `${minutes} ${hours} * * *`;  // Daily at start_time
-            const offCronPattern = `${offMinutes} ${offHours} * * *`;  // Daily at start_time + duration
-
-            // Schedule ON action with conflict handling
-            const onTask = cron.schedule(onCronPattern, async () => {
-                await this.executeLightAction(garden, 'ON');
-            }, {
-                scheduled: true,
-                timezone: "Asia/Ho_Chi_Minh"
-            });
-
-            // Schedule OFF action
-            const offTask = cron.schedule(offCronPattern, async () => {
-                await this.executeLightAction(garden, 'OFF');
-            }, {
-                scheduled: true,
-                timezone: "Asia/Ho_Chi_Minh"
-            });
-
-            // Store the jobs
-            this.scheduledJobs.set(`light_${garden._id}_ON`, {
-                task: onTask,
-                garden: garden,
-                action: 'ON',
-                cronPattern: onCronPattern,
-                type: 'light',
-                createdAt: new Date()
-            });
-
-            this.scheduledJobs.set(`light_${garden._id}_OFF`, {
-                task: offTask,
-                garden: garden,
-                action: 'OFF',
-                cronPattern: offCronPattern,
-                type: 'light',
-                createdAt: new Date()
-            });
-
-            // Handle adhoc_on_time if present
-            if (garden.light_schedule.adhoc_on_time) {
-                // If AdhocOnTime is in the past, reset it and return
-                const adhocTime = new Date(garden.light_schedule.adhoc_on_time);
-                if (adhocTime <= new Date()) {
-                    this.logger.log('Adhoc ON time is in the past and is being removed');
-                    await db.gardens.updateById(garden._id.toString(), {
-                        light_schedule: {
-                            ...garden.light_schedule,
-                            adhoc_on_time: null
-                        }
-                    });
-                    return true;
-                }
-
-                // Get next ON job (non-adhoc) to check for conflicts
-                const nextOnJob = await this.getNextLightJob(garden, 'ON', false);
-                if (nextOnJob) {
-                    const nextOnTime = await nextOnJob.task.getNextRun();
-                    // If nextOnTime is before AdhocOnTime, delay it by 24 hours
-                    if (nextOnTime && nextOnTime.getTime() < adhocTime.getTime()) {
-                        this.logger.log('Next ON time is before the adhoc time, so delaying it by 24 hours');
-                        await this.updateJobStartTime(nextOnJob, garden, 'ON', 24 * 60 * 60 * 1000);
-                    }
-                }
-
-                // Schedule the adhoc action
-                await this.scheduleAdhocLightAction(garden);
-                this.logger.log('Successfully scheduled adhoc ON time');
-            }
-
-            this.logger.log(`Successfully scheduled light actions for garden ${garden.name}`);
-            return true;
-        } catch (error) {
-            this.logger.error(`Error scheduling light actions for garden ${garden._id}:`, error);
-            throw error;
+        // Parse start_time to get hour and minute
+        const timeMatch = garden.light_schedule.start_time.match(/^(\d{2}):(\d{2}):(\d{2})/);
+        if (!timeMatch) {
+            throw new ApiError(400, `Invalid start_time format: ${garden.light_schedule.start_time}`);
         }
+
+        const [, hours, minutes] = timeMatch;
+
+        // Parse duration
+        const durationMs = durationToMillis(garden.light_schedule.duration);
+        const durationHours = Math.floor(durationMs / (1000 * 60 * 60));
+        const durationMinutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
+
+        // Calculate OFF time
+        const offHours = (parseInt(hours) + durationHours) % 24;
+        const offMinutes = (parseInt(minutes) + durationMinutes) % 60;
+
+        // Create cron patterns for daily schedule
+        const onCronPattern = `${minutes} ${hours} * * *`;  // Daily at start_time
+        const offCronPattern = `${offMinutes} ${offHours} * * *`;  // Daily at start_time + duration
+
+        // Schedule ON action with conflict handling
+        const onTask = cron.schedule(onCronPattern, async () => {
+            await this.executeLightAction(garden, 'ON');
+        }, {
+            scheduled: true,
+            timezone: "Asia/Ho_Chi_Minh"
+        });
+
+        // Schedule OFF action
+        const offTask = cron.schedule(offCronPattern, async () => {
+            await this.executeLightAction(garden, 'OFF');
+        }, {
+            scheduled: true,
+            timezone: "Asia/Ho_Chi_Minh"
+        });
+
+        // Store the jobs
+        this.scheduledJobs.set(`light_${garden._id}_ON`, {
+            task: onTask,
+            garden: garden,
+            action: 'ON',
+            cronPattern: onCronPattern,
+            type: 'light',
+            createdAt: new Date()
+        });
+
+        this.scheduledJobs.set(`light_${garden._id}_OFF`, {
+            task: offTask,
+            garden: garden,
+            action: 'OFF',
+            cronPattern: offCronPattern,
+            type: 'light',
+            createdAt: new Date()
+        });
+
+        // Handle adhoc_on_time if present
+        if (garden.light_schedule.adhoc_on_time) {
+            // If AdhocOnTime is in the past, reset it and return
+            const adhocTime = new Date(garden.light_schedule.adhoc_on_time);
+            if (adhocTime <= new Date()) {
+                this.logger.log('Adhoc ON time is in the past and is being removed');
+                await db.gardens.updateById(garden._id.toString(), {
+                    light_schedule: {
+                        ...garden.light_schedule,
+                        adhoc_on_time: null
+                    }
+                });
+                return true;
+            }
+
+            // Get next ON job (non-adhoc) to check for conflicts
+            const nextOnJob = this.getNextLightJob(garden, 'ON', false);
+            if (nextOnJob) {
+                const nextOnTime = await nextOnJob.task.getNextRun();
+                // If nextOnTime is before AdhocOnTime, delay it by 24 hours
+                if (nextOnTime && nextOnTime.getTime() < adhocTime.getTime()) {
+                    this.logger.log('Next ON time is before the adhoc time, so delaying it by 24 hours');
+                    await this.updateJobStartTime(nextOnJob, garden, 'ON', 24 * 60 * 60 * 1000);
+                }
+            }
+
+            // Schedule the adhoc action
+            await this.scheduleAdhocLightAction(garden);
+            this.logger.log('Successfully scheduled adhoc ON time');
+        }
+
+        this.logger.log(`Successfully scheduled light actions for garden ${garden.name}`);
+        return true;
     }
 
     /**
@@ -431,7 +423,7 @@ class CronScheduler {
             this.logger.log(`Successfully sent light ${state} command to garden ${garden.name}`);
         } catch (error) {
             this.logger.error(`Error executing light ${state} action for garden ${garden._id}:`, error);
-            throw error;
+            throw new ApiError(500, 'Failed to communicate with garden controller');
         }
     }
 
@@ -440,7 +432,7 @@ class CronScheduler {
      */
     async scheduleAdhocLightAction(garden) {
         if (!garden.light_schedule.adhoc_on_time) {
-            throw new Error('Unable to schedule adhoc light schedule without light_schedule.adhoc_on_time');
+            throw new ApiError(404, 'Unable to schedule adhoc light schedule without AdhocOnTime');
         }
 
         // Remove existing adhoc Jobs for this Garden
@@ -528,7 +520,7 @@ class CronScheduler {
      */
     async scheduleLightDelay(garden, state, delayDuration) {
         if (state !== 'OFF') {
-            throw new Error('Unable to use delay when state is not OFF');
+            throw new ApiError(400, 'Unable to use delay when state is not OFF');
         }
 
         // Parse delay duration
@@ -536,17 +528,17 @@ class CronScheduler {
         const lightDurationMs = durationToMillis(garden.light_schedule.duration);
 
         if (delayMs > lightDurationMs) {
-            throw new Error('Unable to execute delay that lasts longer than light_schedule');
+            throw new ApiError(400, 'Unable to execute delay that lasts longer than the light duration');
         }
 
-        const nextOnTime = await this.getNextLightTime(garden, 'ON');
+        const nextOnTime = this.getNextLightTime(garden, 'ON');
         if (!nextOnTime) {
-            throw new Error('Unable to get next light-on time');
+            throw new ApiError(500, 'Unable to get next light-on time');
         }
 
-        const nextOffTime = await this.getNextLightTime(garden, 'OFF');
+        const nextOffTime = this.getNextLightTime(garden, 'OFF');
         if (!nextOffTime) {
-            throw new Error('Unable to get next light-off time');
+            throw new ApiError(500, 'Unable to get next light-off time');
         }
 
         let adhocTime;
@@ -558,7 +550,7 @@ class CronScheduler {
 
             // Don't allow a delayDuration that will occur after nextOffTime
             if (nextOffTime.getTime() < (now.getTime() + delayMs)) {
-                throw new Error('Unable to schedule delay that extends past the light turning back on');
+                throw new ApiError(400, 'Unable to schedule delay that extends past the light turning back on');
             }
 
             adhocTime = new Date(now.getTime() + delayMs);
@@ -568,9 +560,9 @@ class CronScheduler {
             this.logger.log(`Next OFF time is after next ON time; delaying next ON time`);
 
             // Get the next ON job and delay it by 24 hours (following Go logic exactly)
-            const nextOnJob = await this.getNextLightJob(garden, 'ON', false);
+            const nextOnJob = this.getNextLightJob(garden, 'ON', false);
             if (!nextOnJob) {
-                throw new Error('Unable to find next ON Job for Garden');
+                throw new ApiError(500, 'Unable to find next ON Job for Garden');
             }
 
             this.logger.log(`Found next ON Job and rescheduling in 24 hours`);
@@ -668,7 +660,7 @@ class CronScheduler {
      * getNextLightJob returns the next Job tagged with the gardenID and state. 
      * If allowAdhoc is true, return whichever job is soonest, otherwise return the first non-adhoc Job
      */
-    async getNextLightJob(garden, state, allowAdhoc = false) {
+    getNextLightJob(garden, state, allowAdhoc = false) {
         // Find all jobs for this garden and state
         const matchingJobs = [];
         for (const [jobId, jobInfo] of this.scheduledJobs) {
@@ -689,7 +681,8 @@ class CronScheduler {
         }
 
         if (matchingJobs.length === 0) {
-            throw new Error(`Unable to find next ${state} Job for Garden ${garden._id}`);
+            console.log(`Unable to find next ${state} Job for Garden ${garden._id}`);
+            return null;
         }
 
         // Sort by next run time (earliest first)
@@ -706,23 +699,19 @@ class CronScheduler {
             }
         }
 
-        throw new Error(`Unable to find next non-adhoc ${state} Job for Garden ${garden._id}`);
+        console.log(`Unable to find next non-adhoc ${state} Job for Garden ${garden._id}`);
+        return null;
     }
 
     /**
      * GetNextLightTime returns the next time that the Garden's light will be turned to the specified state
      */
-    async getNextLightTime(garden, state) {
-        try {
-            const nextJob = await this.getNextLightJob(garden, state, true);
-            if (!nextJob) {
-                return null;
-            }
-            return nextJob.task.getNextRun();
-        } catch (error) {
-            this.logger.error('Error getting next light time:', error);
+    getNextLightTime(garden, state) {
+        const nextJob = this.getNextLightJob(garden, state, true);
+        if (!nextJob) {
             return null;
         }
+        return nextJob.task.getNextRun();
     }
 
     /**

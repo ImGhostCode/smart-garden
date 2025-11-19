@@ -1,7 +1,7 @@
 const db = require('../models/database');
 const cronScheduler = require('../services/cronScheduler');
 const { getWeatherData } = require('../utils/weatherHelper');
-
+const { ApiSuccess, ApiError } = require('../utils/apiResponse');
 const {
     createLink,
     millisToDuration,
@@ -15,7 +15,7 @@ const {
 } = require('../utils/waterScheduleHelpers');
 
 const WaterSchedulesController = {
-    getAllWaterSchedules: async (req, res) => {
+    getAllWaterSchedules: async (req, res, next) => {
         const { end_dated, exclude_weather_data } = req.query;
 
         const filters = {};
@@ -47,17 +47,13 @@ const WaterSchedulesController = {
                 };
             }));
 
-            res.json({
-                items
-            });
+            return res.json(new ApiSuccess(200, 'Water schedules retrieved successfully', items));
         } catch (error) {
-            console.error('Error fetching water schedules:', error);
-            res.status(500).json({ error: 'Failed to fetch water schedules' });
+            next(error);
         }
-
     },
 
-    addWaterSchedule: async (req, res) => {
+    addWaterSchedule: async (req, res, next) => {
         const { exclude_weather_data } = req.query;
         const { duration, interval, start_time, weather_control, active_period, name, description } = req.body;
 
@@ -77,11 +73,11 @@ const WaterSchedulesController = {
             const startMonth = validMonthToNumber(start_month);
             const endMonth = validMonthToNumber(end_month);
             if (startMonth === null || endMonth === null) {
-                return res.status(400).json({ error: 'Active period months must be valid three-letter abbreviations (e.g., Jan, Feb)' });
+                throw new ApiError(400, 'Active period months must be valid three-letter abbreviations (e.g., Jan, Feb)');
             }
             // Example: start=Nov(11), end=Mar(3) is valid (spans year end)
             if (startMonth === endMonth) {
-                return res.status(400).json({ error: 'Active period start month must be different from end month' });
+                throw new ApiError(400, 'Active period start month must be different from end month');
             }
         }
 
@@ -89,10 +85,10 @@ const WaterSchedulesController = {
             const result = await db.waterSchedules.create(schedule);
 
             let weatherData;
+            let nextWaterDetails;
             if (result.hasWeatherControl() && result.end_date == null && exclude_weather_data !== 'true') {
                 weatherData = await getWeatherData(result);
             }
-            let nextWaterDetails;
 
             try {
                 // Auto-schedule the new water schedule with cron
@@ -105,29 +101,27 @@ const WaterSchedulesController = {
                 console.error('Error calculating next water time:', error);
             }
 
-            res.status(201).json({
+            return res.status(201).json(new ApiSuccess(201, 'Water schedule added successfully', {
                 ...result.toObject(),
                 links: [
                     createLink('self', `/water_schedules/${result.id}`)
                 ],
                 weather_data: weatherData,
                 next_water: nextWaterDetails
-            });
+            }));
         } catch (error) {
-            console.error('Error creating water schedule:', error);
-            res.status(500).json({ error: 'Failed to create water schedule' });
+            next(error);
         }
-
     },
 
-    getWaterSchedule: async (req, res) => {
+    getWaterSchedule: async (req, res, next) => {
         const { waterScheduleID } = req.params;
         const { exclude_weather_data } = req.query;
 
         try {
             const schedule = await db.waterSchedules.getById(waterScheduleID);
             if (!schedule) {
-                return res.status(404).json({ error: 'Water schedule not found' });
+                throw new ApiError(404, 'Water schedule not found');
             }
 
             let weatherData;
@@ -139,23 +133,21 @@ const WaterSchedulesController = {
                 exclude_weather_data === 'true'
             );
 
-            const response = {
+            return res.json(new ApiSuccess(200, 'Water schedule retrieved successfully', {
                 ...schedule.toObject(),
                 links: [
                     createLink('self', `/water_schedules/${schedule.id}`)
                 ],
                 weather_data: weatherData,
                 next_water: nextWaterDetails
-            };
-
-            res.json(response);
-
+            }));
         } catch (error) {
-            console.error('Error fetching water schedule:', error);
-            res.status(500).json({ error: 'Failed to fetch water schedule' });
+            next(error);
         }
 
-    }, updateWaterSchedule: async (req, res) => {
+    },
+
+    updateWaterSchedule: async (req, res, next) => {
         const { waterScheduleID } = req.params;
         const { exclude_weather_data } = req.query;
         const { duration, interval, start_time, weather_control, active_period, name, description } = req.body;
@@ -163,7 +155,7 @@ const WaterSchedulesController = {
         try {
             const schedule = await db.waterSchedules.getById(waterScheduleID);
             if (!schedule) {
-                return res.status(404).json({ error: 'Water schedule not found' });
+                throw new ApiError(404, 'Water schedule not found');
             }
 
             const update = {};
@@ -180,11 +172,11 @@ const WaterSchedulesController = {
                 const startMonth = validMonthToNumber(start_month);
                 const endMonth = validMonthToNumber(end_month);
                 if (startMonth === null || endMonth === null) {
-                    return res.status(400).json({ error: 'Active period months must be valid three-letter abbreviations (e.g., Jan, Feb)' });
+                    throw new ApiError(400, 'Active period months must be valid three-letter abbreviations (e.g., Jan, Feb)');
                 }
                 // Example: start=Nov(11), end=Mar(3) is valid (spans year end)
                 if (startMonth === endMonth) {
-                    return res.status(400).json({ error: 'Active period start month must be different from end month' });
+                    throw new ApiError(400, 'Active period start month must be different from end month');
                 }
 
                 update.active_period = active_period;
@@ -192,11 +184,11 @@ const WaterSchedulesController = {
 
             const updatedSchedule = await db.waterSchedules.updateById(waterScheduleID, update);
             let weatherData;
+            let nextWaterDetails;
+
             if (updatedSchedule.hasWeatherControl() && updatedSchedule.end_date == null && exclude_weather_data !== 'true') {
                 weatherData = await getWeatherData(updatedSchedule);
             }
-            let nextWaterDetails;
-
             try {
                 // Reschedule the updated water schedule with cron
                 await cronScheduler.resetWaterSchedule(updatedSchedule);
@@ -208,28 +200,27 @@ const WaterSchedulesController = {
                 console.error('Error calculating next water time:', error);
             }
 
-            res.json({
+            return res.json(new ApiSuccess(200, 'Water schedule updated successfully', {
                 ...updatedSchedule.toObject(),
                 links: [
                     createLink('self', `/water_schedules/${schedule.id}`)
                 ],
                 weather_data: weatherData,
                 next_water: nextWaterDetails
-            });
+            }));
         } catch (error) {
-            console.error('Error updating water schedule:', error);
-            res.status(500).json({ error: 'Failed to update water schedule' });
+            next(error);
         }
 
     },
 
-    endDateWaterSchedule: async (req, res) => {
+    endDateWaterSchedule: async (req, res, next) => {
         const { waterScheduleID } = req.params;
 
         try {
             const schedule = await db.waterSchedules.getById(waterScheduleID);
             if (!schedule) {
-                return res.status(404).json({ error: 'Water schedule not found' });
+                throw new ApiError(404, 'Water schedule not found');
             }
 
             const deletedWaterSchedule = await db.waterSchedules.deleteById(waterScheduleID);
@@ -237,28 +228,27 @@ const WaterSchedulesController = {
             // Remove from cron scheduler
             const unscheduled = cronScheduler.removeJobById(waterScheduleID);
 
-            res.json({
+            res.json(new ApiSuccess(200, 'Water schedule end date set successfully', {
                 ...deletedWaterSchedule.toObject(),
                 links: [
                     createLink('self', `/water_schedules/${waterScheduleID}`)
                 ],
                 unscheduled: unscheduled
-            });
+            }));
         } catch (error) {
-            console.error('Error updating water schedule:', error);
-            res.status(500).json({ error: 'Failed to update water schedule' });
+            next(error);
         }
     },
 
     // Execute a water schedule with advanced logic
-    executeWaterSchedule: async (req, res) => {
+    executeWaterSchedule: async (req, res, next) => {
         const { waterScheduleID } = req.params;
         const { skip_count = 0, force_execution = false, simulate = false } = req.body;
 
         try {
             const schedule = await db.waterSchedules.getById(waterScheduleID);
             if (!schedule) {
-                return res.status(404).json({ error: 'Water schedule not found' });
+                throw new ApiError(404, 'Water schedule not found');
             }
 
             let weatherData;
@@ -354,26 +344,21 @@ const WaterSchedulesController = {
                 response.execution.note = `Watering skipped - ${executionReason.replace(/_/g, ' ')}`;
             }
 
-            res.json(response);
-
+            return res.json(new ApiSuccess(200, 'Water schedule executed successfully', response));
         } catch (error) {
-            console.error('Error executing water schedule:', error);
-            res.status(500).json({
-                error: 'Failed to execute water schedule',
-                details: error.message
-            });
+            next(error);
         }
     },
 
     // Get execution preview for a water schedule
-    previewExecution: async (req, res) => {
+    previewExecution: async (req, res, next) => {
         const { waterScheduleID } = req.params;
         const { skip_count, include_zones } = req.query;
 
         try {
             const schedule = await db.waterSchedules.getById(waterScheduleID);
             if (!schedule) {
-                return res.status(404).json({ error: 'Water schedule not found' });
+                throw new ApiError(404, 'Water schedule not found');
             }
 
             let weatherData;
@@ -434,7 +419,6 @@ const WaterSchedulesController = {
                         zones: zones
                     };
                 } catch (zoneError) {
-                    console.error('Error fetching zone information:', zoneError);
                     affectedZones = { error: 'Could not fetch zone information' };
                 }
             }
@@ -467,14 +451,9 @@ const WaterSchedulesController = {
                 response.affected_zones = affectedZones;
             }
 
-            res.json(response);
-
+            return res.json(new ApiSuccess(200, 'Water schedule execution preview retrieved successfully', response));
         } catch (error) {
-            console.error('Error generating execution preview:', error);
-            res.status(500).json({
-                error: 'Failed to generate execution preview',
-                details: error.message
-            });
+            next(error);
         }
     }
 };

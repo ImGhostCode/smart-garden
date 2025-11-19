@@ -1,9 +1,10 @@
 const db = require('../models/database');
 const { createLink } = require('../utils/helpers');
 const WeatherClient = require('../services/weatherClientService');
+const { ApiError, ApiSuccess } = require('../utils/apiResponse');
 
 const WeatherClientsController = {
-    getAllWeatherClients: async (req, res) => {
+    getAllWeatherClients: async (req, res, next) => {
         try {
             const { end_dated } = req.query;
             const filter = {};
@@ -11,8 +12,9 @@ const WeatherClientsController = {
                 filter.end_date = null;
             }
             const clients = await db.weatherClientConfigs.getAll(filter);
-            res.json({
-                items: clients.map(client => {
+            const response = new ApiSuccess(200,
+                'Weather client configurations retrieved successfully',
+                clients.map(client => {
                     return {
                         ...client.toObject(),
                         links: [
@@ -20,59 +22,51 @@ const WeatherClientsController = {
                         ]
                     }
                 }),
-            });
+            );
+            return res.json(response);
         } catch (error) {
-            res.status(500).json({
-                error: 'Internal Server Error',
-                message: 'Failed to retrieve weather client configurations'
-            });
+            next(error);
         }
     },
 
-    getWeatherClient: async (req, res) => {
+    getWeatherClient: async (req, res, next) => {
         const { weatherClientID } = req.params;
         try {
             const client = await db.weatherClientConfigs.getById(weatherClientID);
             if (!client) {
-                return res.status(404).json({
-                    error: 'Weather client configuration not found'
-                });
+                return new ApiError(404, 'Weather client configuration not found');
             }
-            res.json({
+            const response = new ApiSuccess(200, undefined, {
                 ...client.toObject(),
                 links: [
                     createLink('self', `/weather_clients/${client._id}`),
                 ]
             });
+            return res.json(response);
         } catch (error) {
-            res.status(500).json({
-                error: 'Internal Server Error',
-                messsgae: 'Failed to retrieve weather client configuration'
-            });
+            next(error);
         }
     },
 
-    addWeatherClient: async (req, res) => {
+    addWeatherClient: async (req, res, next) => {
         try {
             const { type, options } = req.body;
             const clientData = { type, options };
 
             const newClient = await db.weatherClientConfigs.create(clientData);
-            res.status(201).json({
+            const response = new ApiSuccess(201, 'Weather client configuration created successfully', {
                 ...newClient.toObject(),
                 links: [
                     createLink('self', `/weather_clients/${newClient._id}`),
                 ]
             });
+            return res.status(201).json(response);
         } catch (error) {
-            res.status(500).json({
-                error: 'Internal Server Error',
-                message: 'Failed to create weather client configuration'
-            });
+            next(error);
         }
     },
 
-    updateWeatherClient: async (req, res) => {
+    updateWeatherClient: async (req, res, next) => {
         const { weatherClientID } = req.params;
         const {
             type, options
@@ -104,64 +98,50 @@ const WeatherClientsController = {
         try {
             const updatedClient = await db.weatherClientConfigs.updateById(weatherClientID, updates);
             if (!updatedClient) {
-                return res.status(404).json({
-                    error: 'Weather client configuration not found'
-                });
+                throw new ApiError(404, 'Weather client configuration not found');
             }
-            res.json({
+            return res.json(new ApiSuccess(200, 'Weather client configuration updated successfully', {
                 ...updatedClient.toObject(),
                 links: [
                     createLink('self', `/weather_clients/${updatedClient._id}`),
                 ]
-            });
+            }));
         } catch (error) {
-            res.status(500).json({
-                error: 'Internal Server Error',
-                message: 'Failed to update weather client configuration'
-            });
+            next(error);
         }
     },
 
-    endDateWeatherClient: async (req, res) => {
+    endDateWeatherClient: async (req, res, next) => {
         const { weatherClientID } = req.params;
         try {
             const deletedClient = await db.weatherClientConfigs.deleteById(weatherClientID);
             if (!deletedClient) {
-                return res.status(404).json({
-                    error: 'Weather client configuration not found'
-                });
+                throw new ApiError(404, 'Weather client configuration not found');
             }
-            res.json({
+            res.json(new ApiSuccess(200, 'Weather client configuration deleted successfully', {
                 ...deletedClient.toObject(),
                 links: [
                     createLink('self', `/weather_clients/${deletedClient._id}`),
                 ],
-            });
+            }));
         }
         catch (error) {
-            res.status(500).json({
-                error: 'Internal Server Error',
-                message: 'Failed to delete weather client configuration'
-            });
+            next(error);
         }
     },
-    testWeatherClient: async (req, res) => {
+    testWeatherClient: async (req, res, next) => {
         const { weatherClientID } = req.params;
         try {
             const client = await db.weatherClientConfigs.getById(weatherClientID);
             if (!client) {
-                return res.status(404).json({
-                    error: 'Weather client configuration not found'
-                });
+                throw new ApiError(404, 'Weather client configuration not found');
             }
             const weatherClient = new WeatherClient(client.toObject());
             const rainSinceMs = 72 * 60 * 60 * 1000; // Last 72 hours
-
             const totalRain = await weatherClient.getTotalRain(rainSinceMs);
-
             const avgHighTemperature = await weatherClient.getAverageHighTemperature(rainSinceMs);
 
-            res.json({
+            const response = new ApiSuccess(200, undefined, {
                 rain: {
                     mm: totalRain,
                 },
@@ -169,12 +149,9 @@ const WeatherClientsController = {
                     celsius: avgHighTemperature,
                 }
             });
-
+            return res.json(response);
         } catch (error) {
-            res.status(500).json({
-                error: 'Internal Server Error',
-                messsage: 'Failed to retrieve weather client configuration'
-            });
+            next(error);
         }
     },
 }

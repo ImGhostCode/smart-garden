@@ -1,3 +1,4 @@
+const { ApiError } = require("./apiResponse");
 const { durationToMillis } = require("./helpers");
 
 class FakeClient {
@@ -11,13 +12,13 @@ class FakeClient {
 
         this.rainInterval = durationToMillis(this.config.rainIntervalStr);
         if (this.rainInterval === null) {
-            throw new Error(`Invalid rain interval: ${this.config.rainIntervalStr}`);
+            throw new ApiError(400, `Invalid rain interval: ${this.config.rainIntervalStr}`);
         }
     }
 
     getTotalRain(sinceMs) {
         if (this.config.error) {
-            throw new Error(this.config.error);
+            throw new ApiError(400, this.config.error);
         }
         const numIntervals = sinceMs / this.rainInterval;
         return numIntervals * this.config.rainMM;
@@ -25,7 +26,7 @@ class FakeClient {
 
     getAverageHighTemperature() {
         if (this.config.error) {
-            throw new Error(this.config.error);
+            throw new ApiError(400, this.config.error);
         }
 
         return this.config.avgHighTemperature;

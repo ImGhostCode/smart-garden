@@ -1,6 +1,7 @@
 const FakeClient = require("../utils/fakeWeatherClient");
 const NetatmoClient = require("../utils/netatmoWeatherClient");
 const db = require("../models/database");
+const { ApiError } = require("../utils/apiResponse");
 
 // Global cache for all WeatherClient instances
 const globalCache = new Map();
@@ -28,7 +29,7 @@ class WeatherClient {
                 this.client = new FakeClient(config.options);
                 break;
             default:
-                throw new Error(`Invalid client type: ${config.type}`);
+                throw new ApiError(400, `Invalid client type: ${config.type}`);
         }
     }
 

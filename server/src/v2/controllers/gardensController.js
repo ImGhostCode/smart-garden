@@ -3,9 +3,10 @@ const { formatGardenResponse } = require('../utils/responseFormatters');
 const mqttService = require('../services/mqttService');
 const influxdbService = require('../services/influxdbService');
 const cronScheduler = require('../services/cronScheduler');
+const { ApiSuccess, ApiError } = require('../utils/apiResponse');
 
 const GardensController = {
-    getAllGardens: async (req, res) => {
+    getAllGardens: async (req, res, next) => {
         try {
             const { end_dated } = req.query;
             const filter = {};
@@ -83,18 +84,14 @@ const GardensController = {
                 })
             );
 
-            return res.json(gardensWithCounts);
+            return res.json(new ApiSuccess(200, 'Gardens retrieved successfully', gardensWithCounts));
 
         } catch (error) {
-            console.error('Error getting gardens:', error);
-            res.status(500).json({
-                error: 'Internal server error',
-                message: 'Failed to retrieve gardens'
-            });
+            next(error);
         }
     },
 
-    createGarden: async (req, res) => {
+    createGarden: async (req, res, next) => {
         try {
             const { name, topic_prefix, max_zones, light_schedule, controller_config } = req.body;
 
@@ -106,12 +103,12 @@ const GardensController = {
                 const seconds = durationMatch[3] ? parseInt(durationMatch[3]) : 0;
                 const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
                 if (totalSeconds <= 0 || totalSeconds >= 86400) {
-                    return res.status(400).json({ error: 'light_schedule duration must be greater than 0 and less than or equal to 24 hours' });
+                    throw new ApiError(400, 'Light schedule duration must be greater than 0 and less than or equal to 24 hours');
                 }
             }
 
             if (controller_config != null && (controller_config.valvePins.length !== controller_config.pumpPins.length || controller_config.valvePins.length > max_zones)) {
-                return res.status(400).json({ error: 'controller_config valvePins and pumpPins length must match and be less than or equal to max_zones' });
+                throw new ApiError(400, 'Controller config valvePins and pumpPins length must match and be less than or equal to max zones');
             }
 
             const newGarden = {
@@ -147,24 +144,20 @@ const GardensController = {
             formattedGarden.num_plants = 0;
             formattedGarden.num_zones = 0;
 
-            return res.status(201).json(formattedGarden);
+            return res.status(201).json(new ApiSuccess(201, 'Garden created successfully', formattedGarden));
 
         } catch (error) {
-            console.error('Error creating garden:', error);
-            res.status(500).json({
-                error: 'Internal server error',
-                message: 'Failed to create garden'
-            });
+            next(error);
         }
     },
 
-    getGarden: async (req, res) => {
+    getGarden: async (req, res, next) => {
         try {
             const { gardenID } = req.params;
 
             const garden = await db.gardens.getById(gardenID);
             if (!garden) {
-                return res.status(404).json({ error: 'Garden not found' });
+                throw new ApiError(404, 'Garden not found');
             }
 
             // Get plant and zone counts
@@ -230,16 +223,14 @@ const GardensController = {
             formattedGarden.num_plants = plantsCount;
             formattedGarden.num_zones = zonesCount;
 
-            res.json(formattedGarden);
+            return res.json(new ApiSuccess(200, 'Garden retrieved successfully', formattedGarden));
 
         } catch (error) {
-            console.error('Error getting garden:', error);
-            res.status(500).json({
-                error: 'Internal server error',
-                message: 'Failed to retrieve garden'
-            });
+            next(error);
         }
-    }, updateGarden: async (req, res) => {
+    },
+
+    updateGarden: async (req, res, next) => {
         try {
             const { gardenID } = req.params;
             const { name, topic_prefix, max_zones, light_schedule, controller_config } = req.body;
@@ -266,14 +257,15 @@ const GardensController = {
                 const seconds = durationMatch[3] ? parseInt(durationMatch[3]) : 0;
                 const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
                 if (totalSeconds <= 0 || totalSeconds >= 86400) {
-                    return res.status(400).json({ error: 'light_schedule duration must be greater than 0 and less than or equal to 24 hours' });
+                    throw new ApiError(400, 'Light schedule duration must be greater than 0 and less than or equal to 24 hours');
                 }
 
                 if (light_schedule.adhoc_on_time) {
                     const adhocTime = new Date(light_schedule.adhoc_on_time);
                     // Check if adhoc_on_time is greater than now
                     if (isNaN(adhocTime.getTime()) || adhocTime <= new Date()) {
-                        return res.status(400).json({ error: 'light_schedule adhoc_on_time must be a valid ISO 8601 date string in the future' });
+                        // return res.status(400).json({ error: 'light_schedule adhoc_on_time must be a valid ISO 8601 date string in the future' });
+                        throw new ApiError(400, 'Light schedule adhocOnTime must be a valid ISO 8601 date string in the future');
                     }
                 }
 
@@ -286,33 +278,35 @@ const GardensController = {
 
             if (max_zones !== undefined && controller_config !== undefined) {
                 if (controller_config.valvePins.length !== controller_config.pumpPins.length) {
-                    return res.status(400).json({ error: 'New controller_config valvePins and pumpPins length must match' });
+                    throw new ApiError(400, 'Controller config valvePins and pumpPins length must match');
                 }
                 if (controller_config.valvePins.length > max_zones || controller_config.pumpPins.length > max_zones) {
-                    return res.status(400).json({ error: 'New controller_config valvePins and pumpPins length exceed new max_zones' });
+                    throw new ApiError(400, 'Controller config valvePins and pumpPins length exceed max zones');
                 }
             } else if (max_zones !== undefined && controller_config === undefined) {
                 const garden = await db.gardens.getById(gardenID);
                 if (garden.controller_config) {
                     if (garden.controller_config.valvePins.length > max_zones || garden.controller_config.pumpPins.length > max_zones) {
-                        return res.status(400).json({ error: 'Existing controller_config valvePins and pumpPins length exceed new max_zones' });
+                        throw new ApiError(400, 'Existing controller config valvePins and pumpPins length exceed new max zones');
                     }
                 }
             } else if (max_zones === undefined && controller_config !== undefined) {
                 const garden = await db.gardens.getById(gardenID);
                 if (garden) {
                     if (controller_config.valvePins.length !== controller_config.pumpPins.length) {
-                        return res.status(400).json({ error: 'New controller_config valvePins and pumpPins length must match' });
+                        // return res.status(400).json({ error: 'New controller_config valvePins and pumpPins length must match' });
+                        throw new ApiError(400, 'Controller config valvePins and pumpPins length must match');
                     }
                     if (controller_config.valvePins.length > garden.max_zones || controller_config.pumpPins.length > garden.max_zones) {
-                        return res.status(400).json({ error: 'New controller_config valvePins and pumpPins length exceed existing max_zones' });
+                        // return res.status(400).json({ error: 'New controller_config valvePins and pumpPins length exceed existing max_zones' });
+                        throw new ApiError(400, 'Controller config valvePins and pumpPins length exceed max zones');
                     }
                 }
             }
 
             const updatedGarden = await db.gardens.updateById(gardenID, updates);
             if (!updatedGarden) {
-                return res.status(404).json({ error: 'Garden not found' });
+                throw new ApiError(404, 'Garden not found');
             }
 
             if (controller_config) {
@@ -389,25 +383,20 @@ const GardensController = {
             formattedGarden.num_plants = plantsCount;
             formattedGarden.num_zones = zonesCount;
 
-            res.json(formattedGarden);
-
+            return res.json(new ApiSuccess(200, 'Garden updated successfully', formattedGarden));
         } catch (error) {
-            console.error('Error updating garden:', error);
-            res.status(500).json({
-                error: 'Internal server error',
-                message: 'Failed to update garden'
-            });
+            next(error);
         }
     },
 
-    endDateGarden: async (req, res) => {
+    endDateGarden: async (req, res, next) => {
         try {
             const { gardenID } = req.params;
 
             // End-date the garden (soft delete)
             const endDatedGarden = await db.gardens.deleteById(gardenID);
             if (!endDatedGarden) {
-                return res.status(404).json({ error: 'Garden not found' });
+                throw new ApiError(404, 'Garden not found');
             }
 
             const cronScheduler = require('../services/cronScheduler');
@@ -469,18 +458,14 @@ const GardensController = {
             formattedGarden.num_plants = plantsCount;
             formattedGarden.num_zones = zonesCount;
 
-            res.json(formattedGarden);
+            return res.json(new ApiSuccess(200, 'Garden end-dated successfully', formattedGarden));
 
         } catch (error) {
-            console.error('Error end-dating garden:', error);
-            res.status(500).json({
-                error: 'Internal server error',
-                message: 'Failed to end-date garden'
-            });
+            next(error);
         }
     },
 
-    gardenAction: async (req, res) => {
+    gardenAction: async (req, res, next) => {
         try {
             const { gardenID } = req.params;
             const { light, stop, update } = req.body;
@@ -488,114 +473,76 @@ const GardensController = {
             // Verify garden exists
             const garden = await db.gardens.getById(gardenID);
             if (!garden) {
-                return res.status(404).json({ error: 'Garden not found' });
+                throw new ApiError(404, 'Garden not found');
             }
 
-            try {
-                if (light) {
-                    await mqttService.sendLightAction(garden, light.state, light.for_duration);
-                    if (light.for_duration) {
-                        await cronScheduler.scheduleLightDelay(garden, light.state, light.for_duration);
-                    }
+            if (light) {
+                await mqttService.sendLightAction(garden, light.state, light.for_duration);
+                if (light.for_duration) {
+                    await cronScheduler.scheduleLightDelay(garden, light.state, light.for_duration);
                 }
-
-                if (stop) {
-                    await mqttService.sendStopAllAction(garden, stop.all);
-                }
-
-                if (update && update.config) {
-                    await mqttService.sendUpdateAction(garden, update.controller_config);
-                }
-
-                res.status(202).json({
-                    message: 'Action accepted and sent to garden controller'
-                });
-
-            } catch (mqttError) {
-                console.error('MQTT action error:', mqttError);
-                res.status(502).json({
-                    error: 'Failed to communicate with garden controller',
-                    message: mqttError.message
-                });
             }
 
+            if (stop) {
+                await mqttService.sendStopAllAction(garden, stop.all);
+            }
+
+            if (update && update.config) {
+                await mqttService.sendUpdateAction(garden, update.controller_config);
+            }
+
+            return res.json(new ApiSuccess(200, 'Garden action executed successfully'));
         } catch (error) {
-            console.error('Error executing garden action:', error);
-            res.status(500).json({
-                error: 'Internal server error',
-                message: 'Failed to execute garden action'
-            });
+            next(error);
         }
     },
 
     // Light Schedule Management
-    scheduleLightActions: async (req, res) => {
+    scheduleLightActions: async (req, res, next) => {
         try {
             const { gardenID } = req.params;
 
             // Verify garden exists and has light_schedule
             const garden = await db.gardens.getById(gardenID);
             if (!garden) {
-                return res.status(404).json({ error: 'Garden not found' });
+                throw new ApiError(404, 'Garden not found');
             }
 
             if (!garden.light_schedule || !garden.light_schedule.duration || !garden.light_schedule.start_time) {
-                return res.status(400).json({
-                    error: 'Garden must have complete light_schedule configuration (duration and start_time)'
-                });
+                throw new ApiError(400, 'Garden does not have a valid light schedule to schedule');
             }
 
-            try {
-                await cronScheduler.scheduleLightActions(garden);
+            await cronScheduler.scheduleLightActions(garden);
 
-                res.json({
-                    message: 'Light schedule created successfully',
-                    garden_id: gardenID,
-                    next_light_on: await cronScheduler.getNextLightTime(garden, 'ON'),
-                    next_light_off: await cronScheduler.getNextLightTime(garden, 'OFF')
-                });
-
-            } catch (scheduleError) {
-                console.error('Scheduling error:', scheduleError);
-                res.status(500).json({
-                    error: 'Failed to schedule light actions',
-                    message: scheduleError.message
-                });
-            }
-
+            return res.json(new ApiSuccess(200, 'Light schedule scheduled successfully', {
+                garden_id: gardenID,
+                next_light_on: cronScheduler.getNextLightTime(garden, 'ON'),
+                next_light_off: cronScheduler.getNextLightTime(garden, 'OFF')
+            }));
         } catch (error) {
-            console.error('Error scheduling light actions:', error);
-            res.status(500).json({
-                error: 'Internal server error',
-                message: 'Failed to schedule light actions'
-            });
+            next(error);
         }
     },
 
-    resetLightSchedule: async (req, res) => {
+    resetLightSchedule: async (req, res, next) => {
         try {
             const { gardenID } = req.params;
 
             // Verify garden exists
             const garden = await db.gardens.getById(gardenID);
             if (!garden) {
-                return res.status(404).json({ error: 'Garden not found' });
+                throw new ApiError(404, 'Garden not found');
             }
 
             await cronScheduler.resetLightSchedule(garden);
 
-            res.json({
-                message: 'Light schedule reset successfully',
+            return res.json(new ApiSuccess(200, 'Light schedule reset successfully', {
                 garden_id: gardenID,
-                next_light_on: await cronScheduler.getNextLightTime(garden, 'ON'),
-                next_light_off: await cronScheduler.getNextLightTime(garden, 'OFF')
-            });
+                next_light_on: cronScheduler.getNextLightTime(garden, 'ON'),
+                next_light_off: cronScheduler.getNextLightTime(garden, 'OFF')
+            }));
         } catch (error) {
-            console.error('Error resetting light schedule:', error);
-            res.status(500).json({
-                error: 'Internal server error',
-                message: 'Failed to reset light schedule'
-            });
+            next(error);
         }
     },
 };

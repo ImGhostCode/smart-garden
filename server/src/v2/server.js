@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+const errorHandler = require('./middlewares/errorHandler');
 
 // Import MQTT service
 const mqttService = require('./services/mqttService');
@@ -191,13 +192,7 @@ app.post('/mqtt/reconnect', (req, res) => {
 
 
 // Error handling middleware
-app.use((err, req, res, next) => {
-    console.error('Error:', err);
-    res.status(500).json({
-        error: 'Internal server error',
-        message: err.message
-    });
-});
+app.use(errorHandler);
 
 // 404 handler
 app.use((req, res) => {
