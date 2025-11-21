@@ -7,7 +7,8 @@ const {
 const {
     calEffectiveWateringDuration,
     isActiveTime,
-    calculateNextWaterTime
+    calculateNextWaterTime,
+    scaleWateringDuration
 } = require('../utils/waterScheduleHelpers');
 const mqttService = require('./mqttService');
 const { getWeatherData } = require('../utils/weatherHelper');
@@ -124,43 +125,20 @@ class CronScheduler {
                 return; // Not time yet
             }
 
-
-            // Get weather data and calculate effective watering
-            let weatherData;
-            if (waterSchedule.hasWeatherControl()) {
-                weatherData = await getWeatherData(waterSchedule);
+            let duration;
+            if (!waterSchedule.hasWeatherControl()) {
+                duration = waterSchedule.duration;
+            } else {
+                duration = await scaleWateringDuration(waterSchedule);
             }
 
-            // TODO: Get skip count from zone data or database
-            const skipCount = zone.skip_count || 0;
-
-            const effectiveWatering = calEffectiveWateringDuration(
-                waterSchedule,
-                weatherData,
-                skipCount
-            );
-
-            if (effectiveWatering.duration === 0) {
-                jobLogger.log(`Skipping watering for schedule ${waterScheduleId}: ${effectiveWatering.reason}`);
+            if (duration === 0) {
+                jobLogger.log(`Weather control determined that watering should be skipped`);
                 return;
             }
 
-            // Log the execution
-            const executionLog = {
-                water_schedule_id: waterScheduleId,
-                executed_at: new Date().toISOString(),
-                duration_ms: effectiveWatering.duration,
-                duration_formatted: millisToDuration(effectiveWatering.duration),
-                scale_factor: effectiveWatering.scaleFactor,
-                reason: effectiveWatering.reason,
-                weather_data: weatherData,
-                weather_adjustments: effectiveWatering.adjustments
-            };
-
-            jobLogger.log('Water Schedule Execution:', JSON.stringify(executionLog, null, 2));
-
             // Execute the actual watering
-            await this.executeWaterAction(garden, zone, waterSchedule, effectiveWatering);
+            await this.executeWaterAction(garden, zone, duration, 'scheduled');
 
             // TODO: Send notifications if configured
             // this.sendWateringNotification(waterSchedule, effectiveWatering);
@@ -175,13 +153,17 @@ class CronScheduler {
      * Execute the actual water action
      * This is where you'd interface with hardware or external APIs
      */
-    async executeWaterAction(garden, zone, waterSchedule, effectiveWatering) {
+    async executeWaterAction(garden, zone, duration, source) {
         this.logger.log(`🚿 EXECUTING WATER ACTION`);
         this.logger.log(`   Garden: ${garden.name} (${garden._id})`);
         this.logger.log(`   Zone: ${zone.name} (Position ${zone.position})`);
-        this.logger.log(`   Schedule: ${waterSchedule.name}`);
-        this.logger.log(`   Duration: ${millisToDuration(effectiveWatering.duration)}`);
-        this.logger.log(`   Scale Factor: ${effectiveWatering.scaleFactor}`);
+        this.logger.log(`   Duration: ${duration}`);
+        this.logger.log(`   Source: ${source}`);
+
+        if (duration <= 0) {
+            this.logger.log('Weather control determined that watering should be skipped');
+            return;
+        }
 
         // Get zones associated with this water schedule
         try {
@@ -189,8 +171,8 @@ class CronScheduler {
                 garden,
                 zone._id.toString(),
                 zone.position,
-                durationToMillis(effectiveWatering.duration),
-                "scheduled"
+                duration,
+                source
             );
             // console.log('MQTT water command result:', result);
         } catch (error) {
@@ -206,9 +188,10 @@ class CronScheduler {
         try {
             const nextWaterTime = calculateNextWaterTime(waterSchedule);
             const now = new Date();
+            now.setMilliseconds(0);
             // Allow execution within 1 minute window
-            const timeDiff = Math.abs(nextWaterTime.getTime() - now.getTime());
-            return timeDiff < 60000; // Within 1 minute
+            const timeDiff = nextWaterTime.getTime() - now.getTime();
+            return timeDiff >= 0 && timeDiff < 60000; // Within 1 minute
         } catch (error) {
             this.logger.error('Error checking execution time:', error);
             return false;

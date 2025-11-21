@@ -39,7 +39,7 @@ router.get('/:waterScheduleID/preview',
         waterScheduleID: schemas.pathParams.id
     })),
     validateQuery(Joi.object({
-        skip_count: Joi.number().integer().min(0).optional().description('Number of watering cycles to skip')
+        include_zones: Joi.boolean().optional().description('Include zones associated with the water schedule in the preview')
     })),
     WaterSchedulesController.previewExecution);
 
@@ -49,7 +49,6 @@ router.post('/:waterScheduleID/execute',
         waterScheduleID: schemas.pathParams.id
     })),
     validateBody(Joi.object({
-        skip_count: Joi.number().integer().min(0).optional().description('Number of watering cycles to skip'),
         force_execution: Joi.boolean().optional().description('Force execution even if conditions suggest skipping'),
         simulate: Joi.boolean().optional().description('Simulate execution without actually watering')
     })),

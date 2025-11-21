@@ -11,7 +11,7 @@ const {
 const {
     getNextWaterDetails,
     isActiveTime,
-    calEffectiveWateringDuration
+    calEffectiveWatering
 } = require('../utils/waterScheduleHelpers');
 
 const WaterSchedulesController = {
@@ -26,8 +26,8 @@ const WaterSchedulesController = {
         try {
             const waterSchedules = await db.waterSchedules.getAll(filters);
 
-            const items = await Promise.all(waterSchedules.map(async (schedule) => {
-
+            const items = [];
+            for (const schedule of waterSchedules) {
                 let weatherData;
                 if (schedule.hasWeatherControl() && schedule.end_date == null && exclude_weather_data !== 'true') {
                     weatherData = await getWeatherData(schedule);
@@ -36,16 +36,15 @@ const WaterSchedulesController = {
                     schedule,
                     exclude_weather_data === 'true'
                 );
-
-                return {
+                items.push({
                     ...schedule.toObject(),
                     links: [
                         createLink('self', `/water_schedules/${schedule.id}`)
                     ],
                     weather_data: weatherData,
                     next_water: nextWaterDetails
-                };
-            }));
+                });
+            }
 
             return res.json(new ApiSuccess(200, 'Water schedules retrieved successfully', items));
         } catch (error) {
@@ -243,7 +242,7 @@ const WaterSchedulesController = {
     // Execute a water schedule with advanced logic
     executeWaterSchedule: async (req, res, next) => {
         const { waterScheduleID } = req.params;
-        const { skip_count = 0, force_execution = false, simulate = false } = req.body;
+        const { force_execution = false, simulate = false } = req.body;
 
         try {
             const schedule = await db.waterSchedules.getById(waterScheduleID);
@@ -252,15 +251,12 @@ const WaterSchedulesController = {
             }
 
             let weatherData;
-            if (schedule.hasWeatherControl()) {
+            const executedAt = new Date().toISOString();
+            const isInActivePeriod = isActiveTime(schedule);
+            if (isInActivePeriod && schedule.hasWeatherControl()) {
                 weatherData = await getWeatherData(schedule);
             }
-            const executedAt = new Date().toISOString();
-
-            // Calculate effective watering parameters
-            const effectiveWatering = calEffectiveWateringDuration(
-                schedule, weatherData, skip_count
-            );
+            const effectiveWatering = calEffectiveWatering(schedule, weatherData);
 
             // Determine execution logic
             let shouldWater = false;
@@ -279,28 +275,22 @@ const WaterSchedulesController = {
                 shouldWater = effectiveWatering.duration > 0;
             }
 
-            // Handle skip count logic
-            let updatedSkipCount = skip_count;
-            if (shouldWater && skip_count > 0 && !force_execution) {
-                updatedSkipCount = Math.max(0, skip_count - 1);
-            }
-
             // Prepare response
             const response = {
-                ...schedule.toObject(),
+                schedule_info: schedule.toObject(),
                 execution: {
                     will_execute: shouldWater,
                     reason: executionReason,
                     duration_ms: finalDuration,
                     duration_formatted: millisToDuration(finalDuration),
                     original_duration_ms: durationToMillis(schedule.duration),
+                    original_duration_formatted: schedule.duration,
                     scale_factor: scaleFactor,
                     weather_adjustments: effectiveWatering.adjustments || [],
-                    skip_count: updatedSkipCount,
                     is_simulation: simulate,
                     force_execution: force_execution,
+                    is_active_period: isInActivePeriod,
                     executed_at: executedAt,
-                    is_active_period: isActiveTime(schedule)
                 },
                 weather_data: weatherData,
                 links: [
@@ -321,12 +311,7 @@ const WaterSchedulesController = {
                         const zones = await db.zones.getByGardenId(garden._id.toString());
                         for (const zone of zones) {
                             if (zone.water_schedule_ids && zone.water_schedule_ids.includes(waterScheduleID)) {
-                                await cronScheduler.executeWaterAction(garden, zone, schedule, {
-                                    duration: finalDuration,
-                                    scaleFactor: scaleFactor,
-                                    reason: executionReason,
-                                    weather_data: weatherData
-                                });
+                                await cronScheduler.executeWaterAction(garden, zone, finalDuration, 'command');
                                 zonesExecuted++;
                             }
                         }
@@ -353,7 +338,7 @@ const WaterSchedulesController = {
     // Get execution preview for a water schedule
     previewExecution: async (req, res, next) => {
         const { waterScheduleID } = req.params;
-        const { skip_count, include_zones } = req.query;
+        const { include_zones } = req.query;
 
         try {
             const schedule = await db.waterSchedules.getById(waterScheduleID);
@@ -361,20 +346,15 @@ const WaterSchedulesController = {
                 throw new ApiError(404, 'Water schedule not found');
             }
 
-            let weatherData;
-            if (schedule.hasWeatherControl()) {
-                weatherData = await getWeatherData(schedule);
-            }
-            const skipCount = skip_count ? parseInt(skip_count, 10) : 0;
+
             const includeZones = include_zones === 'true';
-
-            // Calculate what would happen if executed now
-            const effectiveWatering = calEffectiveWateringDuration(
-                schedule, weatherData, skipCount
-            );
-
             const currentTime = new Date();
             const isInActivePeriod = isActiveTime(schedule, currentTime);
+            let weatherData;
+            if (isInActivePeriod && schedule.hasWeatherControl()) {
+                weatherData = await getWeatherData(schedule);
+            }
+            const effectiveWatering = calEffectiveWatering(schedule, weatherData);
 
             // Prepare preview response
             const preview = {
@@ -383,13 +363,11 @@ const WaterSchedulesController = {
                 duration_ms: effectiveWatering.duration,
                 duration_formatted: millisToDuration(effectiveWatering.duration),
                 original_duration_ms: durationToMillis(schedule.duration),
-                original_duration_formatted: millisToDuration(durationToMillis(schedule.duration)),
+                original_duration_formatted: schedule.duration,
                 scale_factor: effectiveWatering.scaleFactor,
                 weather_adjustments: effectiveWatering.adjustments || [],
-                skip_count: skipCount,
                 is_active_period: isInActivePeriod,
                 preview_time: currentTime.toISOString(),
-                force_execution_duration: millisToDuration(durationToMillis(schedule.duration))
             };
 
             // Add zone information if requested
@@ -402,7 +380,9 @@ const WaterSchedulesController = {
                     for (const garden of gardens) {
                         const gardenZones = await db.zones.getByGardenId(garden._id.toString());
                         for (const zone of gardenZones) {
-                            if (zone.water_schedule_ids && zone.water_schedule_ids.includes(waterScheduleID)) {
+                            if (
+                                zone.skip_count === 0 &&
+                                zone.water_schedule_ids && zone.water_schedule_ids.includes(waterScheduleID)) {
                                 zones.push({
                                     zone_id: zone._id.toString(),
                                     zone_name: zone.name,
@@ -423,23 +403,10 @@ const WaterSchedulesController = {
                 }
             }
 
-            // Enhanced schedule information
-            const scheduleInfo = {
-                id: schedule._id.toString(),
-                name: schedule.name,
-                description: schedule.description,
-                interval: schedule.interval,
-                start_time: schedule.start_time,
-                duration: schedule.duration,
-                weather_control: schedule.weather_control || null,
-                active_period: schedule.active_period || null,
-            };
-
             const response = {
-                water_schedule_id: waterScheduleID,
+                schedule_info: schedule.toObject(),
                 preview: preview,
-                current_weather: weatherData,
-                schedule_info: scheduleInfo,
+                weatherData: weatherData,
                 links: [
                     createLink('self', `/water_schedules/${waterScheduleID}`),
                     createLink('execute', `/water_schedules/${waterScheduleID}/execute`),

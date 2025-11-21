@@ -17,6 +17,7 @@ const zoneRoutes = require('./routes/zones');
 const waterScheduleRoutes = require('./routes/waterSchedules');
 const schedulerRoutes = require('./routes/scheduler');
 const weatherClientsRoutes = require('./routes/weatherClients');
+const waterRoutineRoutes = require('./routes/waterRoutine');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -129,6 +130,7 @@ app.use('/gardens', zoneRoutes);
 app.use('/water_schedules', waterScheduleRoutes);
 app.use('/scheduler', schedulerRoutes);
 app.use('/weather_clients', weatherClientsRoutes);
+app.use('/water_routines', waterRoutineRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -295,6 +297,13 @@ app.listen(PORT, async () => {
     console.log('  GET    /weather_clients/:weatherClientID');
     console.log('  PATCH  /weather_clients/:weatherClientID');
     console.log('  DELETE /weather_clients/:weatherClientID');
+    console.log('Water Routines:');
+    console.log('  GET    /water_routines');
+    console.log('  POST   /water_routines');
+    console.log('  GET    /water_routines/:waterRoutineID');
+    console.log('  PATCH  /water_routines/:waterRoutineID');
+    console.log('  DELETE /water_routines/:waterRoutineID');
+    console.log('  POST   /water_routines/:waterRoutineID/run');
 });
 
 module.exports = app;

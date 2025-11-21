@@ -23,6 +23,7 @@ class WeatherClient {
                         type: 'netatmo',
                         options: updatedConfig
                     });
+                    this.config.options = updatedConfig;
                 });
                 break;
             case 'fake':

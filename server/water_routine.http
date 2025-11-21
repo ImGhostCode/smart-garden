@@ -1,0 +1,73 @@
+@hostname = http://localhost
+@port = 3000
+@host = {{hostname}}:{{port}}
+### Water Schedules:
+GET    {{host}}/water_routines?end_dated=false
+
+### Create Mornin Water Routine
+POST   {{host}}/water_routines
+Content-Type: application/json
+
+{
+  "name": "Morning Routine",
+  "steps": [
+    {
+      "zone_id": "68de862ab78657a4ab281c2a",
+      "duration": "10m"
+    },
+    {
+      "zone_id": "68de8783b78657a4ab281c2e",
+      "duration": "5m"
+    },
+    {
+      "zone_id": "68de8996b78657a4ab281c37",
+      "duration": "15m"
+    }
+  ]
+}
+
+### Create Evening Water Routine
+
+POST   {{host}}/water_routines
+Content-Type: application/json
+
+{
+  "name": "Evening Routine",
+  "steps": [
+    {
+      "zone_id": "68de862ab78657a4ab281c2a",
+      "duration": "15m"
+    },
+    {
+      "zone_id": "68de8783b78657a4ab281c2e",
+      "duration": "10m"
+    }
+  ]
+}
+
+### Update Morning Water Routine
+PUT   {{host}}/water_routines/691f1b2385d5734d35cd7669
+Content-Type: application/json
+
+{
+  "name": "Updated Morning Routine",
+  "steps": [
+    {
+      "zone_id": "68de862ab78657a4ab281c2a",
+      "duration": "12m"
+    },
+    {
+      "zone_id": "68de8996b78657a4ab281c37",
+      "duration": "18m"
+    }
+  ]
+}
+
+### Get Morning Water Routine by ID
+GET    {{host}}/water_routines/691f1b2385d5734d35cd7669
+
+### Delete Evening Water Routine by ID
+DELETE    {{host}}/water_routines/691f1ca86457257971bc05de
+
+### Run a Water Routine by ID
+POST   {{host}}/water_routines/691f1b2385d5734d35cd7669/run

@@ -290,8 +290,8 @@ const ZonesController = {
                 // Handle water action
                 if (action.water && action.water.duration) {
                     const durationMs = durationToMillis(action.water.duration);
-                    const result = await mqttService.sendWaterCommand(garden, zoneID, zone.position, durationMs, "command");
-                    console.log('MQTT water command result:', result);
+                    const cronScheduler = require('../services/cronScheduler');
+                    await cronScheduler.executeWaterAction(garden, zone, durationMs, "command");
                 }
                 res.status(202);
             } catch (error) {

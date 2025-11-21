@@ -137,19 +137,8 @@ const scaleWateringDuration = async (waterSchedule) => {
 }
 
 // Internal helper method for calculating effective watering duration
-const calEffectiveWateringDuration = (schedule, weatherData, skipCount = 0) => {
+const calEffectiveWatering = (schedule, weatherData) => {
     const originalDuration = durationToMillis(schedule.duration);
-
-    // Check skip count first
-    if (skipCount > 0) {
-        return {
-            duration: 0,
-            scaleFactor: 0,
-            reason: 'skipped_due_to_skip_count',
-            adjustments: [],
-            originalDuration
-        };
-    }
 
     // Check active period
     if (!isActiveTime(schedule)) {
@@ -229,6 +218,7 @@ const getMockNextWaterTime = () => {
 // Calculate the next water time based on schedule properties
 const calculateNextWaterTime = (schedule) => {
     const now = new Date();
+    now.setMilliseconds(0);
     // Parse start_time (format: "HH:MM:SS±HH:MM")
     const timeMatch = schedule.start_time.match(/^(\d{2}):(\d{2}):(\d{2})([+-])(\d{2}):(\d{2})$/);
     if (!timeMatch) {
@@ -296,7 +286,7 @@ const calculateNextWaterTime = (schedule) => {
         // Convert to UTC by subtracting timezone offset
         const utcTime = new Date(timezoneTime.getTime() - timezoneOffset);
 
-        if (utcTime > now) {
+        if (utcTime >= now) {
             nextExecution = utcTime;
             break;
         }
@@ -356,7 +346,7 @@ module.exports = {
     getNextWaterDetails,
     getNextActiveWaterSchedule,
     scaleWateringDuration,
-    calEffectiveWateringDuration,
+    calEffectiveWatering,
     getMockNextWaterTime,
     isActiveTime,
     calculateNextWaterTime

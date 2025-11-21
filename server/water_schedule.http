@@ -2,7 +2,7 @@
 @port = 3000
 @host = {{hostname}}:{{port}}
 ### Water Schedules:
-GET    {{host}}/water_schedules?end_dated=true&exclude_weather_data=false
+GET    {{host}}/water_schedules?end_dated=false&exclude_weather_data=true
 
 ###
 POST   {{host}}/water_schedules?exclude_weather_data=true
@@ -102,44 +102,56 @@ Content-Type: application/json
   }
 }
 ###
-GET    {{host}}/water_schedules/68de83cb66de8a502e0e4334?exclude_weather_data=false
+GET    {{host}}/water_schedules/68de82101a38491918156283?exclude_weather_data=false
 ###
-PATCH  {{host}}/water_schedules/68e0a5a7e70e2b4593d16c79?exclude_weather_data=true
+PATCH  {{host}}/water_schedules/68de80dc1a38491918156281?exclude_weather_data=true
 Content-Type: application/json
 
 {
-  "name": "Morning Lawn",
-  "description": "Water lawn every morning",
-  "duration": "15m",
-  "interval": "24h",
-  "start_time": "07:00:00+07:00",
-  "weather_control": {
-    "rain_control": {
-      "baseline_value": 3,
-      "factor": 0.85,
-      "range": 6,
-      "client_id": "68e1f4b4681d52cf1e8b34b0"
-    },
-    "temperature_control": {
-      "baseline_value": 25,
-      "factor": 0.9,
-      "range": 12,
-      "client_id": "68e1f4b4681d52cf1e8b34b0"
-    }
-  }
+  "start_time": "15:00:00+07:00",
+  "interval": "120h"
 }
 ###
 DELETE {{host}}/water_schedules/68de801e1a3849191815627f?exclude_weather_data=false
 
 ###
-GET   {{host}}/water_schedules/68de83cb66de8a502e0e4334/preview?skip_count=0
+GET   {{host}}/water_schedules/68de801e1a3849191815627f/preview?include_zones=true
+###
+GET   {{host}}/water_schedules/68de80dc1a38491918156281/preview?include_zones=false
+###
+GET   {{host}}/water_schedules/68de82101a38491918156283/preview?include_zones=false
+###
+GET   {{host}}/water_schedules/68de83cb66de8a502e0e4334/preview?include_zones=true
 
+###
+POST   {{host}}/water_schedules/68de801e1a3849191815627f/execute
+Content-Type: application/json
+
+{
+  "force_execution": true,
+  "simulate": true
+}
+###
+POST   {{host}}/water_schedules/68de80dc1a38491918156281/execute
+Content-Type: application/json
+
+{
+  "force_execution": false,
+  "simulate": true
+}
 ###
 POST   {{host}}/water_schedules/68de82101a38491918156283/execute
 Content-Type: application/json
 
 {
-  "skip_count": 0,
   "force_execution": false,
   "simulate": false
+}
+###
+POST   {{host}}/water_schedules/68de83cb66de8a502e0e4334/execute
+Content-Type: application/json
+
+{
+  "force_execution": false,
+  "simulate": true
 }

@@ -4,6 +4,7 @@ const Plant = require('./PlantModel');
 const Zone = require('./ZoneModel');
 const WaterSchedule = require('./WaterScheduleModel');
 const WeatherClientConfig = require('./WeatherClientConfigModel.js');
+const WaterRoutine = require('./WaterRoutine.js');
 
 // MongoDB database interface
 const db = {
@@ -276,7 +277,37 @@ const db = {
                 { new: true }
             );
         },
-    }
+    },
+    waterRoutines: {
+        async getAll(filters = {}) {
+            return await WaterRoutine.find(filters).sort({ created_at: -1 });
+        },
+
+        async getById(id) {
+            return await WaterRoutine.findOne({ _id: id, end_date: null });
+        },
+
+        async create(data) {
+            const plant = new WaterRoutine(data);
+            return await plant.save();
+        },
+
+        async updateById(id, data) {
+            return await WaterRoutine.findOneAndUpdate(
+                { _id: id, end_date: null },
+                { ...data, updated_at: new Date() },
+                { new: true }
+            );
+        },
+
+        async deleteById(id) {
+            return await WaterRoutine.findOneAndUpdate(
+                { _id: id },
+                { end_date: new Date() },
+                { new: true }
+            );
+        },
+    },
 };
 
 module.exports = db;

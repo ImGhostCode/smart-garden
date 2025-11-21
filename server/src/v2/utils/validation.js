@@ -381,6 +381,50 @@ const schemas = {
         'object.min': 'At least one field must be provided for update'
     }),
 
+    createWaterRoutineRequest: Joi.object({
+        name: Joi.string().min(1).required().messages({
+            'string.min': 'Water routine name must be at least 1 character',
+            'any.required': 'Water routine name is required'
+        }),
+        steps: Joi.array().items(
+            Joi.object({
+                zone_id: Joi.string().pattern(xidPattern).required().messages({
+                    'string.pattern.base': 'Zone ID must be a 24 character XID format',
+                    'any.required': 'Zone ID is required'
+                }),
+                duration: Joi.string().pattern(durationPattern).required().messages({
+                    'string.pattern.base': 'Duration must be in valid format (e.g., "15000ms", "15m")',
+                    'any.required': 'Duration is required'
+                })
+            })
+        ).min(1).required().messages({
+            'array.min': 'At least one step is required in the water routine',
+            'any.required': 'Steps are required'
+        })
+    }),
+
+    updateWaterRoutineRequest: Joi.object({
+        name: Joi.string().min(1).optional().messages({
+            'string.min': 'Water routine name must be at least 1 character'
+        }),
+        steps: Joi.array().items(
+            Joi.object({
+                zone_id: Joi.string().pattern(xidPattern).required().messages({
+                    'string.pattern.base': 'Zone ID must be a 24 character XID format',
+                    'any.required': 'Zone ID is required'
+                }),
+                duration: Joi.string().pattern(durationPattern).required().messages({
+                    'string.pattern.base': 'Duration must be in valid format (e.g., "15000ms", "15m")',
+                    'any.required': 'Duration is required'
+                })
+            })
+        ).min(1).messages({
+            'array.min': 'At least one step is required in the water routine'
+        })
+    }).min(1).messages({
+        'object.min': 'At least one field must be provided for update'
+    }),
+
     // Query parameter schemas
     queryParams: {
         endDated: Joi.boolean().optional(),
