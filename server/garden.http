@@ -29,6 +29,32 @@ Content-Type: application/json
 ###
 GET    {{host}}/gardens/{{gardenId}}
 ###
+PATCH  {{host}}/gardens/{{gardenId}}
+Content-Type: application/json
+
+{
+    "name": "Front Yard",
+    "topic_prefix": "front-yard",
+    "max_zones": 2,
+    "light_schedule": {
+      "duration": "12h",
+      "start_time": "21:35:00+07:00"
+    },
+    "controller_config": {
+      "valvePins": [
+        32,
+        33
+      ],
+      "pumpPins": [
+        26,
+        27
+      ],
+      "lightPin": 14,
+      "tempHumidityPin": 12,
+      "tempHumidityInterval": 60000
+    }
+}
+###
 PATCH  {{host}}/gardens/68de7f1a1a3849191815627d
 Content-Type: application/json
 
@@ -57,8 +83,17 @@ Content-Type: application/json
 
 {
   "light": {
+    "state": "ON"
+  }
+}
+###
+POST   {{host}}/gardens/{{gardenId}}/action
+Content-Type: application/json
+
+{
+  "light": {
     "state": "OFF",
-    "for_duration": "30s"
+    "for_duration": "1m"
   }
 }
 
@@ -73,12 +108,12 @@ Content-Type: application/json
 }
 
 ###
-POST   {{host}}/gardens/68c57aac78e37f35b582064e/action
+POST   {{host}}/gardens/{{gardenId}}/action
 Content-Type: application/json
 
 {
   "update": {
-    "config":false,
+    "config":true,
     "controller_config": {
       "max_zones": 2,
       "valvePins": [1,2],

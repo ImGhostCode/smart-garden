@@ -250,22 +250,24 @@ const GardensController = {
             }
 
             if (light_schedule !== undefined) {
-                // Check if duration is valid < 24 hours
-                const durationMatch = light_schedule.duration.match(/^(\d+h)?(\d+m)?(\d+s)?$/);
-                const hours = durationMatch[1] ? parseInt(durationMatch[1]) : 0;
-                const minutes = durationMatch[2] ? parseInt(durationMatch[2]) : 0;
-                const seconds = durationMatch[3] ? parseInt(durationMatch[3]) : 0;
-                const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
-                if (totalSeconds <= 0 || totalSeconds >= 86400) {
-                    throw new ApiError(400, 'Light schedule duration must be greater than 0 and less than or equal to 24 hours');
-                }
+                if (light_schedule !== null) {
+                    // Check if duration is valid < 24 hours
+                    const durationMatch = light_schedule.duration.match(/^(\d+h)?(\d+m)?(\d+s)?$/);
+                    const hours = durationMatch[1] ? parseInt(durationMatch[1]) : 0;
+                    const minutes = durationMatch[2] ? parseInt(durationMatch[2]) : 0;
+                    const seconds = durationMatch[3] ? parseInt(durationMatch[3]) : 0;
+                    const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
+                    if (totalSeconds <= 0 || totalSeconds >= 86400) {
+                        throw new ApiError(400, 'Light schedule duration must be greater than 0 and less than or equal to 24 hours');
+                    }
 
-                if (light_schedule.adhoc_on_time) {
-                    const adhocTime = new Date(light_schedule.adhoc_on_time);
-                    // Check if adhoc_on_time is greater than now
-                    if (isNaN(adhocTime.getTime()) || adhocTime <= new Date()) {
-                        // return res.status(400).json({ error: 'light_schedule adhoc_on_time must be a valid ISO 8601 date string in the future' });
-                        throw new ApiError(400, 'Light schedule adhocOnTime must be a valid ISO 8601 date string in the future');
+                    if (light_schedule.adhoc_on_time) {
+                        const adhocTime = new Date(light_schedule.adhoc_on_time);
+                        // Check if adhoc_on_time is greater than now
+                        if (isNaN(adhocTime.getTime()) || adhocTime <= new Date()) {
+                            // return res.status(400).json({ error: 'light_schedule adhoc_on_time must be a valid ISO 8601 date string in the future' });
+                            throw new ApiError(400, 'Light schedule adhocOnTime must be a valid ISO 8601 date string in the future');
+                        }
                     }
                 }
 
@@ -276,21 +278,21 @@ const GardensController = {
                 updates.controller_config = controller_config;
             }
 
-            if (max_zones !== undefined && controller_config !== undefined) {
+            if (max_zones !== undefined && controller_config !== null) {
                 if (controller_config.valvePins.length !== controller_config.pumpPins.length) {
                     throw new ApiError(400, 'Controller config valvePins and pumpPins length must match');
                 }
                 if (controller_config.valvePins.length > max_zones || controller_config.pumpPins.length > max_zones) {
                     throw new ApiError(400, 'Controller config valvePins and pumpPins length exceed max zones');
                 }
-            } else if (max_zones !== undefined && controller_config === undefined) {
+            } else if (max_zones !== undefined && controller_config === null) {
                 const garden = await db.gardens.getById(gardenID);
                 if (garden.controller_config) {
                     if (garden.controller_config.valvePins.length > max_zones || garden.controller_config.pumpPins.length > max_zones) {
                         throw new ApiError(400, 'Existing controller config valvePins and pumpPins length exceed new max zones');
                     }
                 }
-            } else if (max_zones === undefined && controller_config !== undefined) {
+            } else if (max_zones === undefined && controller_config !== null) {
                 const garden = await db.gardens.getById(gardenID);
                 if (garden) {
                     if (controller_config.valvePins.length !== controller_config.pumpPins.length) {
@@ -314,15 +316,15 @@ const GardensController = {
                     await mqttService.sendUpdateAction(updatedGarden, controller_config);
                 } catch (mqttError) {
                     console.error('MQTT error sending initial config:', mqttError);
-                    // Proceed without failing the request
                 }
             }
 
-            if (light_schedule) {
-                try {
+            if (light_schedule !== undefined) {
+                if (light_schedule) {
                     await cronScheduler.scheduleLightActions(updatedGarden);
-                } catch (scheduleError) {
-                    console.error('Scheduling error:', scheduleError);
+                } else {
+                    // If LightSchedule is set to null, remove the scheduled Jobs
+                    cronScheduler.removeLightJobsByGardenId(updatedGarden._id.toString());
                 }
             }
 

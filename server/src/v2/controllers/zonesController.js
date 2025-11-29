@@ -213,7 +213,7 @@ const ZonesController = {
 
             const nextSchedule = await getNextActiveWaterSchedule(updatedZone.water_schedule_ids || []);
             let weatherData;
-            if (nextSchedule.hasWeatherControl() && nextSchedule.end_date == null && exclude_weather_data !== 'true') {
+            if (nextSchedule != null && nextSchedule.hasWeatherControl() && nextSchedule.end_date == null && exclude_weather_data !== 'true') {
                 weatherData = await getWeatherData(nextSchedule);
             }
 

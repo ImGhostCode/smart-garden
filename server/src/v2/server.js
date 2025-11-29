@@ -41,7 +41,7 @@ const initializeMQTT = () => {
     const mqttOptions = {
         host: brokerUrl,
         port: process.env.MQTT_PORT || 1883,
-        protocol: 'mqtts',
+        protocol: process.env.MQTT_PROTOCOL || 'mqtt',
         // ca: process.env.MQTT_BROKER_CA,
         rejectUnauthorized: true,
         clientId: process.env.MQTT_CLIENT_ID || `garden-server-${Date.now()}`,

@@ -311,7 +311,7 @@ const WaterSchedulesController = {
                         const zones = await db.zones.getByGardenId(garden._id.toString());
                         for (const zone of zones) {
                             if (zone.water_schedule_ids && zone.water_schedule_ids.includes(waterScheduleID)) {
-                                await cronScheduler.executeWaterAction(garden, zone, finalDuration, 'command');
+                                await cronScheduler.executeWaterAction(garden, zone, finalDuration, 'scheduled');
                                 zonesExecuted++;
                             }
                         }

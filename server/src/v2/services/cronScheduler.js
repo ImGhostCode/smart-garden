@@ -591,6 +591,9 @@ class CronScheduler {
         // Destroy current job
         jobInfo.task.destroy();
 
+        // Remove from scheduled jobs
+        this.scheduledJobs.delete(`light_${garden._id}_${state}`);
+
         // Create new job with delayed start time but same pattern for future runs
         const timeMatch = garden.light_schedule.start_time.match(/^(\d{2}):(\d{2}):(\d{2})/);
         const [, hours, minutes] = timeMatch;
@@ -603,7 +606,7 @@ class CronScheduler {
             await this.executeLightAction(garden, state);
 
             // After executing delayed job, recreate regular daily schedule
-            this.scheduledJobs.delete(jobId);
+            this.scheduledJobs.delete(`light_${garden._id}_DELAYED`);
 
             // Recreate regular daily job
             const regularTask = cron.schedule(regularPattern, async () => {
@@ -614,7 +617,7 @@ class CronScheduler {
             });
 
             // Store the regular job
-            this.scheduledJobs.set(jobId, {
+            this.scheduledJobs.set(`light_${garden._id}_${state}`, {
                 task: regularTask,
                 garden: garden,
                 action: state,
@@ -629,7 +632,7 @@ class CronScheduler {
         });
 
         // Store the delayed job temporarily
-        this.scheduledJobs.set(jobId, {
+        this.scheduledJobs.set(`light_${garden._id}_DELAYED`, {
             task: delayedTask,
             garden: garden,
             action: state,

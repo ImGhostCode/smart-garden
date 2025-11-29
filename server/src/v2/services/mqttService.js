@@ -301,12 +301,11 @@ class MQTTService extends EventEmitter {
         }
     }
 
-    // Handle light data. Example message: {"state":"ON"} or {"state":"OFF"} or {"state":""}
+    // Handle light data. Example message: light,garden=garden1 state=0
     async handleLightData(garden, message, timestamp) {
         try {
             // console.log('Light message:', message);
-            const data = JSON.parse(message);
-            const state = data.state; // "ON", "OFF", or ""
+            const state = message.split('state=')[1];
 
             await influxDBService.writeLightData(garden.topic_prefix, state);
             this.emit('lightUpdate', garden.id, state || 'TOGGLE');
@@ -341,7 +340,7 @@ class MQTTService extends EventEmitter {
             "duration": duration,
             "zone_id": zoneId,
             "position": zonePosition,
-            "event_id": eventId,
+            "id": eventId,
             "source": source
         };
         // Write command to InfluxDB

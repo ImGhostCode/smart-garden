@@ -131,7 +131,7 @@ const schemas = {
                 'string.pattern.base': 'Time must be in HH:MM:SS format with optional timezone offset'
             }),
             adhoc_on_time: Joi.string().isoDate().optional(),
-        }).optional(),
+        }).optional().allow(null),
         // temperature_humidity_sensor: Joi.boolean().optional(),
         controller_config: Joi.object({
             valvePins: Joi.array().items(Joi.number().integer().min(0).required()).required(),
@@ -139,7 +139,7 @@ const schemas = {
             lightPin: Joi.number().integer().min(0).optional(),
             tempHumidityPin: Joi.number().integer().min(0).optional(),
             tempHumidityInterval: Joi.number().integer().min(0).optional().default(5000)
-        }).optional()
+        }).optional().allow(null)
     }).min(1).messages({
         'object.min': 'At least one field must be provided for update'
     }),
@@ -174,7 +174,7 @@ const schemas = {
             notes: Joi.string().optional(),
             time_to_harvest: Joi.string().optional(),
             count: Joi.number().integer().min(0).optional()
-        }).optional(),
+        }).optional().allow(null),
     }).min(1).messages({
         'object.min': 'At least one field must be provided for update'
     }),
@@ -208,7 +208,7 @@ const schemas = {
         details: Joi.object({
             description: Joi.string().optional(),
             notes: Joi.string().optional()
-        }).optional(),
+        }).optional().allow(null),
         position: Joi.number().integer().min(0).optional().messages({
             'number.min': 'Position must be 0 or greater'
         }),
@@ -217,7 +217,7 @@ const schemas = {
             Joi.string().pattern(xidPattern).messages({
                 'string.pattern.base': 'Water Schedule ID must be a 24 character XID format'
             })
-        ).optional(),
+        ).optional().allow(null),
     }).min(1).messages({
         'object.min': 'At least one field must be provided for update'
     }),
@@ -271,18 +271,18 @@ const schemas = {
                 factor: Joi.number().min(0).max(1).required(),
                 range: Joi.number().min(0).required(),
                 client_id: Joi.string().pattern(xidPattern).required()
-            }).optional(),
+            }).optional().allow(null),
             temperature_control: Joi.object({
                 baseline_value: Joi.number().required(),
                 factor: Joi.number().min(0).max(1).required(),
                 range: Joi.number().min(0).required(),
                 client_id: Joi.string().pattern(xidPattern).required()
-            }).optional()
-        }).optional(),
+            }).optional().allow(null)
+        }).optional().allow(null),
         active_period: Joi.object({
             start_month: Joi.string().valid(...validMonths).required(),
             end_month: Joi.string().valid(...validMonths).required()
-        }).optional(),
+        }).optional().allow(null),
         name: Joi.string().optional(),
         description: Joi.string().optional()
     }).min(1).messages({
