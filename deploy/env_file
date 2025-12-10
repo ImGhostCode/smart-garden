@@ -1,0 +1,18 @@
+# General
+ADMIN_USER="admin"
+ADMIN_PSWD="admin123"
+
+# MongoDB
+MONGO_INITDB_ROOT_USERNAME="root"
+MONGO_INITDB_ROOT_PASSWORD="password"
+MONGO_INITDB_DATABASE="smartgarden"
+
+# InfluxDB
+INFLUXDB_TOKEN="MyInitialAdminToken0=="
+INFLUXDB_ORG="docs"
+INFLUXDB_BUCKET="garden"
+
+# Grafana
+GF_SECURITY_ADMIN_USER="${ADMIN_USER}"
+GF_SECURITY_ADMIN_PASSWORD="${ADMIN_PSWD}"
+GF_PATHS_PROVISIONING="/etc/grafana/provisioning"

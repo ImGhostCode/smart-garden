@@ -1,6 +1,7 @@
 const db = require('../models/database');
 const { ApiSuccess, ApiError } = require('../utils/apiResponse');
-const { createLink, getMockNextWaterTime } = require('../utils/helpers');
+const { createLink } = require('../utils/helpers');
+const { getNextWaterDetails, getNextActiveWaterSchedule } = require('../utils/waterScheduleHelpers');
 
 const PlantsController = {
     getAllPlants: async (req, res, next) => {
@@ -17,14 +18,33 @@ const PlantsController = {
         try {
             const plants = await db.plants.getAll(filters);
 
-            return res.json(new ApiSuccess(200, 'Plants retrieved successfully', plants.map(plant => ({
-                ...plant.toObject(),
-                links: [
-                    createLink('self', `/gardens/${gardenID}/plants/${plant.id}`),
-                    createLink('garden', `/gardens/${gardenID}`),
-                    createLink('zone', `/gardens/${gardenID}/zones/${plant.zone_id}`)
-                ],
-                next_water_time: getMockNextWaterTime()
+            return res.json(new ApiSuccess(200, 'Plants retrieved successfully', await Promise.all(plants.map(async (plant) => {
+                const zone = await db.zones.getById(plant.zone_id);
+                if (!zone || zone.garden_id !== gardenID) {
+                    throw new ApiError(404, 'Zone not found');
+                }
+
+                const nextSchedule = await getNextActiveWaterSchedule(zone.water_schedule_ids || []);
+                let nextWaterDetails = {
+                    time: null,
+                };
+                if (nextSchedule) {
+                    nextWaterDetails = await getNextWaterDetails(nextSchedule, true);
+                    // Apply skip count if present
+                    if (zone.skip_count && zone.skip_count > 0 && nextWaterDetails.time) {
+                        //A adjust the time based on skip count: skip_count * interval
+                        nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + zone.skip_count * durationToMillis(nextSchedule.interval));
+                    }
+                }
+                return {
+                    ...plant.toObject(),
+                    links: [
+                        createLink('self', `/gardens/${gardenID}/plants/${plant.id}`),
+                        createLink('garden', `/gardens/${gardenID}`),
+                        createLink('zone', `/gardens/${gardenID}/zones/${plant.zone_id}`)
+                    ],
+                    next_water_time: nextWaterDetails.time
+                }
             }))));
         } catch (error) {
             next(error);
@@ -64,7 +84,6 @@ const PlantsController = {
                     createLink('garden', `/gardens/${gardenID}`),
                     createLink('zone', `/gardens/${gardenID}/zones/${plant.zone_id}`)
                 ],
-                next_water_time: getMockNextWaterTime()
             }));
         } catch (error) {
             next(error);
@@ -81,6 +100,24 @@ const PlantsController = {
                 throw new ApiError(404, 'Plant not found');
             }
 
+            const zone = await db.zones.getById(plant.zone_id);
+            if (!zone || zone.garden_id !== gardenID) {
+                throw new ApiError(404, 'Zone not found');
+            }
+
+            const nextSchedule = await getNextActiveWaterSchedule(zone.water_schedule_ids || []);
+            let nextWaterDetails = {
+                time: null,
+            };
+            if (nextSchedule) {
+                nextWaterDetails = await getNextWaterDetails(nextSchedule, true);
+                // Apply skip count if present
+                if (zone.skip_count && zone.skip_count > 0 && nextWaterDetails.time) {
+                    //A adjust the time based on skip count: skip_count * interval
+                    nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + zone.skip_count * durationToMillis(nextSchedule.interval));
+                }
+            }
+
             return res.json(new ApiSuccess(200, 'Plant retrieved successfully', {
                 ...plant.toObject(),
                 links: [
@@ -88,7 +125,7 @@ const PlantsController = {
                     createLink('garden', `/gardens/${gardenID}`),
                     createLink('zone', `/gardens/${gardenID}/zones/${plant.zone_id}`)
                 ],
-                next_water_time: getMockNextWaterTime()
+                next_water_time: nextWaterDetails.time
             }));
         } catch (error) {
             next(error);
@@ -107,8 +144,8 @@ const PlantsController = {
             }
 
             // Check if zone exists and belongs to the garden (if zone_id is being updated)
+            const zone = await db.zones.getById(zone_id);
             if (zone_id) {
-                const zone = await db.zones.getById(zone_id);
                 if (!zone || zone.garden_id !== gardenID) {
                     throw new ApiError(400, 'Invalid zone_id for the specified garden');
                 }
@@ -121,6 +158,19 @@ const PlantsController = {
 
             const result = await db.plants.updateById(plantID, update);
 
+            const nextSchedule = await getNextActiveWaterSchedule(zone.water_schedule_ids || []);
+            let nextWaterDetails = {
+                time: null,
+            };
+            if (nextSchedule) {
+                nextWaterDetails = await getNextWaterDetails(nextSchedule, true);
+                // Apply skip count if present
+                if (zone.skip_count && zone.skip_count > 0 && nextWaterDetails.time) {
+                    //A adjust the time based on skip count: skip_count * interval
+                    nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + zone.skip_count * durationToMillis(nextSchedule.interval));
+                }
+            }
+
             return res.json(new ApiSuccess(200, 'Plant updated successfully', {
                 ...result.toObject(),
                 links: [
@@ -128,7 +178,7 @@ const PlantsController = {
                     createLink('garden', `/gardens/${gardenID}`),
                     createLink('zone', `/gardens/${gardenID}/zones/${plant.zone_id}`)
                 ],
-                next_water_time: getMockNextWaterTime()
+                next_water_time: nextWaterDetails.time
             }));
         } catch (error) {
             next(error);

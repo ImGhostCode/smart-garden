@@ -6,20 +6,44 @@ services:
     ports:
       - "27017:27017"
     env_file:
-      - .env
+      - env_file
     volumes:
       - mongo_data:/data/db
+  
+  influxdb_setup:
+    image: "influxdb:latest"
+    volumes:
+      - "./influxdb_setup:/entrypoint"
+    command: "/entrypoint/entrypoint.sh"
+    depends_on:
+      influxdb2:
+        condition: service_healthy
+    env_file:
+      - env_file
+    networks:
+      - default
+    profiles:
+      - test
+      - run-local
+      - demo
 
   influxdb2:
     image: influxdb:2
     ports:
       - 8086:8086
-    env_file:
-      - .env
-    secrets:
-      - influxdb2-admin-username
-      - influxdb2-admin-password
-      - influxdb2-admin-token
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=${ADMIN_USER}
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${ADMIN_PSWD}
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_TOKEN}
+      - DOCKER_INFLUXDB_INIT_ORG=${INFLUXDB_ORG}
+      - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUXDB_BUCKET}
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     volumes:
       - type: volume
         source: influxdb2-data
@@ -27,7 +51,11 @@ services:
       - type: volume
         source: influxdb2-config
         target: /etc/influxdb2
-         
+    profiles:
+      - test
+      - run-local
+      - demo
+
   mosquitto:
     image: eclipse-mosquitto
     container_name: mosquitto
@@ -39,13 +67,43 @@ services:
     - ./mosquitto/data:/mosquitto/data
     - ./mosquitto/log:/mosquitto/log
     restart: unless-stopped
-secrets:
-  influxdb2-admin-username:
-    file: ~/.env.influxdb2-admin-username
-  influxdb2-admin-password:
-    file: ~/.env.influxdb2-admin-password
-  influxdb2-admin-token:
-    file: ~/.env.influxdb2-admin-token
+
+  smart-garden-server:
+    build:
+      context: ../server
+      dockerfile: Dockerfile
+    container_name: smart-garden-server
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.prod
+    depends_on:
+      mongo:
+        condition: service_started
+      mosquitto:
+        condition: service_started
+      influxdb2:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); const options = { hostname: 'localhost', port: 3000, path: '/health', timeout: 2000 }; const req = http.request(options, (res) => { if (res.statusCode === 200) process.exit(0); else process.exit(1); }); req.on('error', () => process.exit(1)); req.on('timeout', () => process.exit(1)); req.end();"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    profiles:
+      - demo
+
+  telegraf:
+    image: "telegraf"
+    volumes:
+      - "./configs/telegraf:/etc/telegraf"
+    env_file:
+      - env_file
+    profiles:
+      - test
+      - run-local
+      - demo
 volumes:
   mongo_data:
   influxdb2-data:

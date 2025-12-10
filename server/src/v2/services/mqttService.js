@@ -179,7 +179,7 @@ class MQTTService extends EventEmitter {
             }
 
             // Handle different data types
-            this.processDataMessage(garden[0], dataType, messageStr);
+            // this.processDataMessage(garden[0], dataType, messageStr);
 
         } catch (error) {
             console.error('Error handling MQTT message:', error);
