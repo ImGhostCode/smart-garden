@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/extensions/navigation_extensions.dart';
+
+enum WeatherClientAction { edit, remove }
 
 class WeatherClientScreen extends ConsumerStatefulWidget {
   const WeatherClientScreen({super.key});
@@ -33,7 +35,7 @@ class _WeatherClientScreenState extends ConsumerState<WeatherClientScreen> {
           ),
           IconButton.filled(
             onPressed: () {
-              context.push(AppConstants.settingsRoute);
+              context.goSettings();
             },
             icon: const Icon(Icons.settings_rounded),
             color: AppColors.primary,
@@ -100,9 +102,38 @@ class _WeatherClientScreenState extends ConsumerState<WeatherClientScreen> {
                           ),
                         ),
                       ),
-                      trailing: IconButton(
-                        onPressed: () {},
-                        icon: const Icon(Icons.more_vert),
+                      trailing: PopupMenuButton<WeatherClientAction>(
+                        onSelected: (WeatherClientAction item) {
+                          switch (item) {
+                            case WeatherClientAction.edit:
+                              context.goEditWeatherClient(
+                                '68de7e98ae6796d18a268a40',
+                              );
+                              break;
+                            default:
+                          }
+                        },
+                        itemBuilder: (BuildContext context) =>
+                            <PopupMenuEntry<WeatherClientAction>>[
+                              const PopupMenuItem<WeatherClientAction>(
+                                value: WeatherClientAction.edit,
+                                child: ListTile(
+                                  leading: Icon(Icons.edit_square),
+                                  title: Text('Edit'),
+                                  iconColor: Colors.blue,
+                                ),
+                              ),
+                              const PopupMenuItem<WeatherClientAction>(
+                                value: WeatherClientAction.remove,
+                                child: ListTile(
+                                  leading: Icon(Icons.delete),
+                                  title: Text('Delete'),
+                                  iconColor: Colors.red,
+                                  textColor: Colors.red,
+                                ),
+                              ),
+                            ],
+                        icon: const Icon(Icons.more_vert_rounded),
                       ),
                     ),
                     Container(
@@ -195,9 +226,38 @@ class _WeatherClientScreenState extends ConsumerState<WeatherClientScreen> {
                           ),
                         ),
                       ),
-                      trailing: IconButton(
-                        onPressed: () {},
-                        icon: const Icon(Icons.more_vert),
+                      trailing: PopupMenuButton<WeatherClientAction>(
+                        onSelected: (WeatherClientAction item) {
+                          switch (item) {
+                            case WeatherClientAction.edit:
+                              context.goEditWeatherClient(
+                                '68de7e98ae6796d18a268a31',
+                              );
+                              break;
+                            default:
+                          }
+                        },
+                        itemBuilder: (BuildContext context) =>
+                            <PopupMenuEntry<WeatherClientAction>>[
+                              const PopupMenuItem<WeatherClientAction>(
+                                value: WeatherClientAction.edit,
+                                child: ListTile(
+                                  leading: Icon(Icons.edit_square),
+                                  title: Text('Edit'),
+                                  iconColor: Colors.blue,
+                                ),
+                              ),
+                              const PopupMenuItem<WeatherClientAction>(
+                                value: WeatherClientAction.remove,
+                                child: ListTile(
+                                  leading: Icon(Icons.delete),
+                                  title: Text('Delete'),
+                                  iconColor: Colors.red,
+                                  textColor: Colors.red,
+                                ),
+                              ),
+                            ],
+                        icon: const Icon(Icons.more_vert_rounded),
                       ),
                     ),
                     Container(

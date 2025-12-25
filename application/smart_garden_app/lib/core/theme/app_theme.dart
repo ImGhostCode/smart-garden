@@ -38,6 +38,17 @@ class AppTheme {
         textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
       ),
     ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.radiusMd),
+        ),
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+      ),
+    ),
+
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -47,18 +58,23 @@ class AppTheme {
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppConstants.radiusMd),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       filled: true,
       fillColor: Colors.white,
-      enabledBorder: const OutlineInputBorder(
-        borderSide: BorderSide(color: AppColors.neutral200),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: AppConstants.paddingMd,
+        vertical: AppConstants.paddingSm,
       ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppConstants.radiusMd),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      errorMaxLines: 2,
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     ),
-    dividerTheme: const DividerThemeData(thickness: 1),
+    dividerTheme: DividerThemeData(thickness: 1, color: Colors.grey[300]),
     searchBarTheme: SearchBarThemeData(
       elevation: const WidgetStatePropertyAll(0),
       backgroundColor: const WidgetStatePropertyAll(Colors.white),
@@ -67,6 +83,24 @@ class AppTheme {
           side: BorderSide(color: Colors.grey.shade300),
           borderRadius: BorderRadiusGeometry.circular(AppConstants.radiusMd),
         ),
+      ),
+    ),
+    bottomSheetTheme: BottomSheetThemeData(
+      dragHandleColor: Colors.grey[400],
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppConstants.radiusLg),
+        ),
+      ),
+      backgroundColor: Colors.white,
+    ),
+    popupMenuTheme: const PopupMenuThemeData(
+      color: Colors.white,
+      surfaceTintColor: Colors.white,
+    ),
+    dropdownMenuTheme: const DropdownMenuThemeData(
+      menuStyle: MenuStyle(
+        backgroundColor: WidgetStatePropertyAll(Colors.white),
       ),
     ),
   );

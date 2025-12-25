@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/extensions/navigation_extensions.dart';
+
+enum WaterScheduleAction { edit, remove }
 
 class WaterScheduleScreen extends ConsumerStatefulWidget {
   const WaterScheduleScreen({super.key});
@@ -33,7 +35,7 @@ class _WaterScheduleScreenState extends ConsumerState<WaterScheduleScreen> {
           ),
           IconButton.filled(
             onPressed: () {
-              context.push(AppConstants.settingsRoute);
+              context.goSettings();
             },
             icon: const Icon(Icons.settings_rounded),
             color: AppColors.primary,
@@ -85,9 +87,38 @@ class _WaterScheduleScreenState extends ConsumerState<WaterScheduleScreen> {
                       contentPadding: const EdgeInsets.only(
                         left: AppConstants.paddingMd,
                       ),
-                      trailing: IconButton(
-                        onPressed: () {},
-                        icon: const Icon(Icons.more_vert),
+                      trailing: PopupMenuButton<WaterScheduleAction>(
+                        onSelected: (WaterScheduleAction item) {
+                          switch (item) {
+                            case WaterScheduleAction.edit:
+                              context.goEditWaterSchedule(
+                                '68de7e98ae6796d18a268a39',
+                              );
+                              break;
+                            default:
+                          }
+                        },
+                        itemBuilder: (BuildContext context) =>
+                            <PopupMenuEntry<WaterScheduleAction>>[
+                              const PopupMenuItem<WaterScheduleAction>(
+                                value: WaterScheduleAction.edit,
+                                child: ListTile(
+                                  leading: Icon(Icons.edit_square),
+                                  title: Text('Edit'),
+                                  iconColor: Colors.blue,
+                                ),
+                              ),
+                              const PopupMenuItem<WaterScheduleAction>(
+                                value: WaterScheduleAction.remove,
+                                child: ListTile(
+                                  leading: Icon(Icons.delete),
+                                  title: Text('Delete'),
+                                  iconColor: Colors.red,
+                                  textColor: Colors.red,
+                                ),
+                              ),
+                            ],
+                        icon: const Icon(Icons.more_vert_rounded),
                       ),
                     ),
                     const Padding(
@@ -116,14 +147,11 @@ class _WaterScheduleScreenState extends ConsumerState<WaterScheduleScreen> {
                           ),
                           SizedBox(width: 5),
                           ScheduleConfig(
-                            icon: Icons.alarm_rounded,
+                            icon: Icons.access_time,
                             value: '3:00 PM',
                           ),
                           SizedBox(width: 5),
-                          ScheduleConfig(
-                            icon: Icons.refresh_rounded,
-                            value: '1 DAYS',
-                          ),
+                          ScheduleConfig(icon: Icons.cached, value: '1 DAYS'),
                           SizedBox(width: 5),
                           ScheduleConfig(
                             icon: Icons.calendar_month_rounded,
@@ -154,9 +182,38 @@ class _WaterScheduleScreenState extends ConsumerState<WaterScheduleScreen> {
                       contentPadding: const EdgeInsets.only(
                         left: AppConstants.paddingMd,
                       ),
-                      trailing: IconButton(
-                        onPressed: () {},
-                        icon: const Icon(Icons.more_vert),
+                      trailing: PopupMenuButton<WaterScheduleAction>(
+                        onSelected: (WaterScheduleAction item) {
+                          switch (item) {
+                            case WaterScheduleAction.edit:
+                              context.goEditWaterRoutine(
+                                '68de7e98ae6796d18a268a41',
+                              );
+                              break;
+                            default:
+                          }
+                        },
+                        itemBuilder: (BuildContext context) =>
+                            <PopupMenuEntry<WaterScheduleAction>>[
+                              const PopupMenuItem<WaterScheduleAction>(
+                                value: WaterScheduleAction.edit,
+                                child: ListTile(
+                                  leading: Icon(Icons.edit_square),
+                                  title: Text('Edit'),
+                                  iconColor: Colors.blue,
+                                ),
+                              ),
+                              const PopupMenuItem<WaterScheduleAction>(
+                                value: WaterScheduleAction.remove,
+                                child: ListTile(
+                                  leading: Icon(Icons.delete),
+                                  title: Text('Delete'),
+                                  iconColor: Colors.red,
+                                  textColor: Colors.red,
+                                ),
+                              ),
+                            ],
+                        icon: const Icon(Icons.more_vert_rounded),
                       ),
                     ),
                     const Padding(
@@ -166,25 +223,30 @@ class _WaterScheduleScreenState extends ConsumerState<WaterScheduleScreen> {
                       child: Text('Water seedlings a bit every day'),
                     ),
                     const SizedBox(height: 6),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(
+                    Container(
+                      padding: const EdgeInsets.symmetric(
                         horizontal: AppConstants.paddingMd,
                       ),
-                      child: Row(
-                        children: [
+                      height: 50,
+                      child: ListView(
+                        shrinkWrap: true,
+                        scrollDirection: Axis.horizontal,
+                        children: const [
                           ScheduleConfig(
                             icon: Icons.timer_outlined,
                             value: '15m',
                           ),
                           SizedBox(width: 5),
                           ScheduleConfig(
-                            icon: Icons.alarm_rounded,
+                            icon: Icons.access_time,
                             value: '3:00 PM',
                           ),
                           SizedBox(width: 5),
+                          ScheduleConfig(icon: Icons.cached, value: '1 DAYS'),
+                          SizedBox(width: 5),
                           ScheduleConfig(
-                            icon: Icons.refresh_rounded,
-                            value: '1 DAYS',
+                            icon: Icons.calendar_month_rounded,
+                            value: 'APR - OCT',
                           ),
                         ],
                       ),
@@ -211,6 +273,9 @@ class ScheduleConfig extends StatelessWidget {
     return Chip(
       elevation: 0,
       padding: const EdgeInsets.all(AppConstants.paddingSm),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppConstants.radiusMd),
+      ),
       backgroundColor: AppColors.primary,
       labelPadding: EdgeInsets.zero,
       labelStyle: Theme.of(
@@ -221,7 +286,14 @@ class ScheduleConfig extends StatelessWidget {
         children: [
           Icon(icon, color: Colors.white),
           const SizedBox(width: 5),
-          Text(value),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
         ],
       ),
     );

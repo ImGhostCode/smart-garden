@@ -4,6 +4,7 @@ class AppColors {
   // static const primary = Color(0XFF3CB043);
   static const primary = Color(0XFF449952);
   // static const primary500 = Color(0XFF3CB043);
+  static const primary700 = Color(0xFF1B5E20);
   static const primary500 = Color(0XFF449952);
   static const primary400 = Color(0xFF66CB6C);
   static const primary300 = Color(0xFF8FD993);
@@ -23,4 +24,6 @@ class AppColors {
   static const neutral200 = Color(0xFF888888);
   static const neutral100 = Color(0xFFE0E0E0);
   static const neutral50 = Color(0xFFFAFAFA);
+
+  static const error = Color(0xFFEF5350);
 }

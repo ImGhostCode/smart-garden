@@ -15,4 +15,8 @@ class Assets {
       '$iconPath/partly_cloudy_day_fill.png';
   static const String waterRoutineAIcon = '$iconPath/routine_fill.png';
   static const String farmer = '$iconPath/farmer.png';
+  static const String outdoorGarden = '$iconPath/outdoor_garden.png';
+  static const String zone = '$imagePath/zone.png';
+  static const String plant = '$imagePath/plant.png';
+  static const String garden = '$imagePath/garden.png';
 }

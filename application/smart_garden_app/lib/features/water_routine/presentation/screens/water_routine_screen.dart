@@ -3,10 +3,12 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/extensions/navigation_extensions.dart';
+
+enum WaterRoutineAction { edit, remove }
 
 class WaterRoutineScreen extends ConsumerStatefulWidget {
   const WaterRoutineScreen({super.key});
@@ -36,7 +38,7 @@ class _WaterRoutineScreenState extends ConsumerState<WaterRoutineScreen> {
           ),
           IconButton.filled(
             onPressed: () {
-              context.push(AppConstants.settingsRoute);
+              context.goSettings();
             },
             icon: const Icon(Icons.settings_rounded),
             color: AppColors.primary,
@@ -90,9 +92,38 @@ class _WaterRoutineScreenState extends ConsumerState<WaterRoutineScreen> {
                       contentPadding: const EdgeInsets.only(
                         left: AppConstants.paddingMd,
                       ),
-                      trailing: IconButton(
-                        onPressed: () {},
-                        icon: const Icon(Icons.more_vert),
+                      trailing: PopupMenuButton<WaterRoutineAction>(
+                        onSelected: (WaterRoutineAction item) {
+                          switch (item) {
+                            case WaterRoutineAction.edit:
+                              context.goEditWaterRoutine(
+                                '68de7e98ae6796d18a268a40',
+                              );
+                              break;
+                            default:
+                          }
+                        },
+                        itemBuilder: (BuildContext context) =>
+                            <PopupMenuEntry<WaterRoutineAction>>[
+                              const PopupMenuItem<WaterRoutineAction>(
+                                value: WaterRoutineAction.edit,
+                                child: ListTile(
+                                  leading: Icon(Icons.edit_square),
+                                  title: Text('Edit'),
+                                  iconColor: Colors.blue,
+                                ),
+                              ),
+                              const PopupMenuItem<WaterRoutineAction>(
+                                value: WaterRoutineAction.remove,
+                                child: ListTile(
+                                  leading: Icon(Icons.delete),
+                                  title: Text('Delete'),
+                                  iconColor: Colors.red,
+                                  textColor: Colors.red,
+                                ),
+                              ),
+                            ],
+                        icon: const Icon(Icons.more_vert_rounded),
                       ),
                     ),
                     ListView.builder(

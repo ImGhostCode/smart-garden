@@ -5,9 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/assets.dart';
+import '../../../../core/router/app_routers.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/extensions/navigation_extensions.dart';
 
 class AppSkeleton extends ConsumerStatefulWidget {
   const AppSkeleton({required this.child, super.key});
@@ -20,23 +21,18 @@ class AppSkeleton extends ConsumerStatefulWidget {
 
 class _AppSkeletonState extends ConsumerState<AppSkeleton> {
   int get _currentIndex =>
-      _locationToTabIndex(GoRouter.of(context).state.fullPath ?? '');
+      _locationToTabIndex(GoRouter.of(context).state.name ?? '');
   DateTime? _lastPressedAt; // last time user pressed back
 
   int _locationToTabIndex(String location) {
-    final index = location.indexOf('/', 1);
-    return index > 0
-        ? _tabs.indexWhere(
-            (t) => t.initialLocation == location.substring(0, index),
-          )
-        : _tabs.indexWhere((t) => t.initialLocation == location);
+    return _tabs.indexWhere((t) => t.initialLocation == location);
   }
 
   bool _isNotMainScreen(String location) {
-    return location != AppConstants.homeRoute &&
-        location != AppConstants.waterScheduleRoute &&
-        location != AppConstants.weatherClientRoute &&
-        location != AppConstants.waterRoutineRoute;
+    return location != RouteNames.garden &&
+        location != RouteNames.waterSchedules &&
+        location != RouteNames.weatherClients &&
+        location != RouteNames.waterRoutines;
   }
 
   static const List<TabItem> _tabs = [
@@ -44,31 +40,31 @@ class _AppSkeletonState extends ConsumerState<AppSkeleton> {
       icon: Assets.homeIcon,
       activeIcon: Assets.homeAIcon,
       label: 'Garden',
-      initialLocation: AppConstants.homeRoute,
+      initialLocation: RouteNames.garden,
     ),
     TabItem(
       icon: Assets.waterScheduleIcon,
       activeIcon: Assets.waterScheduleAIcon,
       label: 'Schedule',
-      initialLocation: AppConstants.waterScheduleRoute,
+      initialLocation: RouteNames.waterSchedules,
     ),
     TabItem(
       icon: Assets.weatherClientIcon,
       activeIcon: Assets.weatherClientAIcon,
       label: 'Weather',
-      initialLocation: AppConstants.weatherClientRoute,
+      initialLocation: RouteNames.weatherClients,
     ),
     TabItem(
       icon: Assets.waterRoutineIcon,
       activeIcon: Assets.waterRoutineAIcon,
       label: 'Routine',
-      initialLocation: AppConstants.waterRoutineRoute,
+      initialLocation: RouteNames.waterRoutines,
     ),
   ];
 
   void _onItemTapped(int index) {
     if (index != _currentIndex) {
-      context.replace(_tabs[index].initialLocation);
+      context.replaceNamed(_tabs[index].initialLocation);
     }
   }
 
@@ -92,22 +88,40 @@ class _AppSkeletonState extends ConsumerState<AppSkeleton> {
             },
       child: Scaffold(
         body: widget.child,
-        floatingActionButton: ClipOval(
-          child: SizedBox(
-            width: 70,
-            height: 70,
-            child: FloatingActionButton(
-              backgroundColor: AppColors.primary,
-              onPressed: () {
-                // Add your action here
-              },
-              child: const Icon(Icons.add, color: Colors.white),
-            ),
-          ),
-        ),
+        floatingActionButton:
+            _isNotMainScreen(GoRouter.of(context).state.name ?? '')
+            ? null
+            : ClipOval(
+                child: SizedBox(
+                  width: 70,
+                  height: 70,
+                  child: FloatingActionButton(
+                    backgroundColor: AppColors.primary,
+                    onPressed: () {
+                      switch (_currentIndex) {
+                        case 0:
+                          context.goCreateGarden();
+                          break;
+                        case 1:
+                          context.goNewWaterSchedule();
+                          break;
+                        case 2:
+                          context.goNewWeatherClient();
+                          break;
+                        case 3:
+                          context.goNewWaterRoutine();
+                          break;
+                        default:
+                          return;
+                      }
+                    },
+                    child: const Icon(Icons.add, color: Colors.white),
+                  ),
+                ),
+              ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
         bottomNavigationBar:
-            _isNotMainScreen(GoRouter.of(context).state.fullPath ?? '')
+            _isNotMainScreen(GoRouter.of(context).state.name ?? '')
             ? null
             : AppBottomNavBar(
                 tabs: _tabs,

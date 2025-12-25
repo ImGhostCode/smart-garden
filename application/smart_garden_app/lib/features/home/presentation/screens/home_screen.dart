@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/assets.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/extensions/navigation_extensions.dart';
+
+enum GardenAction { edit, remove }
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -32,7 +34,7 @@ class HomeScreen extends ConsumerWidget {
           ),
           IconButton.filled(
             onPressed: () {
-              context.push(AppConstants.settingsRoute);
+              context.goSettings();
             },
             icon: const Icon(Icons.settings_rounded),
             color: AppColors.primary,
@@ -62,6 +64,27 @@ class HomeScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 10),
+              InkWell(
+                onTap: () {
+                  context.goGardenDetail('68de7e98ae6796d18a268a34');
+                },
+                child: Ink(
+                  decoration: BoxDecoration(
+                    color: AppColors.neutral50,
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(AppConstants.radiusMd),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildHeader(context),
+                      _buildGridContent(context),
+                      _buildFooter(context),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
               Container(
                 decoration: BoxDecoration(
                   color: AppColors.neutral50,
@@ -73,26 +96,11 @@ class HomeScreen extends ConsumerWidget {
                   children: [
                     _buildHeader(context),
                     _buildGridContent(context),
-                    _buildFooter(),
+                    _buildFooter(context),
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.neutral50,
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(AppConstants.radiusMd),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildHeader(context),
-                    _buildGridContent(context),
-                    _buildFooter(),
-                  ],
-                ),
-              ),
+              const SizedBox(height: 150),
             ],
           ),
         ),
@@ -116,7 +124,36 @@ class HomeScreen extends ConsumerWidget {
           overflow: TextOverflow.ellipsis,
         ),
       ),
-      trailing: IconButton(onPressed: () {}, icon: const Icon(Icons.more_vert)),
+      trailing: PopupMenuButton<GardenAction>(
+        onSelected: (GardenAction item) {
+          switch (item) {
+            case GardenAction.edit:
+              context.goEditGarden('68de7e98ae6796d18a268a34');
+              break;
+            default:
+          }
+        },
+        itemBuilder: (BuildContext context) => <PopupMenuEntry<GardenAction>>[
+          const PopupMenuItem<GardenAction>(
+            value: GardenAction.edit,
+            child: ListTile(
+              leading: Icon(Icons.edit_square),
+              title: Text('Edit'),
+              iconColor: Colors.blue,
+            ),
+          ),
+          const PopupMenuItem<GardenAction>(
+            value: GardenAction.remove,
+            child: ListTile(
+              leading: Icon(Icons.delete),
+              title: Text('Delete'),
+              iconColor: Colors.red,
+              textColor: Colors.red,
+            ),
+          ),
+        ],
+        icon: const Icon(Icons.more_vert_rounded),
+      ),
     );
   }
 
@@ -274,7 +311,7 @@ class HomeScreen extends ConsumerWidget {
   }
 
   // Phần chân trang với nút Actions
-  Widget _buildFooter() {
+  Widget _buildFooter(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppConstants.paddingMd),
       decoration: BoxDecoration(
@@ -292,7 +329,9 @@ class HomeScreen extends ConsumerWidget {
           SizedBox(
             height: AppConstants.buttonSm,
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: () {
+                showGardenActions(context);
+              },
               child: const Text('ACTIONS'),
             ),
           ),
@@ -315,4 +354,75 @@ class HomeScreen extends ConsumerWidget {
       ],
     );
   }
+}
+
+void showGardenActions(BuildContext context) {
+  showModalBottomSheet(
+    useRootNavigator: true,
+    context: context,
+    showDragHandle: true,
+    builder: (context) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(bottom: 16),
+            child: Text(
+              'Garden Actions',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const Divider(),
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppConstants.paddingMd,
+            ),
+            title: const Text(
+              'Lights',
+              style: TextStyle(
+                color: AppColors.primary700,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            subtitle: const Text('Status: OFF'),
+            trailing: Switch(
+              value: true,
+              onChanged: (val) {},
+              activeColor: Colors.white,
+              activeTrackColor: AppColors.primary,
+            ),
+          ),
+          const Divider(),
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppConstants.paddingMd,
+            ),
+            title: const Text(
+              'Watering',
+              style: TextStyle(
+                color: AppColors.primary700,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            trailing: ElevatedButton.icon(
+              onPressed: () {},
+              icon: const Icon(
+                Icons.block,
+                size: AppConstants.iconMd,
+                color: Colors.white,
+              ),
+              label: const Text(
+                'Stop all',
+                style: TextStyle(color: Colors.white),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error, // Màu đỏ/cam nhạt
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+      );
+    },
+  );
 }
