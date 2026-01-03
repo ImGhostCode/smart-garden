@@ -9,6 +9,14 @@ import '../../../../core/constants/assets.dart';
 import '../../../../core/router/app_routers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
+import '../../../garden/domain/usecases/get_all_gardens.dart';
+import '../../../garden/presentation/providers/garden_provider.dart';
+import '../../../water_routine/domain/usecases/get_all_water_routines.dart';
+import '../../../water_routine/presentation/providers/water_routine_provider.dart';
+import '../../../water_schedule/domain/usecases/get_all_water_schedules.dart';
+import '../../../water_schedule/presentation/providers/water_schedule_provider.dart';
+import '../../../weather_client/domain/usecases/get_all_weather_clients.dart';
+import '../../../weather_client/presentation/providers/weather_client_provider.dart';
 
 class AppSkeleton extends ConsumerStatefulWidget {
   const AppSkeleton({required this.child, super.key});
@@ -66,6 +74,26 @@ class _AppSkeletonState extends ConsumerState<AppSkeleton> {
     if (index != _currentIndex) {
       context.replaceNamed(_tabs[index].initialLocation);
     }
+  }
+
+  @override
+  void initState() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Preload data for all main tabs
+      ref
+          .read(gardenProvider.notifier)
+          .getAllGarden(GetAllGardenParams(endDated: false));
+      ref
+          .read(waterScheduleProvider.notifier)
+          .getAllWaterSchedule(GetAllWSParams());
+      ref
+          .read(weatherClientProvider.notifier)
+          .getAllWeatherClients(GetAllWeatherClientsParams());
+      ref
+          .read(waterRoutineProvider.notifier)
+          .getAllWaterRoutine(GetAllWRParams());
+    });
+    super.initState();
   }
 
   @override

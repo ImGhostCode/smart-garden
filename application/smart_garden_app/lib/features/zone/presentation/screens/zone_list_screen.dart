@@ -1,46 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/assets.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../../garden/presentation/screens/garden_detail_screen.dart'
     show showZoneActions;
+import '../../domain/entities/zone_entity.dart';
+import '../../domain/usecases/get_all_zones.dart';
+import '../providers/zone_provider.dart';
 
 enum ZoneAction { edit, remove }
 
-class ZoneData {
-  final String title;
-  final String description;
-  final String imageUrl;
+class ZoneListScreen extends ConsumerStatefulWidget {
+  final String gardenId;
+  const ZoneListScreen({super.key, required this.gardenId});
 
-  ZoneData({
-    required this.title,
-    required this.description,
-    required this.imageUrl,
-  });
+  @override
+  ConsumerState<ConsumerStatefulWidget> createState() => _ZoneListScreenState();
 }
 
-class ZoneListScreen extends StatelessWidget {
-  const ZoneListScreen({super.key});
+class _ZoneListScreenState extends ConsumerState<ZoneListScreen> {
+  @override
+  void initState() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (ref.read(zoneProvider).zones.isEmpty) {
+        ref
+            .read(zoneProvider.notifier)
+            .getAllZone(GetAllZoneParams(gardenId: widget.gardenId));
+      }
+    });
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final List<ZoneData> zones = [
-      ZoneData(
-        title: "Shrubs",
-        description:
-            "This zone has a few shrubs that need water more frequently",
-        imageUrl:
-            "https://img.freepik.com/free-vector/scene-park-with-many-trees_1308-56272.jpg?w=740", // Ảnh demo
-      ),
-      ZoneData(
-        title: "Trees",
-        description:
-            "This zone has a few shrubs that need water more frequently",
-        imageUrl:
-            "https://img.freepik.com/free-vector/park-scene-with-nature-landscape_1308-46672.jpg?w=740", // Ảnh demo
-      ),
-    ];
+    final zoneState = ref.watch(zoneProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -54,20 +49,24 @@ class ZoneListScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(AppConstants.paddingMd),
-        itemCount: zones.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 12),
-        itemBuilder: (context, index) {
-          return ZoneListItem(data: zones[index]);
-        },
-      ),
+      body: zoneState.isLoadingZones
+          ? const Center(child: CircularProgressIndicator())
+          : zoneState.errLoadingZones != null
+          ? Center(child: Text(zoneState.errLoadingZones!))
+          : ListView.separated(
+              padding: const EdgeInsets.all(AppConstants.paddingMd),
+              itemCount: zoneState.zones.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                return ZoneListItem(data: zoneState.zones[index]);
+              },
+            ),
     );
   }
 }
 
 class ZoneListItem extends StatelessWidget {
-  final ZoneData data;
+  final ZoneEntity data;
 
   const ZoneListItem({super.key, required this.data});
 
@@ -132,7 +131,7 @@ class ZoneListItem extends StatelessWidget {
                   children: [
                     const SizedBox(height: AppConstants.paddingMd),
                     Text(
-                      data.title,
+                      data.name ?? '',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -143,7 +142,7 @@ class ZoneListItem extends StatelessWidget {
 
                     // Description
                     Text(
-                      data.description,
+                      data.details?.description ?? '',
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(color: Colors.black87),

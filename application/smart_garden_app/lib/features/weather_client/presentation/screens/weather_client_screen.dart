@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
+import '../../domain/entities/weather_client_entity.dart';
+import '../../domain/usecases/get_all_weather_clients.dart';
+import '../providers/weather_client_provider.dart';
 
 enum WeatherClientAction { edit, remove }
+
+enum WeatherClientType { netatmo, fake }
 
 class WeatherClientScreen extends ConsumerStatefulWidget {
   const WeatherClientScreen({super.key});
@@ -17,298 +23,305 @@ class WeatherClientScreen extends ConsumerStatefulWidget {
 
 class _WeatherClientScreenState extends ConsumerState<WeatherClientScreen> {
   @override
+  void initState() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (ref.read(weatherClientProvider).weatherClients.isEmpty) {
+        ref
+            .read(weatherClientProvider.notifier)
+            .getAllWeatherClients(GetAllWeatherClientsParams());
+      }
+    });
+
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    EasyLoading.dismiss();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        title: const Text('Weather Client'),
-        centerTitle: false,
-        titleTextStyle: Theme.of(
-          context,
-        ).textTheme.titleLarge!.copyWith(fontWeight: FontWeight.w600),
-        actions: [
-          IconButton.filled(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_rounded),
-            color: AppColors.primary,
-            style: IconButton.styleFrom(backgroundColor: AppColors.primary100),
-          ),
-          IconButton.filled(
-            onPressed: () {
-              context.goSettings();
-            },
-            icon: const Icon(Icons.settings_rounded),
-            color: AppColors.primary,
-            style: IconButton.styleFrom(backgroundColor: AppColors.primary100),
-          ),
-          const SizedBox(width: AppConstants.paddingSm),
-        ],
+    final weatherClientState = ref.watch(weatherClientProvider);
+
+    ref.listen<WeatherClientState>(weatherClientProvider, (previous, next) {
+      if (previous?.isLoadingWeather == false &&
+          next.isLoadingWeather == true) {
+        EasyLoading.show(status: 'Loading...');
+      } else {
+        EasyLoading.dismiss();
+      }
+    });
+
+    return SafeArea(
+      child: Scaffold(
+        body: CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              scrolledUnderElevation: 0,
+              floating: true,
+              pinned: false,
+              centerTitle: false,
+              title: const Text('Weather Client'),
+              titleTextStyle: Theme.of(
+                context,
+              ).textTheme.titleLarge!.copyWith(fontWeight: FontWeight.w600),
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              // backgroundColor: Colors.white,
+              leadingWidth: 120,
+              actions: [
+                IconButton.filled(
+                  onPressed: () {},
+                  icon: const Icon(Icons.notifications_rounded),
+                  color: AppColors.primary,
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppColors.primary100,
+                  ),
+                ),
+                IconButton.filled(
+                  onPressed: () {
+                    context.goSettings();
+                  },
+                  icon: const Icon(Icons.settings_rounded),
+                  color: AppColors.primary,
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppColors.primary100,
+                  ),
+                ),
+                const SizedBox(width: AppConstants.paddingSm),
+              ],
+            ),
+
+            SliverAppBar(
+              pinned: true,
+              primary: false,
+              toolbarHeight: 70,
+              automaticallyImplyLeading: false,
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              surfaceTintColor: Colors.transparent,
+              titleSpacing: 0,
+              title: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppConstants.paddingMd,
+                ),
+                child: SearchBar(
+                  leading: const Icon(Icons.search_rounded, color: Colors.grey),
+                  hintText: 'Search',
+                  trailing: [
+                    IconButton(
+                      onPressed: () {},
+                      icon: const Icon(
+                        Icons.clear_rounded,
+                        size: AppConstants.iconMd,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            SliverPadding(
+              padding: const EdgeInsets.all(AppConstants.paddingMd),
+              sliver: _buildSliverContent(weatherClientState),
+            ),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 150)),
+          ],
+        ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingMd),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              const SizedBox(height: AppConstants.paddingLg),
-              SearchBar(
-                leading: const Icon(Icons.search_rounded, color: Colors.grey),
-                hintText: 'Search',
-                onChanged: (value) {},
-                trailing: [
-                  IconButton(
-                    onPressed: () {},
-                    icon: const Icon(
-                      Icons.clear_rounded,
-                      size: AppConstants.iconMd,
+    );
+  }
+
+  // Tách hàm để quản lý logic Sliver dễ hơn
+  Widget _buildSliverContent(WeatherClientState weatherClientState) {
+    if (weatherClientState.isLoadingWCs) {
+      return const SliverFillRemaining(
+        hasScrollBody: false,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (weatherClientState.errLoadingWCs != null) {
+      return SliverFillRemaining(
+        hasScrollBody: false,
+        child: Center(child: Text(weatherClientState.errLoadingWCs!)),
+      );
+    }
+
+    return SliverList(
+      delegate: SliverChildBuilderDelegate((context, index) {
+        final wc = weatherClientState.weatherClients[index];
+        return WeatherClientItem(
+          wc: wc,
+          fetchWeatherData: () {
+            ref.read(weatherClientProvider.notifier).getWeatherData(wc.id!);
+          },
+        );
+      }, childCount: weatherClientState.weatherClients.length),
+    );
+  }
+}
+
+class WeatherClientItem extends StatelessWidget {
+  final WeatherClientEntity wc;
+  final VoidCallback fetchWeatherData;
+  const WeatherClientItem({
+    super.key,
+    required this.wc,
+    required this.fetchWeatherData,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppConstants.paddingMd),
+      decoration: BoxDecoration(
+        color: AppColors.neutral50,
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(AppConstants.radiusMd),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ListTile(
+            title: Text(wc.name ?? ""),
+            titleTextStyle: Theme.of(
+              context,
+            ).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.bold),
+            contentPadding: const EdgeInsets.only(left: AppConstants.paddingMd),
+            subtitle: Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                margin: const EdgeInsets.only(top: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+                decoration: BoxDecoration(
+                  color: wc.type == WeatherClientType.netatmo.name
+                      ? Colors.yellow.shade700
+                      : Colors.grey.shade500,
+                  borderRadius: BorderRadius.circular(32),
+                  border: Border.all(
+                    color: wc.type == WeatherClientType.netatmo.name
+                        ? Colors.yellow.shade800
+                        : Colors.grey.shade600,
+                  ),
+                ),
+                child: Text(
+                  wc.type ?? '',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall!.copyWith(color: Colors.white),
+                ),
+              ),
+            ),
+            trailing: PopupMenuButton<WeatherClientAction>(
+              onSelected: (WeatherClientAction item) {
+                switch (item) {
+                  case WeatherClientAction.edit:
+                    context.goEditWeatherClient('68de7e98ae6796d18a268a40', wc);
+                    break;
+                  default:
+                }
+              },
+              itemBuilder: (BuildContext context) =>
+                  <PopupMenuEntry<WeatherClientAction>>[
+                    const PopupMenuItem<WeatherClientAction>(
+                      value: WeatherClientAction.edit,
+                      child: ListTile(
+                        leading: Icon(Icons.edit_square),
+                        title: Text('Edit'),
+                        iconColor: Colors.blue,
+                      ),
+                    ),
+                    const PopupMenuItem<WeatherClientAction>(
+                      value: WeatherClientAction.remove,
+                      child: ListTile(
+                        leading: Icon(Icons.delete),
+                        title: Text('Delete'),
+                        iconColor: Colors.red,
+                        textColor: Colors.red,
+                      ),
+                    ),
+                  ],
+              icon: const Icon(Icons.more_vert_rounded),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.all(AppConstants.paddingMd),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(top: BorderSide(color: Colors.grey.shade200)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (wc.error == null)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.thermostat,
+                            color: Colors.orange,
+                            size: AppConstants.iconMd,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${wc.latestWeatherData?.temperature?.celsius?.toString() ?? '-'}°C',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.water_drop_outlined,
+                            color: Colors.blue,
+                            size: AppConstants.iconMd,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${wc.latestWeatherData?.rain?.mm?.toString() ?? '-'} mm',
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                if (wc.latestWeatherData == null && wc.error != null)
+                  Expanded(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.error_rounded,
+                          color: Colors.red,
+                          size: AppConstants.iconMd,
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            wc.error ?? '',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 15),
+                      ],
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.neutral50,
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(AppConstants.radiusMd),
+                SizedBox(
+                  height: AppConstants.buttonSm,
+                  child: ElevatedButton(
+                    onPressed: fetchWeatherData,
+                    child: const Text('GET WEATHER'),
+                  ),
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ListTile(
-                      title: const Text('Ha Noi'),
-                      titleTextStyle: Theme.of(context).textTheme.titleMedium!
-                          .copyWith(fontWeight: FontWeight.bold),
-                      contentPadding: const EdgeInsets.only(
-                        left: AppConstants.paddingMd,
-                      ),
-                      subtitle: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Container(
-                          margin: const EdgeInsets.only(top: 3),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.yellow.shade700,
-                            borderRadius: BorderRadius.circular(32),
-                            border: Border.all(color: Colors.yellow.shade800),
-                          ),
-                          child: Text(
-                            'Netatmo',
-                            style: Theme.of(context).textTheme.bodySmall!
-                                .copyWith(color: Colors.white),
-                          ),
-                        ),
-                      ),
-                      trailing: PopupMenuButton<WeatherClientAction>(
-                        onSelected: (WeatherClientAction item) {
-                          switch (item) {
-                            case WeatherClientAction.edit:
-                              context.goEditWeatherClient(
-                                '68de7e98ae6796d18a268a40',
-                              );
-                              break;
-                            default:
-                          }
-                        },
-                        itemBuilder: (BuildContext context) =>
-                            <PopupMenuEntry<WeatherClientAction>>[
-                              const PopupMenuItem<WeatherClientAction>(
-                                value: WeatherClientAction.edit,
-                                child: ListTile(
-                                  leading: Icon(Icons.edit_square),
-                                  title: Text('Edit'),
-                                  iconColor: Colors.blue,
-                                ),
-                              ),
-                              const PopupMenuItem<WeatherClientAction>(
-                                value: WeatherClientAction.remove,
-                                child: ListTile(
-                                  leading: Icon(Icons.delete),
-                                  title: Text('Delete'),
-                                  iconColor: Colors.red,
-                                  textColor: Colors.red,
-                                ),
-                              ),
-                            ],
-                        icon: const Icon(Icons.more_vert_rounded),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(AppConstants.paddingMd),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border(
-                          top: BorderSide(color: Colors.grey.shade200),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.water_drop_outlined,
-                                    color: Colors.blue,
-                                    size: AppConstants.iconMd,
-                                  ),
-                                  SizedBox(width: 4),
-                                  Text('200mm'),
-                                ],
-                              ),
-                              SizedBox(height: 3),
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.thermostat,
-                                    color: Colors.orange,
-                                    size: AppConstants.iconMd,
-                                  ),
-                                  SizedBox(width: 4),
-                                  Text('34°C'),
-                                ],
-                              ),
-                            ],
-                          ),
-                          SizedBox(
-                            height: AppConstants.buttonSm,
-                            child: ElevatedButton(
-                              onPressed: () {},
-                              child: const Text('GET WEATHER'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.neutral50,
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(AppConstants.radiusMd),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ListTile(
-                      title: const Text('Ho Chi Minh'),
-                      titleTextStyle: Theme.of(context).textTheme.titleMedium!
-                          .copyWith(fontWeight: FontWeight.bold),
-                      contentPadding: const EdgeInsets.only(
-                        left: AppConstants.paddingMd,
-                      ),
-                      subtitle: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Container(
-                          margin: const EdgeInsets.only(top: 3),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade500,
-                            borderRadius: BorderRadius.circular(32),
-                            border: Border.all(color: Colors.grey.shade600),
-                          ),
-                          child: Text(
-                            'Fake',
-                            style: Theme.of(context).textTheme.bodySmall!
-                                .copyWith(color: Colors.white),
-                          ),
-                        ),
-                      ),
-                      trailing: PopupMenuButton<WeatherClientAction>(
-                        onSelected: (WeatherClientAction item) {
-                          switch (item) {
-                            case WeatherClientAction.edit:
-                              context.goEditWeatherClient(
-                                '68de7e98ae6796d18a268a31',
-                              );
-                              break;
-                            default:
-                          }
-                        },
-                        itemBuilder: (BuildContext context) =>
-                            <PopupMenuEntry<WeatherClientAction>>[
-                              const PopupMenuItem<WeatherClientAction>(
-                                value: WeatherClientAction.edit,
-                                child: ListTile(
-                                  leading: Icon(Icons.edit_square),
-                                  title: Text('Edit'),
-                                  iconColor: Colors.blue,
-                                ),
-                              ),
-                              const PopupMenuItem<WeatherClientAction>(
-                                value: WeatherClientAction.remove,
-                                child: ListTile(
-                                  leading: Icon(Icons.delete),
-                                  title: Text('Delete'),
-                                  iconColor: Colors.red,
-                                  textColor: Colors.red,
-                                ),
-                              ),
-                            ],
-                        icon: const Icon(Icons.more_vert_rounded),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(AppConstants.paddingMd),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border(
-                          top: BorderSide(color: Colors.grey.shade200),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Expanded(
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.error_rounded,
-                                  color: Colors.red,
-                                  size: AppConstants.iconMd,
-                                ),
-                                SizedBox(width: 4),
-                                Flexible(
-                                  child: Text(
-                                    'Can\'t get weather data',
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                SizedBox(width: 15),
-                              ],
-                            ),
-                          ),
-
-                          SizedBox(
-                            height: AppConstants.buttonSm,
-                            child: ElevatedButton(
-                              onPressed: () {},
-                              child: const Text('GET WEATHER'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

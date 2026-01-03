@@ -7,17 +7,45 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/assets.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_utils.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
-import '../../../home/presentation/screens/home_screen.dart'
-    show showGardenActions;
+import '../../../home/presentation/screens/home_screen.dart';
+import '../../../plant/domain/entities/plant_entity.dart';
+import '../../../plant/domain/usecases/get_all_plants.dart';
+import '../../../plant/presentation/providers/plant_provider.dart';
+import '../../../zone/domain/entities/zone_entity.dart';
+import '../../../zone/domain/usecases/get_all_zones.dart';
+import '../../../zone/presentation/providers/zone_provider.dart';
+import '../../domain/entities/garden_entity.dart';
+import '../providers/garden_provider.dart';
 
-class GardenDetailScreen extends ConsumerWidget {
+class GardenDetailScreen extends ConsumerStatefulWidget {
   final String gardenId;
   const GardenDetailScreen({super.key, required this.gardenId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    print(gardenId);
+  ConsumerState<ConsumerStatefulWidget> createState() =>
+      _GardenDetailScreenState();
+}
+
+class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
+  @override
+  void initState() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(gardenProvider.notifier).getGardenById(id: widget.gardenId);
+      ref
+          .read(zoneProvider.notifier)
+          .getAllZone(GetAllZoneParams(gardenId: '1'));
+      ref.read(plantProvider.notifier).getAllPlant(GetAllPlantParams());
+    });
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final gardenState = ref.watch(gardenProvider);
+    final zoneState = ref.watch(zoneProvider);
+    final plantState = ref.watch(plantProvider);
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
@@ -29,132 +57,136 @@ class GardenDetailScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.edit_outlined, color: Colors.blue),
             onPressed: () {
-              context.goEditGarden('68de7e98ae6796d18a268a40');
+              context.goEditGarden(widget.gardenId);
             },
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppConstants.paddingMd),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. Header Card
-            _buildHeaderCard(),
-            const SizedBox(height: 12),
-
-            // 2. Details Section
-            const Text(
-              "Details",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            _buildDetailRow(
-              icon: Icons.thermostat,
-              iconColor: Colors.redAccent,
-              title: "Temperature",
-              value: "20°C",
-              progressColor: Colors.amber,
-              progressValue: 0.6,
-            ),
-            const SizedBox(height: 12),
-            _buildDetailRow(
-              icon: Icons.water_drop,
-              iconColor: Colors.blue,
-              title: "Humidity",
-              value: "90%",
-              progressColor: Colors.blue,
-              progressValue: 0.9,
-            ),
-            const SizedBox(height: 12),
-            _buildLightScheduleCard(),
-
-            const SizedBox(height: 12),
-
-            // 3. Zones Section (Horizontal List)
-            _buildSectionHeader(
-              "Zones",
-              onTap: () {
-                context.goZones('68de7e98ae6796d18a268a35');
-              },
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 250,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
+      body: gardenState.isLoadingGarden
+          ? const Center(child: CircularProgressIndicator())
+          : gardenState.errLoadingGarden != null
+          ? Center(child: Text(gardenState.errLoadingGarden!))
+          : gardenState.garden != null
+          ? SingleChildScrollView(
+              padding: const EdgeInsets.all(AppConstants.paddingMd),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildZoneCard(
-                    context: context,
-                    title: "Trees",
-                    desc: "This zone controls watering to two trees...",
-                    imageUrl:
-                        "https://images.unsplash.com/photo-1598512114194-257a07941708?q=80&w=200",
+                  // 1. Header Card
+                  _buildHeaderCard(gardenState.garden!),
+                  const SizedBox(height: 12),
+
+                  // 2. Details Section
+                  const Text(
+                    "Details",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(width: 12),
-                  _buildZoneCard(
-                    context: context,
-                    title: "Vegetables",
-                    desc: "This zone controls watering to vegetables...",
-                    imageUrl:
-                        "https://images.unsplash.com/photo-1592419044706-39796d40f98c?q=80&w=200",
+                  const SizedBox(height: 8),
+                  _buildDetailRow(
+                    icon: Icons.thermostat,
+                    iconColor: Colors.redAccent,
+                    title: "Temperature",
+                    value:
+                        "${gardenState.garden?.tempHumData?.temperatureCelsius ?? '-'}°C",
+                    progressColor: Colors.amber,
+                    progressValue:
+                        (gardenState.garden?.tempHumData?.temperatureCelsius ??
+                            0) /
+                        150,
                   ),
-                  const SizedBox(width: 12),
-                  _buildZoneCard(
-                    context: context,
-                    title: "Grass",
-                    desc: "This zone controls watering to the lawn...",
-                    imageUrl:
-                        "https://images.unsplash.com/photo-1558904541-efa843a96f01?q=80&w=200",
+                  const SizedBox(height: 12),
+                  _buildDetailRow(
+                    icon: Icons.water_drop,
+                    iconColor: Colors.blue,
+                    title: "Humidity",
+                    value:
+                        "${gardenState.garden?.tempHumData?.humidityPercentage ?? '-'}%",
+                    progressColor: Colors.blue,
+                    progressValue:
+                        (gardenState.garden?.tempHumData?.humidityPercentage ??
+                            0) /
+                        100,
                   ),
+                  const SizedBox(height: 12),
+                  if (gardenState.garden?.lightSchedule != null)
+                    _buildLightScheduleCard(
+                      gardenState.garden!.lightSchedule!,
+                      gardenState.garden!.nextLightAction,
+                    ),
+
+                  const SizedBox(height: 12),
+
+                  // 3. Zones Section (Horizontal List)
+                  _buildSectionHeader(
+                    "Zones",
+                    count: gardenState.garden?.numZones,
+                    onTap: () {
+                      context.goZones('68de7e98ae6796d18a268a35');
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  zoneState.isLoadingZones
+                      ? const Center(child: CircularProgressIndicator())
+                      : zoneState.errLoadingZones != null
+                      ? Center(child: Text(zoneState.errLoadingZones!))
+                      : SizedBox(
+                          height: 250,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemBuilder: (context, index) {
+                              final zone = zoneState.zones[index];
+                              return _buildZoneCard(
+                                context: context,
+                                zone: zone,
+                              );
+                            },
+                            separatorBuilder: (context, index) {
+                              return const SizedBox(width: 12);
+                            },
+                            itemCount: zoneState.zones.length > 10
+                                ? 10
+                                : zoneState.zones.length,
+                          ),
+                        ),
+                  const SizedBox(height: 24),
+
+                  // 4. Plants Section
+                  _buildSectionHeader(
+                    "Plants",
+                    count: gardenState.garden?.numPlants,
+                    onTap: () {
+                      context.goPlants('68de7e98ae6796d18a268a36');
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  plantState.isLoadingPlants
+                      ? const Center(child: CircularProgressIndicator())
+                      : plantState.errLoadingPlants != null
+                      ? Center(child: Text(plantState.errLoadingPlants!))
+                      : SizedBox(
+                          height: 210,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemBuilder: (context, index) {
+                              final plant = plantState.plants[index];
+                              return _buildPlantCard(
+                                context: context,
+                                plant: plant,
+                              );
+                            },
+                            separatorBuilder: (context, index) {
+                              return const SizedBox(width: 12);
+                            },
+                            itemCount: plantState.plants.length > 10
+                                ? 10
+                                : plantState.plants.length,
+                          ),
+                        ),
+                  const SizedBox(height: 150),
                 ],
               ),
-            ),
-            const SizedBox(height: 24),
-
-            // 4. Plants Section
-            _buildSectionHeader(
-              "Plants",
-              onTap: () {
-                context.goPlants('68de7e98ae6796d18a268a36');
-              },
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 200,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  _buildPlantCard(
-                    context: context,
-                    name: "Mint",
-                    desc: "Mint will be ready for harvest in 3 days",
-                    imageUrl:
-                        "https://images.unsplash.com/photo-1628519586326-e17ee91d8d32?q=80&w=200",
-                  ),
-                  const SizedBox(width: 12),
-                  _buildPlantCard(
-                    context: context,
-                    name: "Basil",
-                    desc: "Basil will be ready for harvest in 5 days",
-                    imageUrl:
-                        "https://images.unsplash.com/photo-1618331835717-801e976710b2?q=80&w=200",
-                  ),
-                  const SizedBox(width: 12),
-                  _buildPlantCard(
-                    context: context,
-                    name: "Rosemary",
-                    desc: "Ready for harvest",
-                    imageUrl:
-                        "https://images.unsplash.com/photo-1597055819777-1c6dc32560d7?q=80&w=200",
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 150),
-          ],
-        ),
-      ),
+            )
+          : const SizedBox.shrink(),
       bottomSheet: Container(
         color: Colors.white,
         padding: const EdgeInsets.all(AppConstants.paddingMd),
@@ -163,9 +195,11 @@ class GardenDetailScreen extends ConsumerWidget {
             width: double.infinity,
             height: AppConstants.buttonMd,
             child: ElevatedButton(
-              onPressed: () {
-                showGardenActions(context);
-              },
+              onPressed: gardenState.isLoadingGarden == true
+                  ? null
+                  : () {
+                      showGardenActions(context, gardenState.garden!);
+                    },
               child: const Text('ACTIONS'),
             ),
           ),
@@ -175,7 +209,7 @@ class GardenDetailScreen extends ConsumerWidget {
   }
 
   // --- Widget Con: Header Card ---
-  Widget _buildHeaderCard() {
+  Widget _buildHeaderCard(GardenEntity garden) {
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppConstants.paddingMd,
@@ -208,36 +242,41 @@ class GardenDetailScreen extends ConsumerWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                "Front Yard",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              Text(
+                garden.name ?? '',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 2),
               Text(
-                "Topic prefix: front-yard",
+                "Topic prefix: ${garden.topicPrefix}",
                 style: TextStyle(color: Colors.grey.shade700),
               ),
 
               Row(
                 children: [
-                  const Text(
-                    "Status: Online",
-                    style: TextStyle(color: Colors.black87),
+                  Text(
+                    "Status: ${garden.health?.status == 'UP' ? 'Online' : "Offline"}",
+                    style: const TextStyle(color: Colors.black87),
                   ),
                   const SizedBox(width: 4),
                   Container(
                     width: 8,
                     height: 8,
-                    decoration: const BoxDecoration(
-                      color: Colors.green,
+                    decoration: BoxDecoration(
+                      color: garden.health?.status == 'UP'
+                          ? Colors.green
+                          : Colors.grey,
                       shape: BoxShape.circle,
                     ),
                   ),
                 ],
               ),
-              const Text(
-                "Max zone: 5",
-                style: TextStyle(color: Colors.black87),
+              Text(
+                "Max zone: ${garden.maxZones}",
+                style: const TextStyle(color: Colors.black87),
               ),
             ],
           ),
@@ -300,7 +339,17 @@ class GardenDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildLightScheduleCard() {
+  Widget _buildLightScheduleCard(
+    LightScheduleEntity lightSchedule,
+    NextLightActionEntity? nextLightAction,
+  ) {
+    final nextAction = nextLightAction?.action == "OFF" ? "ON" : "OFF";
+    final nextActionTime = nextLightAction != null
+        ? AppUtils.utcToLocalString(nextLightAction.time)
+        : "N/A";
+    final duration = AppUtils.msToDuration(lightSchedule.durationMs ?? 0);
+    final startTime = AppUtils.to12HourFormat(lightSchedule.startTime);
+
     return Container(
       padding: const EdgeInsets.all(AppConstants.paddingMd),
       decoration: BoxDecoration(
@@ -315,41 +364,42 @@ class GardenDetailScreen extends ConsumerWidget {
             child: const Icon(Icons.lightbulb, color: Colors.orange),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   "Light Schedule",
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  "Duration: 15h - Start: 7:00 PM",
-                  style: TextStyle(fontSize: 13, color: Colors.black87),
+                  "Duration: $duration - Start: $startTime",
+                  style: const TextStyle(fontSize: 13, color: Colors.black87),
                 ),
-                SizedBox(height: 4),
-                Text(
-                  "Next action: OFF - 07:00 1/1/2025",
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.green,
-                    fontWeight: FontWeight.w600,
+                const SizedBox(height: 4),
+                if (nextLightAction != null)
+                  Text(
+                    "Next action: $nextAction - $nextActionTime",
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Colors.green,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
               ],
             ),
           ),
-          const Text(
-            "ON",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          Text(
+            nextAction,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title, {VoidCallback? onTap}) {
+  Widget _buildSectionHeader(String title, {VoidCallback? onTap, int? count}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -366,9 +416,9 @@ class GardenDetailScreen extends ConsumerWidget {
                 horizontal: AppConstants.paddingMd,
               ),
             ),
-            child: const Text(
-              'See all (2)',
-              style: TextStyle(color: Colors.blue, fontSize: 14),
+            child: Text(
+              'See all${count != null ? ' ($count)' : ''}',
+              style: const TextStyle(color: Colors.blue, fontSize: 14),
             ),
           ),
         ),
@@ -378,9 +428,7 @@ class GardenDetailScreen extends ConsumerWidget {
 
   Widget _buildZoneCard({
     required BuildContext context,
-    required String title,
-    required String desc,
-    required String imageUrl,
+    required ZoneEntity zone,
   }) {
     return InkWell(
       onTap: () {
@@ -411,12 +459,12 @@ class GardenDetailScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              title,
+              zone.name ?? '',
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 2),
             Text(
-              desc,
+              zone.details?.description ?? '',
               style: const TextStyle(fontSize: 12, color: Colors.black87),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -443,9 +491,7 @@ class GardenDetailScreen extends ConsumerWidget {
 
   Widget _buildPlantCard({
     required BuildContext context,
-    required String name,
-    required String desc,
-    required String imageUrl,
+    required PlantEntity plant,
   }) {
     return InkWell(
       onTap: () {
@@ -481,7 +527,7 @@ class GardenDetailScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  name,
+                  plant.name ?? '',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -489,7 +535,7 @@ class GardenDetailScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  desc,
+                  plant.details?.description ?? '',
                   style: const TextStyle(fontSize: 12, color: Colors.black87),
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,

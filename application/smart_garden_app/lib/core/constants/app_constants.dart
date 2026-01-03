@@ -8,6 +8,13 @@ class AppConstants {
   static const String userDataKey = 'userData';
   static const String refreshTokenKey = 'refreshToken';
 
+  static const String gardensKey = 'gardens';
+  static const String zonesKey = 'zones';
+  static const String plantsKey = 'plants';
+  static const String waterSchedulesKey = 'waterSchedules';
+  static const String weatherClientsKey = 'weatherClients';
+  static const String waterRoutinesKey = 'waterRoutines';
+
   // App constants
   static const String appName = 'Smart Garden';
   static const String appVersion = '1.0.0';

@@ -5,6 +5,7 @@ import '../../domain/usecases/check_auth_use_case.dart';
 import '../../domain/usecases/login_use_case.dart';
 import '../../domain/usecases/logout_use_case.dart';
 import '../../domain/usecases/register_use_case.dart';
+import '../../providers/auth_providers.dart';
 
 // Auth state
 class AuthState {

@@ -1,0 +1,24 @@
+// ignore_for_file: public_member_api_docs, sort_constructors_first
+// Get All WaterSchedules Use Case
+// Business logic for retrieving all waterSchedule entities
+
+import 'package:dartz/dartz.dart';
+
+import '../../../../core/error/failures.dart';
+import '../../../../core/usecases/usecase.dart';
+import '../entities/water_schedule_entity.dart';
+import '../repositories/water_schedule_repository.dart';
+
+class EditWaterSchedule
+    implements UseCase<WaterScheduleEntity, WaterScheduleEntity> {
+  final WaterScheduleRepository repository;
+
+  EditWaterSchedule(this.repository);
+
+  @override
+  Future<Either<Failure, WaterScheduleEntity>> call(
+    WaterScheduleEntity params,
+  ) {
+    return repository.editWaterSchedule(params);
+  }
+}

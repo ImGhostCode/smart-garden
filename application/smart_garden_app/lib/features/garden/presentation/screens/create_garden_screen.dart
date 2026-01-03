@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/ui/inputs/app_labeled_input.dart';
+import '../../../../core/utils/app_utils.dart';
 import '../../../../core/utils/app_validators.dart';
+import '../../../../core/utils/extensions/navigation_extensions.dart';
+import '../../domain/entities/garden_entity.dart';
+import '../providers/garden_provider.dart';
 
 class CreateGardenScreen extends ConsumerStatefulWidget {
   const CreateGardenScreen({super.key});
@@ -25,10 +30,8 @@ class _CreateGardenScreenState extends ConsumerState<CreateGardenScreen> {
 
   // Local State
   String? _lsDuration;
-  String? _timezone;
 
   // Data Sources
-  static const List<String> _timezones = ['UTC', 'UTC+7'];
   late final List<int> _durationHours;
 
   @override
@@ -51,18 +54,54 @@ class _CreateGardenScreenState extends ConsumerState<CreateGardenScreen> {
     _maxZonesController.dispose();
     _hourController.dispose();
     _minuteController.dispose();
+    EasyLoading.dismiss();
     super.dispose();
   }
 
   void _onSave() {
     if (!_formKey.currentState!.validate()) return;
-    // Xử lý logic save ở đây
-    print('Creating garden: ${_nameController.text}');
-    print(_timezone);
+    ref
+        .read(gardenProvider.notifier)
+        .createGarden(
+          GardenEntity(
+            name: _nameController.text,
+            topicPrefix: _topicPrefixController.text,
+            maxZones: int.parse(_maxZonesController.text),
+            lightSchedule: _lsDuration != null
+                ? LightScheduleEntity(
+                    durationMs: AppUtils.durationToMs(_lsDuration!),
+                    startTime:
+                        '${_hourController.text.padLeft(2, '0')}:${_minuteController.text.padLeft(2, '0')}',
+                  )
+                : null, // lightScheduleTimezone: _timezone,
+          ),
+        );
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(gardenProvider.select((state) => state.isCreatingGarden), (
+      previousLoading,
+      nextLoading,
+    ) {
+      if (nextLoading == true) {
+        EasyLoading.show(status: 'Loading...');
+      } else if (nextLoading == false && previousLoading == true) {
+        EasyLoading.dismiss();
+      }
+    });
+
+    ref.listen(gardenProvider, (previous, next) async {
+      if (previous?.isCreatingGarden == true &&
+          next.isCreatingGarden == false) {
+        if (next.errCreatingGarden != null) {
+          EasyLoading.showError(next.errCreatingGarden ?? 'Error');
+        } else {
+          EasyLoading.showSuccess(next.responseMsg ?? 'Garden created');
+          context.goBack();
+        }
+      }
+    });
     return Scaffold(
       backgroundColor: AppColors.neutral50,
       appBar: AppBar(title: const Text('Create Garden'), centerTitle: true),
@@ -156,30 +195,6 @@ class _CreateGardenScreenState extends ConsumerState<CreateGardenScreen> {
                           validator: _lsDuration != null
                               ? AppValidators.required
                               : null,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: LabeledInput(
-                        label: 'Timezone',
-                        child: DropdownButtonFormField<String>(
-                          menuMaxHeight:
-                              MediaQuery.sizeOf(context).height * 0.5,
-                          items: _timezones
-                              .map(
-                                (tz) => DropdownMenuItem(
-                                  value: tz,
-                                  child: Text(tz),
-                                ),
-                              )
-                              .toList(),
-                          validator: _lsDuration != null
-                              ? AppValidators.required
-                              : null,
-                          onChanged: (value) =>
-                              setState(() => _timezone = value),
-                          decoration: const InputDecoration(hintText: 'Select'),
                         ),
                       ),
                     ),

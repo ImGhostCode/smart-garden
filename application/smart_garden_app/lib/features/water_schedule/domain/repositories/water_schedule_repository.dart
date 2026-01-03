@@ -1,0 +1,29 @@
+// WaterSchedule Repository Interface
+// Defines data operations for water_schedule
+
+import 'package:dartz/dartz.dart';
+
+import '../../../../core/error/failures.dart';
+import '../entities/water_schedule_entity.dart';
+import '../usecases/get_all_water_schedules.dart';
+import '../usecases/get_water_schedule_by_id.dart';
+
+abstract class WaterScheduleRepository {
+  /// Gets all waterSchedule entities
+  Future<Either<Failure, List<WaterScheduleEntity>>> getAllWaterSchedules(
+    GetAllWSParams params,
+  );
+
+  /// Gets a specific waterSchedule entity by ID
+  Future<Either<Failure, WaterScheduleEntity>> getWaterScheduleById(
+    GetWSParams params,
+  );
+
+  Future<Either<Failure, WaterScheduleEntity>> newWaterSchedule(
+    WaterScheduleEntity waterSchedule,
+  );
+
+  Future<Either<Failure, WaterScheduleEntity>> editWaterSchedule(
+    WaterScheduleEntity waterSchedule,
+  );
+}

@@ -1,6 +1,8 @@
 class Assets {
   static const String imagePath = 'assets/images';
   static const String iconPath = 'assets/icons';
+  static const String animationPath = 'assets/animations';
+
   static const String launcherIcon = '$iconPath/launcher_icon_2.png';
   static const String logo = '$iconPath/smart_garden_logo_2.png';
 
@@ -19,4 +21,6 @@ class Assets {
   static const String zone = '$imagePath/zone.png';
   static const String plant = '$imagePath/plant.png';
   static const String garden = '$imagePath/garden.png';
+
+  static const String loading = '$animationPath/water_filling_up.json';
 }

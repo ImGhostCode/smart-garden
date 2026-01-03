@@ -18,6 +18,7 @@ import '../constants/app_constants.dart';
 import 'app_routers.dart';
 
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
+final rootNavigatorKey = GlobalKey<NavigatorState>();
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -32,6 +33,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     (_, next) => listenable.value = next.isAuthenticated,
   );
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: AppConstants.initialRoute,
     debugLogDiagnostics: true,
     // Add the observer for locale awareness

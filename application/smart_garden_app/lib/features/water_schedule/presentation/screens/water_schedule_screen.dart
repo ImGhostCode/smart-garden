@@ -3,7 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_utils.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
+import '../../domain/entities/water_schedule_entity.dart';
+import '../../domain/usecases/get_all_water_schedules.dart';
+import '../providers/water_schedule_provider.dart';
 
 enum WaterScheduleAction { edit, remove }
 
@@ -17,255 +21,236 @@ class WaterScheduleScreen extends ConsumerStatefulWidget {
 
 class _WaterScheduleScreenState extends ConsumerState<WaterScheduleScreen> {
   @override
+  void initState() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (ref.read(waterScheduleProvider).waterSchedules.isEmpty) {
+        ref
+            .read(waterScheduleProvider.notifier)
+            .getAllWaterSchedule(GetAllWSParams());
+      }
+    });
+    super.initState();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        title: const Text('Water Schedule'),
-        centerTitle: false,
-        titleTextStyle: Theme.of(
-          context,
-        ).textTheme.titleLarge!.copyWith(fontWeight: FontWeight.w600),
-        actions: [
-          IconButton.filled(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_rounded),
-            color: AppColors.primary,
-            style: IconButton.styleFrom(backgroundColor: AppColors.primary100),
-          ),
-          IconButton.filled(
-            onPressed: () {
-              context.goSettings();
-            },
-            icon: const Icon(Icons.settings_rounded),
-            color: AppColors.primary,
-            style: IconButton.styleFrom(backgroundColor: AppColors.primary100),
-          ),
-          const SizedBox(width: AppConstants.paddingSm),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingMd),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              const SizedBox(height: AppConstants.paddingLg),
-              SearchBar(
-                leading: const Icon(Icons.search_rounded, color: Colors.grey),
-                hintText: 'Search',
-                onChanged: (value) {},
-                trailing: [
-                  IconButton(
-                    onPressed: () {},
-                    icon: const Icon(
-                      Icons.clear_rounded,
-                      size: AppConstants.iconMd,
-                    ),
+    final waterScheduleState = ref.watch(waterScheduleProvider);
+
+    return SafeArea(
+      child: Scaffold(
+        body: CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              scrolledUnderElevation: 0,
+              floating: true,
+              pinned: false,
+              centerTitle: false,
+              title: const Text('Water Schedule'),
+              titleTextStyle: Theme.of(
+                context,
+              ).textTheme.titleLarge!.copyWith(fontWeight: FontWeight.w600),
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              // backgroundColor: Colors.white,
+              leadingWidth: 120,
+              actions: [
+                IconButton.filled(
+                  onPressed: () {},
+                  icon: const Icon(Icons.notifications_rounded),
+                  color: AppColors.primary,
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppColors.primary100,
                   ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: AppColors.neutral50,
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(AppConstants.radiusMd),
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ListTile(
-                      title: const Text(
-                        'Seedlings',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      titleTextStyle: Theme.of(context).textTheme.titleMedium!
-                          .copyWith(fontWeight: FontWeight.bold),
-                      contentPadding: const EdgeInsets.only(
-                        left: AppConstants.paddingMd,
-                      ),
-                      trailing: PopupMenuButton<WaterScheduleAction>(
-                        onSelected: (WaterScheduleAction item) {
-                          switch (item) {
-                            case WaterScheduleAction.edit:
-                              context.goEditWaterSchedule(
-                                '68de7e98ae6796d18a268a39',
-                              );
-                              break;
-                            default:
-                          }
-                        },
-                        itemBuilder: (BuildContext context) =>
-                            <PopupMenuEntry<WaterScheduleAction>>[
-                              const PopupMenuItem<WaterScheduleAction>(
-                                value: WaterScheduleAction.edit,
-                                child: ListTile(
-                                  leading: Icon(Icons.edit_square),
-                                  title: Text('Edit'),
-                                  iconColor: Colors.blue,
-                                ),
-                              ),
-                              const PopupMenuItem<WaterScheduleAction>(
-                                value: WaterScheduleAction.remove,
-                                child: ListTile(
-                                  leading: Icon(Icons.delete),
-                                  title: Text('Delete'),
-                                  iconColor: Colors.red,
-                                  textColor: Colors.red,
-                                ),
-                              ),
-                            ],
-                        icon: const Icon(Icons.more_vert_rounded),
+                IconButton.filled(
+                  onPressed: () {
+                    context.goSettings();
+                  },
+                  icon: const Icon(Icons.settings_rounded),
+                  color: AppColors.primary,
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppColors.primary100,
+                  ),
+                ),
+                const SizedBox(width: AppConstants.paddingSm),
+              ],
+            ),
+
+            SliverAppBar(
+              pinned: true,
+              primary: false,
+              toolbarHeight: 70,
+              automaticallyImplyLeading: false,
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              surfaceTintColor: Colors.transparent,
+              titleSpacing: 0,
+              title: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppConstants.paddingMd,
+                ),
+                child: SearchBar(
+                  leading: const Icon(Icons.search_rounded, color: Colors.grey),
+                  hintText: 'Search',
+                  trailing: [
+                    IconButton(
+                      onPressed: () {},
+                      icon: const Icon(
+                        Icons.clear_rounded,
+                        size: AppConstants.iconMd,
                       ),
                     ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: AppConstants.paddingMd,
-                      ),
-                      child: Text(
-                        'Water seedlings a bit every day',
-                        maxLines: 5,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppConstants.paddingMd,
-                      ),
-                      height: 50,
-                      child: ListView(
-                        shrinkWrap: true,
-                        scrollDirection: Axis.horizontal,
-                        children: const [
-                          ScheduleConfig(
-                            icon: Icons.timer_outlined,
-                            value: '15m',
-                          ),
-                          SizedBox(width: 5),
-                          ScheduleConfig(
-                            icon: Icons.access_time,
-                            value: '3:00 PM',
-                          ),
-                          SizedBox(width: 5),
-                          ScheduleConfig(icon: Icons.cached, value: '1 DAYS'),
-                          SizedBox(width: 5),
-                          ScheduleConfig(
-                            icon: Icons.calendar_month_rounded,
-                            value: 'APR - OCT',
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: AppConstants.paddingSm),
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.neutral50,
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(AppConstants.radiusMd),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ListTile(
-                      title: const Text('Seedlings'),
-                      titleTextStyle: Theme.of(context).textTheme.titleMedium!
-                          .copyWith(fontWeight: FontWeight.bold),
-                      contentPadding: const EdgeInsets.only(
-                        left: AppConstants.paddingMd,
-                      ),
-                      trailing: PopupMenuButton<WaterScheduleAction>(
-                        onSelected: (WaterScheduleAction item) {
-                          switch (item) {
-                            case WaterScheduleAction.edit:
-                              context.goEditWaterRoutine(
-                                '68de7e98ae6796d18a268a41',
-                              );
-                              break;
-                            default:
-                          }
-                        },
-                        itemBuilder: (BuildContext context) =>
-                            <PopupMenuEntry<WaterScheduleAction>>[
-                              const PopupMenuItem<WaterScheduleAction>(
-                                value: WaterScheduleAction.edit,
-                                child: ListTile(
-                                  leading: Icon(Icons.edit_square),
-                                  title: Text('Edit'),
-                                  iconColor: Colors.blue,
-                                ),
-                              ),
-                              const PopupMenuItem<WaterScheduleAction>(
-                                value: WaterScheduleAction.remove,
-                                child: ListTile(
-                                  leading: Icon(Icons.delete),
-                                  title: Text('Delete'),
-                                  iconColor: Colors.red,
-                                  textColor: Colors.red,
-                                ),
-                              ),
-                            ],
-                        icon: const Icon(Icons.more_vert_rounded),
-                      ),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: AppConstants.paddingMd,
-                      ),
-                      child: Text('Water seedlings a bit every day'),
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppConstants.paddingMd,
-                      ),
-                      height: 50,
-                      child: ListView(
-                        shrinkWrap: true,
-                        scrollDirection: Axis.horizontal,
-                        children: const [
-                          ScheduleConfig(
-                            icon: Icons.timer_outlined,
-                            value: '15m',
-                          ),
-                          SizedBox(width: 5),
-                          ScheduleConfig(
-                            icon: Icons.access_time,
-                            value: '3:00 PM',
-                          ),
-                          SizedBox(width: 5),
-                          ScheduleConfig(icon: Icons.cached, value: '1 DAYS'),
-                          SizedBox(width: 5),
-                          ScheduleConfig(
-                            icon: Icons.calendar_month_rounded,
-                            value: 'APR - OCT',
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: AppConstants.paddingSm),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            ),
+
+            SliverPadding(
+              padding: const EdgeInsets.all(AppConstants.paddingMd),
+              sliver: _buildSliverContent(waterScheduleState),
+            ),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 150)),
+          ],
         ),
+      ),
+    );
+  }
+
+  // Tách hàm để quản lý logic Sliver dễ hơn
+  Widget _buildSliverContent(WaterScheduleState waterScheduleState) {
+    if (waterScheduleState.isLoadingWSs) {
+      return const SliverFillRemaining(
+        hasScrollBody: false,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (waterScheduleState.errLoadingWSs != null) {
+      return SliverFillRemaining(
+        hasScrollBody: false,
+        child: Center(child: Text(waterScheduleState.errLoadingWSs!)),
+      );
+    }
+
+    // Dùng SliverList thay cho ListView để tối ưu hiệu năng (không cần shrinkWrap)
+    return SliverList(
+      delegate: SliverChildBuilderDelegate((context, index) {
+        final ws = waterScheduleState.waterSchedules[index];
+        return WaterScheduleItem(ws: ws);
+      }, childCount: waterScheduleState.waterSchedules.length),
+    );
+  }
+}
+
+class WaterScheduleItem extends StatelessWidget {
+  final WaterScheduleEntity ws;
+  const WaterScheduleItem({super.key, required this.ws});
+
+  @override
+  Widget build(BuildContext context) {
+    final duration = AppUtils.msToDuration(ws.durationMs);
+    final startTime = AppUtils.to12HourFormat(ws.startTime);
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppConstants.paddingMd),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.neutral50,
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(AppConstants.radiusMd),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ListTile(
+            title: Text(
+              ws.name ?? '',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            titleTextStyle: Theme.of(
+              context,
+            ).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.bold),
+            contentPadding: const EdgeInsets.only(left: AppConstants.paddingMd),
+            trailing: PopupMenuButton<WaterScheduleAction>(
+              onSelected: (WaterScheduleAction item) {
+                switch (item) {
+                  case WaterScheduleAction.edit:
+                    context.goEditWaterSchedule(ws.id!, ws);
+                    break;
+                  default:
+                }
+              },
+              itemBuilder: (BuildContext context) =>
+                  <PopupMenuEntry<WaterScheduleAction>>[
+                    const PopupMenuItem<WaterScheduleAction>(
+                      value: WaterScheduleAction.edit,
+                      child: ListTile(
+                        leading: Icon(Icons.edit_square),
+                        title: Text('Edit'),
+                        iconColor: Colors.blue,
+                      ),
+                    ),
+                    const PopupMenuItem<WaterScheduleAction>(
+                      value: WaterScheduleAction.remove,
+                      child: ListTile(
+                        leading: Icon(Icons.delete),
+                        title: Text('Delete'),
+                        iconColor: Colors.red,
+                        textColor: Colors.red,
+                      ),
+                    ),
+                  ],
+              icon: const Icon(Icons.more_vert_rounded),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppConstants.paddingMd,
+            ),
+            child: Text(
+              ws.description ?? '',
+              maxLines: 5,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppConstants.paddingMd,
+            ),
+            height: 50,
+            child: ListView(
+              shrinkWrap: true,
+              scrollDirection: Axis.horizontal,
+              children: [
+                ScheduleConfig(icon: Icons.timer_outlined, value: duration),
+                const SizedBox(width: 5),
+                ScheduleConfig(icon: Icons.access_time, value: startTime),
+                const SizedBox(width: 5),
+                ScheduleConfig(
+                  icon: Icons.cached,
+                  value: '${ws.interval} days',
+                ),
+                const SizedBox(width: 5),
+                if (ws.activePeriod != null)
+                  ScheduleConfig(
+                    icon: Icons.calendar_month_rounded,
+                    value:
+                        '${ws.activePeriod?.startMonth} - ${ws.activePeriod?.endMonth}',
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppConstants.paddingSm),
+        ],
       ),
     );
   }
 }
 
 class ScheduleConfig extends StatelessWidget {
-  const ScheduleConfig({super.key, required this.value, required this.icon});
-  final String value;
+  const ScheduleConfig({super.key, this.value, required this.icon});
+  final String? value;
   final IconData icon;
 
   @override
@@ -287,7 +272,7 @@ class ScheduleConfig extends StatelessWidget {
           Icon(icon, color: Colors.white),
           const SizedBox(width: 5),
           Text(
-            value,
+            value ?? '',
             style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,

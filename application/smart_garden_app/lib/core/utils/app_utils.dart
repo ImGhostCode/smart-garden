@@ -21,9 +21,10 @@ class AppUtils {
 
   // Date and time formatting
   static String formatDateTime(
-    DateTime dateTime, {
+    DateTime? dateTime, {
     String format = 'yyyy-MM-dd HH:mm',
   }) {
+    if (dateTime == null) return 'N/A';
     return DateFormat(format).format(dateTime);
   }
 
@@ -160,5 +161,85 @@ class AppUtils {
     String locale = 'en_US',
   }) {
     return NumberFormat.currency(symbol: symbol, locale: locale).format(amount);
+  }
+
+  // Format interval string (e.g., "48h" to "2 days")
+  static String formatInterval(String? interval) {
+    if (interval == null || interval.isEmpty) {
+      return '0h';
+    }
+    final intHours = int.tryParse(interval.replaceAll('h', '')) ?? 0;
+    if (intHours < 24) {
+      return '$intHours hours';
+    } else {
+      final days = (intHours / 24).round();
+      return '$days days';
+    }
+  }
+
+  static String formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final hours = twoDigits(duration.inHours);
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return '$hours:$minutes:$seconds';
+  }
+
+  // Parse duration string like "1h30m" to milliseconds
+  static int durationToMs(String durationStr) {
+    final regex = RegExp(r'(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?');
+    final match = regex.firstMatch(durationStr);
+    if (match == null) {
+      return 0;
+    }
+    final hours = int.tryParse(match.group(1) ?? '0') ?? 0;
+    final minutes = int.tryParse(match.group(2) ?? '0') ?? 0;
+    final seconds = int.tryParse(match.group(3) ?? '0') ?? 0;
+    return hours * 3600000 + minutes * 60000 + seconds * 1000;
+  }
+
+  // Convert milliseconds to duration string "HH:MM:SS"
+  static String msToDuration(int? durationMs) {
+    if (durationMs == null || durationMs <= 0) {
+      return '';
+    }
+    final duration = Duration(milliseconds: durationMs);
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final hours = twoDigits(duration.inHours);
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return '$hours:$minutes:$seconds';
+  }
+
+  // Convert UTC DateTime to local and format
+  // e.g., "2025-10-02 13:40:44.711Z" to "2025-10-02 01:40 PM"
+  static String utcToLocalString(DateTime? utcDateTime) {
+    if (utcDateTime == null) return '';
+    final localDateTime = utcDateTime.toLocal();
+    return DateFormat('yyyy-MM-dd hh:mm a').format(localDateTime);
+  }
+
+  // Convert 24h to 12h format
+  // e.g., "14:30" to "2:30 PM"
+  static String to12HourFormat(String? time24Utc) {
+    if (time24Utc == null) return '';
+    try {
+      // Handle time only format
+      final dateTime = DateFormat.Hm().parseUTC(time24Utc).toLocal();
+      return DateFormat.jm().format(dateTime);
+    } catch (e) {
+      return time24Utc; // Return original if parsing fails
+    }
+  }
+
+  // Parse 12h to 24h format
+  static String to24HourFormat(String? time12) {
+    try {
+      if (time12 == null) return '';
+      final dateTime = DateFormat.jm().parse(time12);
+      return DateFormat.Hm().format(dateTime);
+    } catch (e) {
+      return time12!; // Return original if parsing fails
+    }
   }
 }

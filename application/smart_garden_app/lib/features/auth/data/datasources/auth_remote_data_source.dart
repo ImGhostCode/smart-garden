@@ -1,5 +1,3 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/utils/app_utils.dart';
@@ -113,10 +111,3 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 }
 
 // Provider
-final authRemoteDataSourceProvider = Provider<AuthRemoteDataSource>((ref) {
-  final apiClient = ref.watch(apiClientProvider);
-  return AuthRemoteDataSourceImpl(apiClient);
-});
-
-// ApiClient provider
-final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());

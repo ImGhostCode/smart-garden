@@ -2,7 +2,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
-import '../../../auth/data/repositories/auth_repository_impl.dart';
+import '../../../../core/providers/storage_providers.dart';
 
 class OnboardingNotifier extends Notifier<bool> {
   OnboardingNotifier();

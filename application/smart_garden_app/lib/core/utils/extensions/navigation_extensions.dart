@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../features/water_routine/domain/entities/water_routine_entity.dart';
+import '../../../features/water_schedule/domain/entities/water_schedule_entity.dart';
+import '../../../features/weather_client/domain/entities/weather_client_entity.dart';
 import '../../router/app_routers.dart';
 
 extension NavigationContext on BuildContext {
@@ -68,10 +71,11 @@ extension NavigationContext on BuildContext {
     pushNamed(RouteNames.newWaterSchedule);
   }
 
-  void goEditWaterSchedule(String scheduleId) {
+  void goEditWaterSchedule(String scheduleId, WaterScheduleEntity ws) {
     pushNamed(
       RouteNames.editWaterSchedule,
       pathParameters: {'scheduleId': scheduleId},
+      extra: ws,
     );
   }
 
@@ -83,10 +87,11 @@ extension NavigationContext on BuildContext {
     pushNamed(RouteNames.newWeatherClient);
   }
 
-  void goEditWeatherClient(String clientId) {
+  void goEditWeatherClient(String clientId, WeatherClientEntity wc) {
     pushNamed(
       RouteNames.editWeatherClient,
       pathParameters: {'clientId': clientId},
+      extra: wc,
     );
   }
 
@@ -98,10 +103,11 @@ extension NavigationContext on BuildContext {
     pushNamed(RouteNames.newWaterRoutine);
   }
 
-  void goEditWaterRoutine(String routineId) {
+  void goEditWaterRoutine(String routineId, WaterRoutineEntity wr) {
     pushNamed(
       RouteNames.editWaterRoutine,
       pathParameters: {'routineId': routineId},
+      extra: wr,
     );
   }
 

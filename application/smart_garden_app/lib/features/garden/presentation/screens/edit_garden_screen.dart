@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/ui/inputs/app_labeled_input.dart';
+import '../../../../core/utils/app_utils.dart';
 import '../../../../core/utils/app_validators.dart';
+import '../../../../core/utils/extensions/navigation_extensions.dart';
+import '../../domain/entities/garden_entity.dart';
+import '../providers/garden_provider.dart';
 
 class EditGardenScreen extends ConsumerStatefulWidget {
   final String gardenId;
@@ -33,11 +38,9 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
 
   // Local State
   String? _lsDuration;
-  String? _timezone;
   bool isSensorEnabled = true;
 
   // Data Sources
-  static const List<String> _timezones = ['UTC', 'UTC+7'];
   late final List<int> _durationHours;
 
   @override
@@ -54,8 +57,52 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
 
     // Generate hours 1-24 once
     _durationHours = List.generate(24, (index) => index + 1);
-    _addZone();
-    _addZone();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await ref
+          .read(gardenProvider.notifier)
+          .getGardenById(id: widget.gardenId);
+      final gardenState = ref.read(gardenProvider);
+      final garden = gardenState.garden;
+      if (garden != null) {
+        _nameController.text = garden.name ?? '';
+        _topicPrefixController.text = garden.topicPrefix ?? '';
+        _maxZonesController.text = garden.maxZones?.toString() ?? '';
+        // Light Schedule
+        if (garden.lightSchedule != null) {
+          final ls = garden.lightSchedule!;
+          _lsDuration = AppUtils.msToDuration(ls.durationMs ?? 0);
+          final timeParts = ls.startTime?.split(':') ?? [];
+          if (timeParts.length == 3) {
+            _hourController.text = timeParts[0];
+            _minuteController.text = timeParts[1];
+          }
+          _lightPinController.text =
+              garden.controllerConfig?.lightPin?.toString() ?? '';
+        }
+        // Sensor
+        if (garden.controllerConfig?.tempHumidityPin != null) {
+          isSensorEnabled = true;
+          _sensorPinController.text =
+              garden.controllerConfig!.tempHumidityPin?.toString() ?? '';
+          _intervalController.text =
+              garden.controllerConfig!.tempHumIntervalMs?.toString() ?? '';
+        } else {
+          isSensorEnabled = false;
+        }
+
+        // Valves and Pumps
+        final valvePins = garden.controllerConfig?.valvePins ?? [];
+        final pumpPins = garden.controllerConfig?.pumpPins ?? [];
+        for (var pin in valvePins) {
+          final controller = TextEditingController(text: pin.toString());
+          _valveControllers.add(controller);
+        }
+        for (var pin in pumpPins) {
+          final controller = TextEditingController(text: pin.toString());
+          _pumpControllers.add(controller);
+        }
+      }
+    });
   }
 
   @override
@@ -93,245 +140,280 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
 
   void _onSave() {
     if (!_formKey.currentState!.validate()) return;
-
-    // Xử lý logic save ở đây
-    print('Editing garden: ${_nameController.text}');
-    print(_timezone);
+    ref
+        .read(gardenProvider.notifier)
+        .editGarden(
+          GardenEntity(
+            id: widget.gardenId,
+            name: _nameController.text,
+            topicPrefix: _topicPrefixController.text,
+            maxZones: int.parse(_maxZonesController.text),
+            // Add other fields as necessary
+          ),
+        );
   }
 
   @override
   Widget build(BuildContext context) {
+    final gardenState = ref.watch(gardenProvider);
+    ref.listen(gardenProvider.select((state) => state.isEditingGarden), (
+      previousLoading,
+      nextLoading,
+    ) {
+      if (nextLoading == true) {
+        EasyLoading.show(status: 'Loading...');
+      } else if (nextLoading == false && previousLoading == true) {
+        EasyLoading.dismiss();
+      }
+    });
+
+    ref.listen(gardenProvider, (previous, next) async {
+      if (previous?.isEditingGarden == true && next.isEditingGarden == false) {
+        if (next.errEditingGarden != null) {
+          EasyLoading.showError(next.errEditingGarden ?? 'Error');
+        } else {
+          EasyLoading.showSuccess(next.responseMsg ?? 'Garden edited');
+          context.goBack();
+        }
+      }
+    });
     return Scaffold(
       backgroundColor: AppColors.neutral50,
       appBar: AppBar(title: const Text('Edit Garden'), centerTitle: true),
-      body: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Padding(
-            padding: const EdgeInsets.all(AppConstants.paddingMd),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // --- Basic Info ---
-                LabeledInput(
-                  label: 'Garden name',
-                  child: TextFormField(
-                    controller: _nameController,
-                    validator: AppValidators.required,
-                    textInputAction: TextInputAction.next,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                LabeledInput(
-                  label: 'Topic prefix',
-                  child: TextFormField(
-                    controller: _topicPrefixController,
-                    validator: AppValidators.required,
-                    textInputAction: TextInputAction.next,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                LabeledInput(
-                  label: 'Max zones',
-                  child: TextFormField(
-                    controller: _maxZonesController,
-                    keyboardType: TextInputType.number,
-                    validator: AppValidators.required,
-                    textInputAction: TextInputAction.next,
-                  ),
-                ),
-
-                // --- Light Schedule ---
-                const SizedBox(height: 12),
-                const Text(
-                  'Light schedule',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                ),
-                const SizedBox(height: 8),
-                Row(
+      body: gardenState.isLoadingGarden
+          ? const Center(child: CircularProgressIndicator())
+          : gardenState.errLoadingGarden != null
+          ? Center(child: Text(gardenState.errLoadingGarden!))
+          : gardenState.garden != null
+          ? SingleChildScrollView(
+              padding: const EdgeInsets.all(AppConstants.paddingMd),
+              child: Form(
+                key: _formKey,
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: LabeledInput(
-                        label: 'Light Pin',
-                        child: TextFormField(
-                          controller: _lightPinController,
-                          keyboardType: TextInputType.number,
-                          textInputAction: TextInputAction.next,
-                          onChanged: (value) {
-                            setState(() {});
-                          },
-                        ),
+                    // --- Basic Info ---
+                    LabeledInput(
+                      label: 'Garden name',
+                      child: TextFormField(
+                        controller: _nameController,
+                        validator: AppValidators.required,
+                        textInputAction: TextInputAction.next,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: LabeledInput(
-                        label: 'Duration',
-                        child: DropdownButtonFormField<String>(
-                          menuMaxHeight:
-                              MediaQuery.sizeOf(context).height * 0.5,
-                          items: _durationHours
-                              .map(
-                                (i) => DropdownMenuItem(
-                                  value: '$i',
-                                  child: Text('$i hours'),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (value) {
-                            if (value == null) return;
-                            setState(() => _lsDuration = '${value}h');
-                          },
-                          validator: _lightPinController.text.trim().isNotEmpty
-                              ? AppValidators.required
-                              : null,
-                          decoration: const InputDecoration(hintText: 'Select'),
-                        ),
+                    const SizedBox(height: 12),
+                    LabeledInput(
+                      label: 'Topic prefix',
+                      child: TextFormField(
+                        controller: _topicPrefixController,
+                        validator: AppValidators.required,
+                        textInputAction: TextInputAction.next,
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: LabeledInput(
-                        label: 'Hour',
-                        child: TextFormField(
-                          controller: _hourController,
-                          keyboardType: TextInputType.number,
-                          validator: _lsDuration != null
-                              ? AppValidators.required
-                              : null,
-                        ),
+                    const SizedBox(height: 12),
+                    LabeledInput(
+                      label: 'Max zones',
+                      child: TextFormField(
+                        controller: _maxZonesController,
+                        keyboardType: TextInputType.number,
+                        validator: AppValidators.required,
+                        textInputAction: TextInputAction.next,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: LabeledInput(
-                        label: 'Minute',
-                        child: TextFormField(
-                          controller: _minuteController,
-                          keyboardType: TextInputType.number,
-                          validator: _lsDuration != null
-                              ? AppValidators.required
-                              : null,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: LabeledInput(
-                        label: 'Timezone',
-                        child: DropdownButtonFormField<String>(
-                          menuMaxHeight:
-                              MediaQuery.sizeOf(context).height * 0.5,
-                          items: _timezones
-                              .map(
-                                (tz) => DropdownMenuItem(
-                                  value: tz,
-                                  child: Text(tz),
-                                ),
-                              )
-                              .toList(),
-                          validator: _lsDuration != null
-                              ? AppValidators.required
-                              : null,
-                          onChanged: (value) =>
-                              setState(() => _timezone = value),
-                          decoration: const InputDecoration(hintText: 'Select'),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Sensor',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                ),
-                const SizedBox(height: 8),
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Temperature/Humidity sensor'),
-                  value: isSensorEnabled,
-                  onChanged: (val) => setState(() => isSensorEnabled = val!),
-                  controlAffinity: ListTileControlAffinity.leading,
-                  // activeColor: Colors.deepSubtitlePurple, // Màu tím giống trong ảnh
-                ),
-                const SizedBox(height: 8),
-                if (isSensorEnabled)
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: LabeledInput(
-                          label: 'Sensor Pin',
-                          child: TextFormField(
-                            controller: _sensorPinController,
-                            keyboardType: TextInputType.number,
-                            validator: AppValidators.required,
-                            textInputAction: TextInputAction.next,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: LabeledInput(
-                          label: 'Interval',
-                          child: TextFormField(
-                            controller: _intervalController,
-                            keyboardType: TextInputType.number,
-                            validator: AppValidators.required,
-                            textInputAction: TextInputAction.next,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                if (isSensorEnabled) const SizedBox(height: 12),
 
-                const Text(
-                  'Valve pins',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                    // --- Light Schedule ---
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Light schedule',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: LabeledInput(
+                            label: 'Light Pin',
+                            child: TextFormField(
+                              controller: _lightPinController,
+                              keyboardType: TextInputType.number,
+                              textInputAction: TextInputAction.next,
+                              onChanged: (value) {
+                                setState(() {});
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: LabeledInput(
+                            label: 'Duration',
+                            child: DropdownButtonFormField<String>(
+                              menuMaxHeight:
+                                  MediaQuery.sizeOf(context).height * 0.5,
+                              value: _lsDuration,
+                              items: _durationHours
+                                  .map(
+                                    (i) => DropdownMenuItem(
+                                      value: '$i',
+                                      child: Text('$i hours'),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (value) {
+                                if (value == null) return;
+                                setState(() {
+                                  _lsDuration = value;
+                                });
+                              },
+                              validator:
+                                  _lightPinController.text.trim().isNotEmpty
+                                  ? AppValidators.required
+                                  : null,
+                              decoration: const InputDecoration(
+                                hintText: 'Select',
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: LabeledInput(
+                            label: 'Hour',
+                            child: TextFormField(
+                              controller: _hourController,
+                              keyboardType: TextInputType.number,
+                              validator: _lsDuration != null
+                                  ? AppValidators.required
+                                  : null,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: LabeledInput(
+                            label: 'Minute',
+                            child: TextFormField(
+                              controller: _minuteController,
+                              keyboardType: TextInputType.number,
+                              validator: _lsDuration != null
+                                  ? AppValidators.required
+                                  : null,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Sensor',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Temperature/Humidity sensor'),
+                      value: isSensorEnabled,
+                      onChanged: (val) =>
+                          setState(() => isSensorEnabled = val!),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      // activeColor: Colors.deepSubtitlePurple, // Màu tím giống trong ảnh
+                    ),
+                    const SizedBox(height: 8),
+                    if (isSensorEnabled)
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: LabeledInput(
+                              label: 'Sensor Pin',
+                              child: TextFormField(
+                                controller: _sensorPinController,
+                                keyboardType: TextInputType.number,
+                                validator: AppValidators.required,
+                                textInputAction: TextInputAction.next,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: LabeledInput(
+                              label: 'Interval',
+                              child: TextFormField(
+                                controller: _intervalController,
+                                keyboardType: TextInputType.number,
+                                validator: AppValidators.required,
+                                textInputAction: TextInputAction.next,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    if (isSensorEnabled) const SizedBox(height: 12),
+
+                    const Text(
+                      'Valve pins',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // === Valve Section ===
+                    PinSectionCard(
+                      controllers: _valveControllers,
+                      onAddPressed: _addZone,
+                      onRemovePressed: _removeZone,
+                    ),
+                    const SizedBox(height: 12),
+                    // === Pump Section ===
+                    const Text(
+                      'Valve pins',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    PinSectionCard(
+                      controllers: _pumpControllers,
+                      onAddPressed: _addZone,
+                      onRemovePressed: _removeZone,
+                      accentColor: Colors.blue[700]!,
+                    ),
+                    const SizedBox(height: 150),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                // === Valve Section ===
-                PinSectionCard(
-                  controllers: _valveControllers,
-                  onAddPressed: _addZone,
-                  onRemovePressed: _removeZone,
+              ),
+            )
+          : const Center(child: Text('No garden data found.')),
+      bottomSheet:
+          gardenState.isLoadingGarden == true ||
+              gardenState.errLoadingGarden != null
+          ? null
+          : Container(
+              color: Colors.white,
+              padding: const EdgeInsets.all(AppConstants.paddingMd),
+              child: SizedBox(
+                width: double.infinity,
+                height: AppConstants.buttonMd,
+                child: ElevatedButton(
+                  onPressed: _onSave,
+                  child: const Text('Save'),
                 ),
-                const SizedBox(height: 12),
-                // === Pump Section ===
-                const Text(
-                  'Valve pins',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-                ),
-                const SizedBox(height: 12),
-                PinSectionCard(
-                  controllers: _pumpControllers,
-                  onAddPressed: _addZone,
-                  onRemovePressed: _removeZone,
-                  accentColor: Colors.blue[700]!,
-                ),
-                const SizedBox(height: 150),
-              ],
+              ),
             ),
-          ),
-        ),
-      ),
-      bottomSheet: Container(
-        color: Colors.white,
-        padding: const EdgeInsets.all(AppConstants.paddingMd),
-        child: SizedBox(
-          width: double.infinity,
-          height: AppConstants.buttonMd,
-          child: ElevatedButton(onPressed: _onSave, child: const Text('Save')),
-        ),
-      ),
     );
   }
 }

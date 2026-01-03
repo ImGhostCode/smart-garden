@@ -1,11 +1,8 @@
 import 'package:dartz/dartz.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
-import '../../../../core/network/api_client.dart';
-import '../../../../core/providers/storage_providers.dart';
 import '../../../../core/storage/local_storage_service.dart';
 import '../../../../core/storage/secure_storage_service.dart';
 import '../../data/datasources/auth_remote_data_source.dart';
@@ -147,31 +144,3 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 }
-
-// Dependencies
-final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
-
-// Using sharedPreferencesProvider from main.dart
-final localStorageServiceProvider = Provider<LocalStorageService>((ref) {
-  final prefs = ref.watch(sharedPreferencesProvider);
-  return LocalStorageService(prefs);
-});
-
-final secureStorageServiceProvider = Provider<SecureStorageService>((ref) {
-  return SecureStorageService.create();
-});
-
-// Remote data source provider
-final authRemoteDataSourceProvider = Provider<AuthRemoteDataSource>((ref) {
-  final apiClient = ref.watch(apiClientProvider);
-  return AuthRemoteDataSourceImpl(apiClient);
-});
-
-// Repository provider
-final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepositoryImpl(
-    remoteDataSource: ref.watch(authRemoteDataSourceProvider),
-    localStorageService: ref.watch(localStorageServiceProvider),
-    secureStorageService: ref.watch(secureStorageServiceProvider),
-  );
-});

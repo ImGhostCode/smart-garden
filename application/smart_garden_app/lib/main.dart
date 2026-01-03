@@ -1,7 +1,9 @@
 import 'package:device_preview/device_preview.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lottie/lottie.dart';
 // import '../../../../../core/updates/update_providers.dart';
 // import 'package:flutter_riverpod_clean_architecture/l10n/app_localizations_delegate.dart';
 // import 'package:flutter_riverpod_clean_architecture/l10n/l10n.dart';
@@ -13,6 +15,7 @@ import '../../../../../core/constants/app_constants.dart';
 import '../../../../../core/providers/storage_providers.dart';
 import '../../../../../core/router/app_router.dart';
 import '../../../../../core/theme/app_theme.dart';
+import 'core/constants/assets.dart';
 
 void main() async {
   // Ensure Flutter binding is initialized
@@ -60,6 +63,16 @@ class MyApp extends ConsumerWidget {
 
     // Watch the persistent locale
     // final locale = ref.watch(persistentLocaleProvider);
+    EasyLoading.instance
+      ..indicatorWidget = Lottie.asset(Assets.loading, width: 80, height: 80)
+      ..loadingStyle = EasyLoadingStyle.light
+      ..maskType = EasyLoadingMaskType.black
+      ..radius = AppConstants.radiusMd
+      ..contentPadding = const EdgeInsets.symmetric(
+        horizontal: AppConstants.paddingLg,
+        vertical: AppConstants.paddingSm,
+      )
+      ..displayDuration = const Duration(milliseconds: 4000);
 
     return MaterialApp.router(
       title: AppConstants.appName,
@@ -69,7 +82,9 @@ class MyApp extends ConsumerWidget {
       routerConfig: router,
       debugShowCheckedModeBanner: false,
       builder: (context, child) {
-        return DevicePreview.appBuilder(context, child!);
+        child = DevicePreview.appBuilder(context, child);
+        child = EasyLoading.init()(context, child);
+        return child;
       },
       // Localization settings
       // locale: locale,

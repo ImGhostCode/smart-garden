@@ -1,14 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/ui/inputs/app_labeled_input.dart';
+import '../../../../core/utils/app_utils.dart';
 import '../../../../core/utils/app_validators.dart';
+import '../../../../core/utils/extensions/navigation_extensions.dart';
+import '../../domain/entities/water_schedule_entity.dart';
+import '../providers/water_schedule_provider.dart';
 
 class EditWaterScheduleScreen extends ConsumerStatefulWidget {
   final String scheduleId;
-  const EditWaterScheduleScreen({super.key, required this.scheduleId});
+  final WaterScheduleEntity ws;
+  const EditWaterScheduleScreen({
+    super.key,
+    required this.scheduleId,
+    required this.ws,
+  });
 
   @override
   ConsumerState<ConsumerStatefulWidget> createState() =>
@@ -26,13 +36,10 @@ class _EditWaterScheduleScreenState
   late final TextEditingController _minute;
 
   // Local State
-  String? _wsDuration;
-  String? _timezone;
   String? _startPeriod;
   String? _endPeriod;
 
   // Data Sources
-  static const List<String> _timezones = ['UTC', 'UTC+7'];
   static const List<String> _months = [
     "January",
     "February",
@@ -56,6 +63,19 @@ class _EditWaterScheduleScreenState
     _interval = TextEditingController();
     _hour = TextEditingController();
     _minute = TextEditingController();
+
+    final ws = widget.ws;
+    _name.text = ws.name ?? '';
+    _description.text = ws.description ?? '';
+    _duration.text = ws.durationMs?.toString() ?? '';
+    _interval.text = ws.interval?.toString() ?? '';
+    final startTime = ws.startTime?.split(':');
+    if (startTime != null && startTime.length == 2) {
+      _hour.text = startTime[0];
+      _minute.text = startTime[1];
+    }
+    _startPeriod = ws.activePeriod?.startMonth;
+    _endPeriod = ws.activePeriod?.endMonth;
     super.initState();
   }
 
@@ -67,18 +87,56 @@ class _EditWaterScheduleScreenState
     _interval.dispose();
     _hour.dispose();
     _minute.dispose();
+    EasyLoading.dismiss();
     super.dispose();
   }
 
   void _onSave() {
     if (!_formKey.currentState!.validate()) return;
-    print(_wsDuration);
-    print(_timezone);
-    print('edit water schedule');
+    ref
+        .read(waterScheduleProvider.notifier)
+        .editWaterSchedule(
+          WaterScheduleEntity(
+            id: widget.ws.id,
+            name: _name.text,
+            description: _description.text,
+            durationMs: AppUtils.durationToMs(_duration.text),
+            interval: int.tryParse(_interval.text),
+            startTime:
+                '${_hour.text.padLeft(2, '0')}:${_minute.text.padLeft(2, '0')}:00',
+            activePeriod: (_startPeriod != null && _endPeriod != null)
+                ? ActivePeriodEntity(
+                    startMonth: _startPeriod!,
+                    endMonth: _endPeriod!,
+                  )
+                : null,
+          ),
+        );
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(waterScheduleProvider.select((state) => state.isEditingWS), (
+      previousLoading,
+      nextLoading,
+    ) {
+      if (nextLoading == true) {
+        EasyLoading.show(status: 'Loading...');
+      } else if (nextLoading == false && previousLoading == true) {
+        EasyLoading.dismiss();
+      }
+    });
+
+    ref.listen(waterScheduleProvider, (previous, next) async {
+      if (previous?.isEditingWS == true && next.isEditingWS == false) {
+        if (next.errEditingWS != null) {
+          EasyLoading.showError(next.errEditingWS ?? 'Error');
+        } else {
+          EasyLoading.showSuccess(next.responseMsg ?? 'Water Schedule edited');
+          context.goBack();
+        }
+      }
+    });
     return Scaffold(
       backgroundColor: AppColors.neutral50,
       appBar: AppBar(
@@ -165,28 +223,6 @@ class _EditWaterScheduleScreenState
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: LabeledInput(
-                        label: 'Timezone',
-                        child: DropdownButtonFormField<String>(
-                          menuMaxHeight:
-                              MediaQuery.sizeOf(context).height * 0.5,
-                          items: _timezones
-                              .map(
-                                (tz) => DropdownMenuItem(
-                                  value: tz,
-                                  child: Text(tz),
-                                ),
-                              )
-                              .toList(),
-                          validator: AppValidators.required,
-                          onChanged: (value) =>
-                              setState(() => _timezone = value),
-                          decoration: const InputDecoration(hintText: 'Select'),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -204,6 +240,9 @@ class _EditWaterScheduleScreenState
                         child: DropdownButtonFormField<String>(
                           menuMaxHeight:
                               MediaQuery.sizeOf(context).height * 0.5,
+                          value: _months
+                              .where((m) => m.contains(_startPeriod ?? ''))
+                              .firstOrNull,
                           items: _months
                               .map(
                                 (m) =>
@@ -226,6 +265,9 @@ class _EditWaterScheduleScreenState
                         child: DropdownButtonFormField<String>(
                           menuMaxHeight:
                               MediaQuery.sizeOf(context).height * 0.5,
+                          value: _months
+                              .where((m) => m.contains(_endPeriod ?? ''))
+                              .firstOrNull,
                           items: _months
                               .map(
                                 (m) =>

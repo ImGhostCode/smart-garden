@@ -7,16 +7,20 @@ import '../../features/plant/presentation/screens/add_plant_screen.dart';
 import '../../features/plant/presentation/screens/edit_plant_screen.dart';
 import '../../features/plant/presentation/screens/plant_detail_screen.dart';
 import '../../features/plant/presentation/screens/plant_list_screen.dart';
+import '../../features/water_routine/domain/entities/water_routine_entity.dart';
 import '../../features/water_routine/presentation/screens/edit_water_routine_screen.dart';
 import '../../features/water_routine/presentation/screens/new_water_routine_screen.dart';
+import '../../features/water_schedule/domain/entities/water_schedule_entity.dart';
 import '../../features/water_schedule/presentation/screens/edit_water_schedule_screen.dart';
 import '../../features/water_schedule/presentation/screens/new_water_schedule_screen.dart';
+import '../../features/weather_client/domain/entities/weather_client_entity.dart';
 import '../../features/weather_client/presentation/screens/edit_weather_client_screen.dart';
 import '../../features/weather_client/presentation/screens/new_weather_client_screen.dart';
 import '../../features/zone/presentation/screens/add_zone_screen.dart';
 import '../../features/zone/presentation/screens/edit_zone_screen.dart';
 import '../../features/zone/presentation/screens/zone_detail_screen.dart';
 import '../../features/zone/presentation/screens/zone_list_screen.dart';
+import '../constants/app_constants.dart';
 
 class AppRoutes {
   static List<RouteBase> get authRoutes => [
@@ -45,7 +49,8 @@ class AppRoutes {
     GoRoute(
       path: 'zone',
       name: RouteNames.zones,
-      builder: (context, state) => const ZoneListScreen(),
+      builder: (context, state) =>
+          ZoneListScreen(gardenId: state.pathParameters['gardenId']!),
       routes: [
         GoRoute(
           path: 'add',
@@ -55,8 +60,10 @@ class AppRoutes {
         GoRoute(
           path: ':zoneId',
           name: RouteNames.zoneDetail,
-          builder: (context, state) =>
-              ZoneDetailScreen(zoneId: state.pathParameters['zoneId']!),
+          builder: (context, state) => ZoneDetailScreen(
+            gardenId: state.pathParameters['gardenId']!,
+            zoneId: state.pathParameters['zoneId']!,
+          ),
           routes: [
             GoRoute(
               path: 'edit',
@@ -71,7 +78,8 @@ class AppRoutes {
     GoRoute(
       path: 'plant',
       name: RouteNames.plants,
-      builder: (context, state) => const PlantListScreen(),
+      builder: (context, state) =>
+          PlantListScreen(gardenId: state.pathParameters['gardenId']!),
       routes: [
         GoRoute(
           path: 'add',
@@ -106,8 +114,16 @@ class AppRoutes {
       path: ':scheduleId/edit',
       name: RouteNames.editWaterSchedule,
       builder: (context, state) => EditWaterScheduleScreen(
+        ws: state.extra as WaterScheduleEntity,
         scheduleId: state.pathParameters['scheduleId']!,
       ),
+      redirect: (context, state) {
+        final ws = state.extra;
+        if (ws == null || ws is! WaterScheduleEntity) {
+          return AppConstants.gardenRoute;
+        }
+        return null;
+      },
     ),
   ];
   static List<RouteBase> get wcSubRoutes => [
@@ -119,8 +135,17 @@ class AppRoutes {
     GoRoute(
       path: ':clientId/edit',
       name: RouteNames.editWeatherClient,
-      builder: (context, state) =>
-          EditWeatherClientScreen(clientId: state.pathParameters['clientId']!),
+      builder: (context, state) => EditWeatherClientScreen(
+        wc: state.extra as WeatherClientEntity,
+        clientId: state.pathParameters['clientId']!,
+      ),
+      redirect: (context, state) {
+        final wc = state.extra;
+        if (wc == null || wc is! WeatherClientEntity) {
+          return AppConstants.gardenRoute;
+        }
+        return null;
+      },
     ),
   ];
   static List<RouteBase> get wrSubRoutes => [
@@ -132,8 +157,17 @@ class AppRoutes {
     GoRoute(
       path: ':routineId/edit',
       name: RouteNames.editWaterRoutine,
-      builder: (context, state) =>
-          EditWaterRoutineScreen(routineId: state.pathParameters['routineId']!),
+      builder: (context, state) => EditWaterRoutineScreen(
+        waterRoutineId: state.pathParameters['routineId']!,
+        waterRoutine: state.extra as WaterRoutineEntity,
+      ),
+      redirect: (context, state) {
+        final wr = state.extra;
+        if (wr == null || wr is! WaterRoutineEntity) {
+          return AppConstants.gardenRoute;
+        }
+        return null;
+      },
     ),
   ];
 }

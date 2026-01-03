@@ -5,117 +5,163 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/assets.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
+import '../../../garden/domain/entities/garden_entity.dart';
+import '../../../garden/presentation/providers/garden_provider.dart';
 
 enum GardenAction { edit, remove }
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Watch auth state to get current user
-    // final authState = ref.watch(authProvider);
-    // final user = authState.user;
+  ConsumerState<ConsumerStatefulWidget> createState() => _HomeScreenState();
+}
 
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        leadingWidth: 120,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: AppConstants.paddingSm),
-          child: Image.asset(Assets.logo),
-        ),
-        actions: [
-          IconButton.filled(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_rounded),
-            color: AppColors.primary,
-            style: IconButton.styleFrom(backgroundColor: AppColors.primary100),
-          ),
-          IconButton.filled(
-            onPressed: () {
-              context.goSettings();
-            },
-            icon: const Icon(Icons.settings_rounded),
-            color: AppColors.primary,
-            style: IconButton.styleFrom(backgroundColor: AppColors.primary100),
-          ),
-          const SizedBox(width: AppConstants.paddingSm),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingMd),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              const SizedBox(height: AppConstants.paddingLg),
-              SearchBar(
-                leading: const Icon(Icons.search_rounded, color: Colors.grey),
-                hintText: 'Search',
-                onChanged: (value) {},
-                trailing: [
-                  IconButton(
-                    onPressed: () {},
-                    icon: const Icon(
-                      Icons.clear_rounded,
-                      size: AppConstants.iconMd,
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  void initState() {
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    // if (ref.read(gardenProvider).gardens.isEmpty) {
+    //   ref
+    //       .read(gardenProvider.notifier)
+    //       .getAllGarden(GetAllGardenParams(endDated: false));
+    // }
+    // });
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final gardenState = ref.watch(gardenProvider);
+
+    return SafeArea(
+      child: Scaffold(
+        body: CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              scrolledUnderElevation: 0,
+              floating: true,
+              pinned: false,
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              leadingWidth: 120,
+              leading: Padding(
+                padding: const EdgeInsets.only(left: AppConstants.paddingSm),
+                child: Image.asset(Assets.logo),
+              ),
+              actions: [
+                IconButton.filled(
+                  onPressed: () {},
+                  icon: const Icon(Icons.notifications_rounded),
+                  color: AppColors.primary,
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppColors.primary100,
+                  ),
+                ),
+                IconButton.filled(
+                  onPressed: () => context.goSettings(),
+                  icon: const Icon(Icons.settings_rounded),
+                  color: AppColors.primary,
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppColors.primary100,
+                  ),
+                ),
+                const SizedBox(width: AppConstants.paddingSm),
+              ],
+            ),
+
+            SliverAppBar(
+              pinned: true,
+              primary: false,
+              toolbarHeight: 70,
+              automaticallyImplyLeading: false,
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              surfaceTintColor: Colors.transparent,
+              titleSpacing: 0,
+              title: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppConstants.paddingMd,
+                ),
+                child: SearchBar(
+                  leading: const Icon(Icons.search_rounded, color: Colors.grey),
+                  hintText: 'Search',
+                  trailing: [
+                    IconButton(
+                      onPressed: () {},
+                      icon: const Icon(
+                        Icons.clear_rounded,
+                        size: AppConstants.iconMd,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              InkWell(
-                onTap: () {
-                  context.goGardenDetail('68de7e98ae6796d18a268a34');
-                },
-                child: Ink(
-                  decoration: BoxDecoration(
-                    color: AppColors.neutral50,
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(AppConstants.radiusMd),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildHeader(context),
-                      _buildGridContent(context),
-                      _buildFooter(context),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.neutral50,
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(AppConstants.radiusMd),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildHeader(context),
-                    _buildGridContent(context),
-                    _buildFooter(context),
                   ],
                 ),
               ),
-              const SizedBox(height: 150),
-            ],
-          ),
+            ),
+
+            SliverPadding(
+              padding: const EdgeInsets.all(AppConstants.paddingMd),
+              sliver: _buildSliverContent(gardenState),
+            ),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 150)),
+          ],
         ),
       ),
     );
   }
 
+  // Tách hàm để quản lý logic Sliver dễ hơn
+  Widget _buildSliverContent(GardenState gardenState) {
+    if (gardenState.isLoadingGardens) {
+      return const SliverFillRemaining(
+        hasScrollBody: false,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (gardenState.errLoadingGardens != null) {
+      return SliverFillRemaining(
+        hasScrollBody: false,
+        child: Center(child: Text(gardenState.errLoadingGardens!)),
+      );
+    }
+
+    return SliverList(
+      delegate: SliverChildBuilderDelegate((context, index) {
+        final garden = gardenState.gardens[index];
+        return Container(
+          margin: const EdgeInsets.only(bottom: AppConstants.paddingMd),
+          child: InkWell(
+            onTap: () => context.goGardenDetail(garden.id!),
+            borderRadius: BorderRadius.circular(AppConstants.radiusMd),
+            child: Ink(
+              decoration: BoxDecoration(
+                color: AppColors.neutral50,
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(AppConstants.radiusMd),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildHeader(context, garden),
+                  _buildGridContent(context, garden),
+                  _buildFooter(context, garden),
+                ],
+              ),
+            ),
+          ),
+        );
+      }, childCount: gardenState.gardens.length),
+    );
+  }
+
   // Tiêu đề: Front yard
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, GardenEntity garden) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: const SizedBox(width: 48),
       title: Center(
         child: Text(
-          'Front yard',
+          garden.name ?? "",
           style: Theme.of(
             context,
           ).textTheme.titleLarge!.copyWith(fontWeight: FontWeight.w600),
@@ -128,7 +174,7 @@ class HomeScreen extends ConsumerWidget {
         onSelected: (GardenAction item) {
           switch (item) {
             case GardenAction.edit:
-              context.goEditGarden('68de7e98ae6796d18a268a34');
+              context.goEditGarden(garden.id!);
               break;
             default:
           }
@@ -158,7 +204,7 @@ class HomeScreen extends ConsumerWidget {
   }
 
   // Nội dung chính: Các thẻ thông số
-  Widget _buildGridContent(BuildContext context) {
+  Widget _buildGridContent(BuildContext context, GardenEntity garden) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingMd),
       child: Column(
@@ -170,7 +216,7 @@ class HomeScreen extends ConsumerWidget {
                 child: _buildStatCard(
                   context,
                   'Humidity',
-                  '74%',
+                  '${garden.tempHumData?.humidityPercentage ?? '- '}%',
                   Icons.air,
                   Colors.teal,
                 ),
@@ -180,7 +226,7 @@ class HomeScreen extends ConsumerWidget {
                 child: _buildStatCard(
                   context,
                   'Temperature',
-                  '23°C',
+                  '${garden.tempHumData?.temperatureCelsius ?? '- '}°C',
                   Icons.thermostat,
                   Colors.teal,
                 ),
@@ -190,10 +236,10 @@ class HomeScreen extends ConsumerWidget {
                 child: _buildStatCard(
                   context,
                   'Connectivity',
-                  'Online',
+                  garden.health?.status == 'UP' ? 'Online' : 'Offline',
                   Icons.wifi,
                   Colors.teal,
-                  isOnline: true,
+                  isOnline: garden.health?.status == 'UP',
                 ),
               ),
             ],
@@ -202,14 +248,14 @@ class HomeScreen extends ConsumerWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(flex: 2, child: _buildStatusCard(context)),
+              Expanded(flex: 2, child: _buildStatusCard(context, garden)),
               const SizedBox(width: 8),
               Expanded(
                 flex: 1,
                 child: _buildStatCard(
                   context,
                   'Light Status',
-                  'On',
+                  garden.nextLightAction?.action == "OFF" ? "ON" : "OFF",
                   Icons.lightbulb_outline,
                   Colors.teal,
                 ),
@@ -252,7 +298,7 @@ class HomeScreen extends ConsumerWidget {
               Text(
                 value,
                 style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                   color: Colors.blueGrey[800],
                 ),
               ),
@@ -268,7 +314,7 @@ class HomeScreen extends ConsumerWidget {
   }
 
   // Widget cho thẻ Status (6 plants growing, 2 Zones)
-  Widget _buildStatusCard(BuildContext context) {
+  Widget _buildStatusCard(BuildContext context, GardenEntity garden) {
     return Container(
       padding: const EdgeInsets.all(AppConstants.paddingMd),
       decoration: _cardDecoration(),
@@ -285,10 +331,14 @@ class HomeScreen extends ConsumerWidget {
           _buildStatusItem(
             context,
             Icons.local_florist_outlined,
-            '6 plants growing',
+            '${garden.numPlants} plants growing',
           ),
           const SizedBox(height: 8),
-          _buildStatusItem(context, Icons.explore_outlined, '2 Zones'),
+          _buildStatusItem(
+            context,
+            Icons.explore_outlined,
+            '${garden.numZones} Zones',
+          ),
         ],
       ),
     );
@@ -311,7 +361,7 @@ class HomeScreen extends ConsumerWidget {
   }
 
   // Phần chân trang với nút Actions
-  Widget _buildFooter(BuildContext context) {
+  Widget _buildFooter(BuildContext context, GardenEntity garden) {
     return Container(
       padding: const EdgeInsets.all(AppConstants.paddingMd),
       decoration: BoxDecoration(
@@ -321,16 +371,16 @@ class HomeScreen extends ConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Tooltip(
+          Tooltip(
             triggerMode: TooltipTriggerMode.tap,
-            message: 'Topic prefix: front-yard',
-            child: Icon(Icons.info_rounded, color: Colors.blue),
+            message: 'Topic prefix: ${garden.topicPrefix ?? ''}',
+            child: const Icon(Icons.info_rounded, color: Colors.blue),
           ),
           SizedBox(
             height: AppConstants.buttonSm,
             child: ElevatedButton(
               onPressed: () {
-                showGardenActions(context);
+                showGardenActions(context, garden);
               },
               child: const Text('ACTIONS'),
             ),
@@ -356,7 +406,7 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-void showGardenActions(BuildContext context) {
+void showGardenActions(BuildContext context, GardenEntity garden) {
   showModalBottomSheet(
     useRootNavigator: true,
     context: context,
@@ -384,9 +434,11 @@ void showGardenActions(BuildContext context) {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            subtitle: const Text('Status: OFF'),
+            subtitle: Text(
+              "Status: ${garden.nextLightAction?.action == 'OFF' ? 'ON' : 'OFF'}",
+            ),
             trailing: Switch(
-              value: true,
+              value: garden.nextLightAction?.action == 'OFF' ? true : false,
               onChanged: (val) {},
               activeColor: Colors.white,
               activeTrackColor: AppColors.primary,
