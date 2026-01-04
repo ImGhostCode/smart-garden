@@ -5,18 +5,19 @@
 import 'package:dartz/dartz.dart';
 
 import '../../../../core/error/failures.dart';
+import '../../../../core/network/api_response.dart';
 import '../../../../core/usecases/usecase.dart';
 import '../entities/water_schedule_entity.dart';
 import '../repositories/water_schedule_repository.dart';
 
 class GetAllWaterSchedules
-    implements UseCase<List<WaterScheduleEntity>, GetAllWSParams> {
+    implements UseCase<ApiResponse<List<WaterScheduleEntity>>, GetAllWSParams> {
   final WaterScheduleRepository repository;
 
   GetAllWaterSchedules(this.repository);
 
   @override
-  Future<Either<Failure, List<WaterScheduleEntity>>> call(
+  Future<Either<Failure, ApiResponse<List<WaterScheduleEntity>>>> call(
     GetAllWSParams params,
   ) {
     return repository.getAllWaterSchedules(params);

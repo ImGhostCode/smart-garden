@@ -8,17 +8,20 @@ import '../../providers/water_schedule_providers.dart';
 class WaterScheduleState {
   final bool isLoadingWSs;
   final List<WaterScheduleEntity> waterSchedules;
-  final String? errLoadingWSs;
+  final String errLoadingWSs;
 
   final bool isLoadingWS;
   final WaterScheduleEntity? waterSchedule;
-  final String? errLoadingWS;
+  final String errLoadingWS;
 
   final bool isCreatingWS;
-  final String? errCreatingWS;
+  final String errCreatingWS;
 
   final bool isEditingWS;
-  final String? errEditingWS;
+  final String errEditingWS;
+
+  final bool isDeletingWS;
+  final String errDeletingWS;
 
   final String? responseMsg;
 
@@ -27,13 +30,15 @@ class WaterScheduleState {
     this.isLoadingWS = false,
     this.isCreatingWS = false,
     this.isEditingWS = false,
+    this.isDeletingWS = false,
     this.waterSchedules = const [],
     this.waterSchedule,
     this.responseMsg,
-    this.errLoadingWSs,
-    this.errLoadingWS,
-    this.errCreatingWS,
-    this.errEditingWS,
+    this.errLoadingWSs = '',
+    this.errLoadingWS = '',
+    this.errCreatingWS = '',
+    this.errEditingWS = '',
+    this.errDeletingWS = '',
   });
 
   WaterScheduleState copyWith({
@@ -41,6 +46,7 @@ class WaterScheduleState {
     bool? isLoadingWS,
     bool? isCreatingWS,
     bool? isEditingWS,
+    bool? isDeletingWS,
     List<WaterScheduleEntity>? waterSchedules,
     WaterScheduleEntity? Function()? waterSchedule,
     String? responseMsg,
@@ -48,12 +54,14 @@ class WaterScheduleState {
     String? errLoadingWS,
     String? errCreatingWS,
     String? errEditingWS,
+    String? errDeletingWS,
   }) {
     return WaterScheduleState(
       isLoadingWSs: isLoadingWSs ?? this.isLoadingWSs,
       isLoadingWS: isLoadingWS ?? this.isLoadingWS,
       isCreatingWS: isCreatingWS ?? this.isCreatingWS,
       isEditingWS: isEditingWS ?? this.isEditingWS,
+      isDeletingWS: isDeletingWS ?? this.isDeletingWS,
       waterSchedules: waterSchedules ?? this.waterSchedules,
       waterSchedule: waterSchedule != null
           ? waterSchedule()
@@ -62,6 +70,7 @@ class WaterScheduleState {
       errLoadingWS: errLoadingWS ?? this.errLoadingWS,
       errCreatingWS: errCreatingWS ?? this.errCreatingWS,
       errEditingWS: errEditingWS ?? this.errEditingWS,
+      errDeletingWS: errDeletingWS ?? this.errDeletingWS,
       responseMsg: responseMsg,
     );
   }
@@ -77,7 +86,7 @@ class WaterScheduleNotifier extends Notifier<WaterScheduleState> {
   Future<void> getAllWaterSchedule(GetAllWSParams params) async {
     state = state.copyWith(
       isLoadingWSs: true,
-      errLoadingWSs: null,
+      errLoadingWSs: '',
       waterSchedules: [],
     );
 
@@ -89,9 +98,9 @@ class WaterScheduleNotifier extends Notifier<WaterScheduleState> {
         isLoadingWSs: false,
         errLoadingWSs: failure.message,
       ),
-      (waterSchedules) => state = state.copyWith(
+      (response) => state = state.copyWith(
         isLoadingWSs: false,
-        waterSchedules: waterSchedules,
+        waterSchedules: response.data,
       ),
     );
   }
@@ -99,7 +108,7 @@ class WaterScheduleNotifier extends Notifier<WaterScheduleState> {
   Future<void> getWaterScheduleById({required String id}) async {
     state = state.copyWith(
       isLoadingWS: true,
-      errLoadingWS: null,
+      errLoadingWS: '',
       waterSchedule: () => null,
     );
 
@@ -111,15 +120,15 @@ class WaterScheduleNotifier extends Notifier<WaterScheduleState> {
         isLoadingWS: false,
         errLoadingWS: failure.message,
       ),
-      (waterSchedule) => state = state.copyWith(
+      (response) => state = state.copyWith(
         isLoadingWS: false,
-        waterSchedule: () => waterSchedule,
+        waterSchedule: () => response.data,
       ),
     );
   }
 
   Future<void> createWaterSchedule(WaterScheduleEntity waterSchedule) async {
-    state = state.copyWith(isCreatingWS: true, errCreatingWS: null);
+    state = state.copyWith(isCreatingWS: true, errCreatingWS: '');
 
     final newWaterSchedule = ref.read(newWaterScheduleUCProvider);
     final result = await newWaterSchedule.call(waterSchedule);
@@ -129,15 +138,15 @@ class WaterScheduleNotifier extends Notifier<WaterScheduleState> {
         isCreatingWS: false,
         errCreatingWS: failure.message,
       ),
-      (createdWS) => state = state.copyWith(
+      (response) => state = state.copyWith(
         isCreatingWS: false,
-        responseMsg: 'Water Schedule created successfully',
+        responseMsg: response.message,
       ),
     );
   }
 
   Future<void> editWaterSchedule(WaterScheduleEntity waterSchedule) async {
-    state = state.copyWith(isEditingWS: true, errEditingWS: null);
+    state = state.copyWith(isEditingWS: true, errEditingWS: '');
 
     final editWaterSchedule = ref.read(editWaterScheduleUCProvider);
     final result = await editWaterSchedule.call(waterSchedule);
@@ -147,9 +156,27 @@ class WaterScheduleNotifier extends Notifier<WaterScheduleState> {
         isEditingWS: false,
         errEditingWS: failure.message,
       ),
-      (updatedWS) => state = state.copyWith(
+      (response) => state = state.copyWith(
         isEditingWS: false,
-        responseMsg: 'Water Schedule updated successfully',
+        responseMsg: response.message,
+      ),
+    );
+  }
+
+  Future<void> deleteWaterSchedule(String id) async {
+    state = state.copyWith(isDeletingWS: true, errDeletingWS: '');
+
+    final deleteWaterSchedule = ref.read(deleteWaterScheduleUCProvider);
+    final result = await deleteWaterSchedule.call(id);
+
+    result.fold(
+      (failure) => state = state.copyWith(
+        isDeletingWS: false,
+        errDeletingWS: failure.message,
+      ),
+      (response) => state = state.copyWith(
+        isDeletingWS: false,
+        responseMsg: response.message,
       ),
     );
   }

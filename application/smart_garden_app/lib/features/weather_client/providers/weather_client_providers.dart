@@ -10,6 +10,7 @@ import '../data/datasources/weather_client_local_datasource.dart';
 import '../data/datasources/weather_client_remote_datasource.dart';
 import '../data/repositories/weather_client_repository_impl.dart';
 import '../domain/repositories/weather_client_repository.dart';
+import '../domain/usecases/delete_weather_client.dart';
 import '../domain/usecases/edit_weather_client.dart';
 import '../domain/usecases/get_all_weather_clients.dart';
 import '../domain/usecases/get_weather_client_by_id.dart';
@@ -59,4 +60,8 @@ final newWeatherClientUCProvider = Provider<NewWeatherClient>(
 
 final editWeatherClientUCProvider = Provider<EditWeatherClient>(
   (ref) => EditWeatherClient(ref.read(weatherClientRepositoryProvider)),
+);
+
+final deleteWeatherClientUCProvider = Provider<DeleteWeatherClient>(
+  (ref) => DeleteWeatherClient(ref.read(weatherClientRepositoryProvider)),
 );

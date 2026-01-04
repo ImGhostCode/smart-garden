@@ -177,13 +177,13 @@ class AppUtils {
     }
   }
 
-  static String formatDuration(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final hours = twoDigits(duration.inHours);
-    final minutes = twoDigits(duration.inMinutes.remainder(60));
-    final seconds = twoDigits(duration.inSeconds.remainder(60));
-    return '$hours:$minutes:$seconds';
-  }
+  // static String formatDuration(Duration duration) {
+  //   String twoDigits(int n) => n.toString().padLeft(2, '0');
+  //   final hours = twoDigits(duration.inHours);
+  //   final minutes = twoDigits(duration.inMinutes.remainder(60));
+  //   final seconds = twoDigits(duration.inSeconds.remainder(60));
+  //   return '$hours:$minutes:$seconds';
+  // }
 
   // Parse duration string like "1h30m" to milliseconds
   static int durationToMs(String durationStr) {
@@ -199,7 +199,7 @@ class AppUtils {
   }
 
   // Convert milliseconds to duration string "HH:MM:SS"
-  static String msToDuration(int? durationMs) {
+  static String msToHHmmss(int? durationMs) {
     if (durationMs == null || durationMs <= 0) {
       return '';
     }
@@ -209,6 +209,28 @@ class AppUtils {
     final minutes = twoDigits(duration.inMinutes.remainder(60));
     final seconds = twoDigits(duration.inSeconds.remainder(60));
     return '$hours:$minutes:$seconds';
+  }
+
+  // Convert milliseconds to duration string "Xh Ym Zs"
+  static String msToDurationString(int? durationMs) {
+    if (durationMs == null || durationMs <= 0) {
+      return '';
+    }
+    final duration = Duration(milliseconds: durationMs);
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+    String result = '';
+    if (hours > 0) {
+      result += '${hours}h';
+    }
+    if (minutes > 0) {
+      result += '${minutes}m';
+    }
+    if (seconds > 0) {
+      result += '${seconds}s';
+    }
+    return result;
   }
 
   // Convert UTC DateTime to local and format

@@ -5,18 +5,19 @@
 import 'package:dartz/dartz.dart';
 
 import '../../../../core/error/failures.dart';
+import '../../../../core/network/api_response.dart';
 import '../../../../core/usecases/usecase.dart';
 import '../entities/weather_client_entity.dart';
 import '../repositories/weather_client_repository.dart';
 
 class EditWeatherClient
-    implements UseCase<WeatherClientEntity, WeatherClientEntity> {
+    implements UseCase<ApiResponse<WeatherClientEntity>, WeatherClientEntity> {
   final WeatherClientRepository repository;
 
   EditWeatherClient(this.repository);
 
   @override
-  Future<Either<Failure, WeatherClientEntity>> call(
+  Future<Either<Failure, ApiResponse<WeatherClientEntity>>> call(
     WeatherClientEntity params,
   ) {
     return repository.editWeatherClient(params);

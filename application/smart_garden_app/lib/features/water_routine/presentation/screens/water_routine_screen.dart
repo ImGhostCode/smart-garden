@@ -2,17 +2,19 @@
 // Screen that displays a list of waterSchedule items
 
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/app_utils.dart';
+import '../../../../core/utils/extensions/build_context_extentions.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../domain/entities/water_routine_entity.dart';
 import '../../domain/usecases/get_all_water_routines.dart';
 import '../providers/water_routine_provider.dart';
 
-enum WaterRoutineAction { edit, remove }
+enum WaterRoutineAction { edit, delete }
 
 class WaterRoutineScreen extends ConsumerStatefulWidget {
   const WaterRoutineScreen({super.key});
@@ -36,8 +38,62 @@ class _WaterRoutineScreenState extends ConsumerState<WaterRoutineScreen> {
   }
 
   @override
+  void dispose() {
+    EasyLoading.dismiss();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final waterRoutineState = ref.watch(waterRoutineProvider);
+
+    ref.listen(waterRoutineProvider.select((state) => state.isRunningWR), (
+      previousLoading,
+      nextLoading,
+    ) {
+      if (nextLoading == true) {
+        EasyLoading.show(status: 'Loading...');
+      } else if (nextLoading == false && previousLoading == true) {
+        EasyLoading.dismiss();
+      }
+    });
+
+    ref.listen(waterRoutineProvider, (previous, next) async {
+      if (previous?.isRunningWR == true && next.isRunningWR == false) {
+        if (next.errRunningWR.isNotEmpty) {
+          EasyLoading.showError(next.errRunningWR);
+        } else {
+          EasyLoading.showSuccess(
+            next.responseMsg ?? 'Water Routine run successfully',
+          );
+          // context.goBack();
+        }
+      }
+    });
+
+    ref.listen(waterRoutineProvider.select((state) => state.isDeletingWR), (
+      previousLoading,
+      nextLoading,
+    ) {
+      if (nextLoading == true) {
+        EasyLoading.show(status: 'Loading...');
+      } else if (nextLoading == false && previousLoading == true) {
+        EasyLoading.dismiss();
+      }
+    });
+
+    ref.listen(waterRoutineProvider, (previous, next) async {
+      if (previous?.isDeletingWR == true && next.isDeletingWR == false) {
+        if (next.errDeletingWR.isNotEmpty) {
+          EasyLoading.showError(next.errDeletingWR);
+        } else {
+          EasyLoading.showSuccess(
+            next.responseMsg ?? 'Water Routine deleted successfully',
+          );
+          // refresh list
+        }
+      }
+    });
 
     return SafeArea(
       child: Scaffold(
@@ -126,17 +182,25 @@ class _WaterRoutineScreenState extends ConsumerState<WaterRoutineScreen> {
       );
     }
 
-    if (waterRoutineState.errLoadingWRs != null) {
+    if (waterRoutineState.errLoadingWRs.isNotEmpty) {
       return SliverFillRemaining(
         hasScrollBody: false,
-        child: Center(child: Text(waterRoutineState.errLoadingWRs!)),
+        child: Center(child: Text(waterRoutineState.errLoadingWRs)),
       );
     }
 
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
         final wr = waterRoutineState.waterRoutines[index];
-        return WaterRoutineItem(wr: wr);
+        return WaterRoutineItem(
+          wr: wr,
+          onRun: () {
+            ref.read(waterRoutineProvider.notifier).runWaterRoutine(wr.id!);
+          },
+          onDelete: () {
+            ref.read(waterRoutineProvider.notifier).deleteWaterRoutine(wr.id!);
+          },
+        );
       }, childCount: waterRoutineState.waterRoutines.length),
     );
   }
@@ -144,7 +208,14 @@ class _WaterRoutineScreenState extends ConsumerState<WaterRoutineScreen> {
 
 class WaterRoutineItem extends StatelessWidget {
   final WaterRoutineEntity wr;
-  const WaterRoutineItem({super.key, required this.wr});
+  final VoidCallback? onRun;
+  final VoidCallback? onDelete;
+  const WaterRoutineItem({
+    super.key,
+    required this.wr,
+    this.onRun,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -178,7 +249,16 @@ class WaterRoutineItem extends StatelessWidget {
                   case WaterRoutineAction.edit:
                     context.goEditWaterRoutine('68de7e98ae6796d18a268a40', wr);
                     break;
-                  default:
+                  case WaterRoutineAction.delete:
+                    context.showConfirmDialog(
+                      title: 'Delete Water Routine',
+                      content:
+                          'Are you sure you want to delete the water routine "${wr.name}"?',
+                      confirmText: 'Delete',
+                      confirmColor: AppColors.error,
+                      onConfirm: onDelete,
+                    );
+                    break;
                 }
               },
               itemBuilder: (BuildContext context) =>
@@ -192,7 +272,7 @@ class WaterRoutineItem extends StatelessWidget {
                       ),
                     ),
                     const PopupMenuItem<WaterRoutineAction>(
-                      value: WaterRoutineAction.remove,
+                      value: WaterRoutineAction.delete,
                       child: ListTile(
                         leading: Icon(Icons.delete),
                         title: Text('Delete'),
@@ -226,7 +306,7 @@ class WaterRoutineItem extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      AppUtils.msToDuration(step.durationMs),
+                      AppUtils.msToDurationString(step.durationMs),
                       style: Theme.of(context).textTheme.bodyLarge!.copyWith(
                         color: AppColors.primary,
                         fontWeight: FontWeight.w600,
@@ -252,7 +332,7 @@ class WaterRoutineItem extends StatelessWidget {
                 SizedBox(
                   height: AppConstants.buttonSm,
                   child: ElevatedButton(
-                    onPressed: () {},
+                    onPressed: onRun,
                     child: const Text('RUN ROUTINE'),
                   ),
                 ),

@@ -10,8 +10,10 @@ import '../../domain/entities/zone_entity.dart';
 import '../../domain/repositories/zone_repository.dart';
 import '../../domain/usecases/get_all_zones.dart';
 import '../../domain/usecases/get_water_history.dart';
+import '../../domain/usecases/send_zone_action.dart';
 import '../datasources/zone_local_datasource.dart';
 import '../datasources/zone_remote_datasource.dart';
+import '../models/zone_model.dart';
 
 class ZoneRepositoryImpl implements ZoneRepository {
   final ZoneRemoteDataSource remoteDataSource;
@@ -80,5 +82,65 @@ class ZoneRepositoryImpl implements ZoneRepository {
     //     return const Left(CacheFailure());
     //   }
     // }
+  }
+
+  @override
+  Future<Either<Failure, ZoneEntity>> addZone(ZoneEntity zone) async {
+    if (await networkInfo.isConnected) {
+      try {
+        final updatedZone = await remoteDataSource.addZone(
+          ZoneModel.fromEntity(zone),
+        );
+        return Right(updatedZone.toEntity());
+      } catch (e) {
+        return const Left(ServerFailure());
+      }
+    } else {
+      return const Left(NetworkFailure());
+    }
+  }
+
+  @override
+  Future<Either<Failure, ZoneEntity>> editZone(ZoneEntity zone) async {
+    if (await networkInfo.isConnected) {
+      try {
+        final updatedZone = await remoteDataSource.editZone(
+          ZoneModel.fromEntity(zone),
+        );
+        return Right(updatedZone.toEntity());
+      } catch (e) {
+        return const Left(ServerFailure());
+      }
+    } else {
+      return const Left(NetworkFailure());
+    }
+  }
+
+  @override
+  Future<Either<Failure, String>> deleteZone(String id) async {
+    if (await networkInfo.isConnected) {
+      try {
+        final response = await remoteDataSource.deleteZone(id);
+        return Right(response);
+      } catch (e) {
+        return const Left(ServerFailure());
+      }
+    } else {
+      return const Left(NetworkFailure());
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> sendAction(ZoneActionParams params) async {
+    if (await networkInfo.isConnected) {
+      try {
+        await remoteDataSource.sendAction(params);
+        return const Right(null);
+      } catch (e) {
+        return const Left(ServerFailure());
+      }
+    } else {
+      return const Left(NetworkFailure());
+    }
   }
 }

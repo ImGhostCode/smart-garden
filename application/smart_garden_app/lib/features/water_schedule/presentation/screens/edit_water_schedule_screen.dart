@@ -129,8 +129,8 @@ class _EditWaterScheduleScreenState
 
     ref.listen(waterScheduleProvider, (previous, next) async {
       if (previous?.isEditingWS == true && next.isEditingWS == false) {
-        if (next.errEditingWS != null) {
-          EasyLoading.showError(next.errEditingWS ?? 'Error');
+        if (next.errEditingWS.isNotEmpty) {
+          EasyLoading.showError(next.errEditingWS);
         } else {
           EasyLoading.showSuccess(next.responseMsg ?? 'Water Schedule edited');
           context.goBack();

@@ -3,7 +3,7 @@ import 'package:equatable/equatable.dart';
 
 import '../../../zone/domain/entities/zone_entity.dart';
 
-class PlantEntity {
+class PlantEntity extends Equatable {
   final String? name;
   final ZoneEntity? zone;
   final PlantDetailEntity? details;
@@ -12,7 +12,7 @@ class PlantEntity {
   final DateTime? endDate;
   final DateTime? nextWaterTime;
 
-  PlantEntity({
+  const PlantEntity({
     this.name,
     this.zone,
     this.details,
@@ -21,6 +21,11 @@ class PlantEntity {
     this.endDate,
     this.nextWaterTime,
   });
+
+  @override
+  List<Object?> get props {
+    return [name, zone, details, id, createdAt, endDate, nextWaterTime];
+  }
 }
 
 class PlantDetailEntity extends Equatable {

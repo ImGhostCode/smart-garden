@@ -41,6 +41,25 @@ class PlantModel {
       nextWaterTime: nextWaterTime,
     );
   }
+
+  static PlantModel fromEntity(PlantEntity entity) {
+    return PlantModel(
+      name: entity.name,
+      zone: entity.zone != null ? ZoneModel.fromEntity(entity.zone!) : null,
+      details: entity.details != null
+          ? PlantDetailModel(
+              description: entity.details!.description,
+              notes: entity.details!.notes,
+              timeToHarvest: entity.details!.timeToHarvest,
+              count: entity.details!.count,
+            )
+          : null,
+      id: entity.id,
+      createdAt: entity.createdAt,
+      endDate: entity.endDate,
+      nextWaterTime: entity.nextWaterTime,
+    );
+  }
 }
 
 @JsonSerializable(fieldRename: FieldRename.snake)

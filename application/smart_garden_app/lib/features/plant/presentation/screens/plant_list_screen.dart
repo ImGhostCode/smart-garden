@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/assets.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/extensions/build_context_extentions.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../domain/entities/plant_entity.dart';
 import '../../domain/usecases/get_all_plants.dart';
 import '../providers/plant_provider.dart';
 
-enum PlantAction { edit, remove }
+enum PlantAction { edit, delete }
 
 class PlantListScreen extends ConsumerStatefulWidget {
   final String gardenId;
@@ -36,6 +39,28 @@ class _PlantListScreenState extends ConsumerState<PlantListScreen> {
   Widget build(BuildContext context) {
     final plantState = ref.watch(plantProvider);
 
+    // ref.listen(plantProvider.select((state) => state.isDeletingPlant), (
+    //   previousLoading,
+    //   nextLoading,
+    // ) {
+    //   if (nextLoading == true) {
+    //     EasyLoading.show(status: 'Loading...');
+    //   } else if (nextLoading == false && previousLoading == true) {
+    //     EasyLoading.dismiss();
+    //   }
+    // });
+
+    // ref.listen(plantProvider, (previous, next) async {
+    //   if (previous?.isDeletingPlant == true && next.isDeletingPlant == false) {
+    //     if (next.errDeletingPlant.isNotEmpty) {
+    //       EasyLoading.showError(next.errDeletingPlant);
+    //     } else {
+    //       EasyLoading.showSuccess(next.responseMsg ?? 'Plant deleted');
+    //       // refresh list
+    //     }
+    //   }
+    // });
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Plants"),
@@ -50,14 +75,31 @@ class _PlantListScreenState extends ConsumerState<PlantListScreen> {
       ),
       body: plantState.isLoadingPlants
           ? const Center(child: CircularProgressIndicator())
-          : plantState.errLoadingPlants != null
-          ? Center(child: Text(plantState.errLoadingPlants!))
+          : plantState.errLoadingPlants.isNotEmpty
+          ? Center(child: Text(plantState.errLoadingPlants))
           : ListView.separated(
               padding: const EdgeInsets.all(AppConstants.paddingMd),
               itemCount: plantState.plants.length,
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
-                return PlantListItem(data: plantState.plants[index]);
+                return PlantListItem(
+                  data: plantState.plants[index],
+                  onDelete: () async {
+                    EasyLoading.show(status: 'Loading...');
+                    await ref
+                        .read(plantProvider.notifier)
+                        .deletePlant(plantState.plants[index].id!);
+                    EasyLoading.dismiss();
+                    final state = ref.read(plantProvider);
+                    if (state.errDeletingPlant.isNotEmpty) {
+                      EasyLoading.showError(state.errDeletingPlant);
+                    } else {
+                      EasyLoading.showSuccess(
+                        state.responseMsg ?? 'Plant deleted',
+                      );
+                    }
+                  },
+                );
               },
             ),
     );
@@ -66,8 +108,8 @@ class _PlantListScreenState extends ConsumerState<PlantListScreen> {
 
 class PlantListItem extends StatelessWidget {
   final PlantEntity data;
-
-  const PlantListItem({super.key, required this.data});
+  final VoidCallback? onDelete;
+  const PlantListItem({super.key, required this.data, this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -155,9 +197,19 @@ class PlantListItem extends StatelessWidget {
                       context.goEditPlant(
                         '68de7e98ae6796d18a268a40',
                         '68de7e98ae6796d18a268a40',
+                        data,
                       );
                       break;
-                    default:
+                    case PlantAction.delete:
+                      context.showConfirmDialog(
+                        title: 'Delete Plant',
+                        content:
+                            'Are you sure you want to delete the plant "${data.name}"?',
+                        confirmText: 'Delete',
+                        confirmColor: AppColors.error,
+                        onConfirm: onDelete,
+                      );
+                      break;
                   }
                 },
                 itemBuilder: (BuildContext context) =>
@@ -171,7 +223,8 @@ class PlantListItem extends StatelessWidget {
                         ),
                       ),
                       const PopupMenuItem<PlantAction>(
-                        value: PlantAction.remove,
+                        value: PlantAction.delete,
+
                         child: ListTile(
                           leading: Icon(Icons.delete),
                           title: Text('Delete'),

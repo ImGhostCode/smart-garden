@@ -5,18 +5,20 @@ import 'package:dartz/dartz.dart';
 import 'package:equatable/equatable.dart';
 
 import '../../../../core/error/failures.dart';
+import '../../../../core/network/api_response.dart';
 import '../../../../core/usecases/usecase.dart';
 import '../entities/weather_client_entity.dart';
 import '../repositories/weather_client_repository.dart';
 
 class GetWeatherClientById
-    implements UseCase<WeatherClientEntity, GetWeatherClientParams> {
+    implements
+        UseCase<ApiResponse<WeatherClientEntity>, GetWeatherClientParams> {
   final WeatherClientRepository repository;
 
   GetWeatherClientById(this.repository);
 
   @override
-  Future<Either<Failure, WeatherClientEntity>> call(
+  Future<Either<Failure, ApiResponse<WeatherClientEntity>>> call(
     GetWeatherClientParams params,
   ) {
     return repository.getWeatherClientById(params);

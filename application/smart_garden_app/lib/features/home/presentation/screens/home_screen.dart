@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/assets.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/extensions/build_context_extentions.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../../garden/domain/entities/garden_entity.dart';
+import '../../../garden/domain/usecases/send_garden_action.dart';
 import '../../../garden/presentation/providers/garden_provider.dart';
+import '../../../zone/presentation/providers/zone_provider.dart';
 
-enum GardenAction { edit, remove }
+enum GardenAction { edit, delete }
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -31,8 +35,80 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   @override
+  void dispose() {
+    EasyLoading.dismiss();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final gardenState = ref.watch(gardenProvider);
+    ref.listen(gardenProvider.select((state) => state.isSendingAction), (
+      previousLoading,
+      nextLoading,
+    ) {
+      if (nextLoading == true) {
+        EasyLoading.show(status: 'Loading...');
+      } else if (nextLoading == false && previousLoading == true) {
+        EasyLoading.dismiss();
+      }
+    });
+
+    ref.listen(gardenProvider, (previous, next) async {
+      if (previous?.isSendingAction == true && next.isSendingAction == false) {
+        if (next.errSendingAction.isNotEmpty) {
+          EasyLoading.showError(next.errSendingAction);
+        } else {
+          EasyLoading.showSuccess(next.responseMsg ?? 'Garden action sent');
+          context.goBack();
+        }
+      }
+    });
+
+    ref.listen(gardenProvider.select((state) => state.isDeletingGarden), (
+      previousLoading,
+      nextLoading,
+    ) {
+      if (nextLoading == true) {
+        EasyLoading.show(status: 'Loading...');
+      } else if (nextLoading == false && previousLoading == true) {
+        EasyLoading.dismiss();
+      }
+    });
+
+    ref.listen(gardenProvider, (previous, next) async {
+      if (previous?.isDeletingGarden == true &&
+          next.isDeletingGarden == false) {
+        if (next.errDeletingGarden.isNotEmpty) {
+          EasyLoading.showError(next.errDeletingGarden);
+        } else {
+          EasyLoading.showSuccess(next.responseMsg ?? 'Garden deleted');
+          // refresh garden list
+        }
+      }
+    });
+
+    ref.listen(zoneProvider.select((state) => state.isSendingAction), (
+      previousLoading,
+      nextLoading,
+    ) {
+      if (nextLoading == true) {
+        EasyLoading.show(status: 'Loading...');
+      } else if (nextLoading == false && previousLoading == true) {
+        EasyLoading.dismiss();
+      }
+    });
+
+    ref.listen(zoneProvider, (previous, next) async {
+      if (previous?.isSendingAction == true && next.isSendingAction == false) {
+        if (next.errSendingAction != null) {
+          EasyLoading.showError(next.errSendingAction ?? 'Error');
+        } else {
+          EasyLoading.showSuccess(next.responseMsg ?? 'Zone action sent');
+          // context.goBack();
+        }
+      }
+    });
 
     return SafeArea(
       child: Scaffold(
@@ -118,10 +194,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
     }
 
-    if (gardenState.errLoadingGardens != null) {
+    if (gardenState.errLoadingGardens.isNotEmpty) {
       return SliverFillRemaining(
         hasScrollBody: false,
-        child: Center(child: Text(gardenState.errLoadingGardens!)),
+        child: Center(child: Text(gardenState.errLoadingGardens)),
       );
     }
 
@@ -176,7 +252,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             case GardenAction.edit:
               context.goEditGarden(garden.id!);
               break;
-            default:
+            case GardenAction.delete:
+              context.showConfirmDialog(
+                title: 'Delete Garden',
+                content:
+                    'Are you sure you want to delete the garden "${garden.name}"?',
+                confirmText: 'Delete',
+                confirmColor: AppColors.error,
+                onConfirm: () {
+                  ref.read(gardenProvider.notifier).deleteGarden(garden.id!);
+                },
+              );
+              break;
           }
         },
         itemBuilder: (BuildContext context) => <PopupMenuEntry<GardenAction>>[
@@ -189,7 +276,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
           const PopupMenuItem<GardenAction>(
-            value: GardenAction.remove,
+            value: GardenAction.delete,
             child: ListTile(
               leading: Icon(Icons.delete),
               title: Text('Delete'),
@@ -380,7 +467,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             height: AppConstants.buttonSm,
             child: ElevatedButton(
               onPressed: () {
-                showGardenActions(context, garden);
+                showGardenActions(
+                  context: context,
+                  garden: garden,
+                  onToggleLight: (isOn) {
+                    ref
+                        .read(gardenProvider.notifier)
+                        .sendGardenAction(
+                          GardenActionParams(
+                            gardenId: garden.id!,
+                            light: LightAction(
+                              state: isOn ? 'ON' : 'OFF',
+                              forDuration: '30m',
+                            ),
+                          ),
+                        );
+                  },
+                  onStopAll: () {
+                    ref
+                        .read(gardenProvider.notifier)
+                        .sendGardenAction(
+                          GardenActionParams(
+                            gardenId: garden.id!,
+                            stop: StopAction(all: true),
+                          ),
+                        );
+                  },
+                );
               },
               child: const Text('ACTIONS'),
             ),
@@ -406,7 +519,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 }
 
-void showGardenActions(BuildContext context, GardenEntity garden) {
+void showGardenActions({
+  required BuildContext context,
+  required GardenEntity garden,
+  required Function(bool) onToggleLight,
+  required VoidCallback onStopAll,
+}) {
   showModalBottomSheet(
     useRootNavigator: true,
     context: context,
@@ -439,7 +557,7 @@ void showGardenActions(BuildContext context, GardenEntity garden) {
             ),
             trailing: Switch(
               value: garden.nextLightAction?.action == 'OFF' ? true : false,
-              onChanged: (val) {},
+              onChanged: onToggleLight,
               activeColor: Colors.white,
               activeTrackColor: AppColors.primary,
             ),
@@ -457,7 +575,7 @@ void showGardenActions(BuildContext context, GardenEntity garden) {
               ),
             ),
             trailing: ElevatedButton.icon(
-              onPressed: () {},
+              onPressed: onStopAll,
               icon: const Icon(
                 Icons.block,
                 size: AppConstants.iconMd,

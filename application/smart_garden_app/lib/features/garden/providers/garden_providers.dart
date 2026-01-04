@@ -11,9 +11,11 @@ import '../data/datasources/garden_remote_datasource.dart';
 import '../data/repositories/garden_repository_impl.dart';
 import '../domain/repositories/garden_repository.dart';
 import '../domain/usecases/create_garden.dart';
+import '../domain/usecases/delete_garden.dart';
 import '../domain/usecases/edit_garden.dart';
 import '../domain/usecases/get_all_gardens.dart';
 import '../domain/usecases/get_garden_by_id.dart';
+import '../domain/usecases/send_garden_action.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 
@@ -51,4 +53,12 @@ final createGardenUCProvider = Provider<CreateGarden>(
 
 final editGardenUCProvider = Provider<EditGarden>(
   (ref) => EditGarden(ref.read(gardenRepositoryProvider)),
+);
+
+final deleteGardenUCProvider = Provider<DeleteGarden>(
+  (ref) => DeleteGarden(ref.read(gardenRepositoryProvider)),
+);
+
+final sendGardenActionUCProvider = Provider<SendGardenAction>(
+  (ref) => SendGardenAction(ref.read(gardenRepositoryProvider)),
 );

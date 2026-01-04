@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/assets.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/extensions/build_context_extentions.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../../garden/presentation/screens/garden_detail_screen.dart'
     show showZoneActions;
 import '../../domain/entities/zone_entity.dart';
 import '../../domain/usecases/get_all_zones.dart';
+import '../../domain/usecases/send_zone_action.dart';
 import '../providers/zone_provider.dart';
 
-enum ZoneAction { edit, remove }
+enum ZoneAction { edit, delete }
 
 class ZoneListScreen extends ConsumerStatefulWidget {
   final String gardenId;
@@ -37,6 +41,28 @@ class _ZoneListScreenState extends ConsumerState<ZoneListScreen> {
   Widget build(BuildContext context) {
     final zoneState = ref.watch(zoneProvider);
 
+    ref.listen(zoneProvider.select((state) => state.isDeletingZone), (
+      previousLoading,
+      nextLoading,
+    ) {
+      if (nextLoading == true) {
+        EasyLoading.show(status: 'Loading...');
+      } else if (nextLoading == false && previousLoading == true) {
+        EasyLoading.dismiss();
+      }
+    });
+
+    ref.listen(zoneProvider, (previous, next) async {
+      if (previous?.isDeletingZone == true && next.isDeletingZone == false) {
+        if (next.errDeletingZone != null) {
+          EasyLoading.showError(next.errDeletingZone ?? 'Error');
+        } else {
+          EasyLoading.showSuccess(next.responseMsg ?? 'Zone deleted');
+          // refresh list
+        }
+      }
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Zones"),
@@ -58,20 +84,44 @@ class _ZoneListScreenState extends ConsumerState<ZoneListScreen> {
               itemCount: zoneState.zones.length,
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
-                return ZoneListItem(data: zoneState.zones[index]);
+                return ZoneListItem(
+                  data: zoneState.zones[index],
+                  onWater: (durationMs) {
+                    ref
+                        .read(zoneProvider.notifier)
+                        .sendZoneAction(
+                          ZoneActionParams(
+                            zoneId: zoneState.zones[index].id!,
+                            water: WaterAction(durationMs: durationMs),
+                          ),
+                        );
+                  },
+                  onDelete: () {
+                    ref
+                        .read(zoneProvider.notifier)
+                        .deleteZone(zoneState.zones[index].id!);
+                  },
+                );
               },
             ),
     );
   }
 }
 
-class ZoneListItem extends StatelessWidget {
+class ZoneListItem extends ConsumerWidget {
   final ZoneEntity data;
+  final Function(int) onWater;
+  final VoidCallback? onDelete;
 
-  const ZoneListItem({super.key, required this.data});
+  const ZoneListItem({
+    super.key,
+    required this.data,
+    required this.onWater,
+    this.onDelete,
+  });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return InkWell(
       onTap: () {
         context.goZoneDetail(
@@ -154,7 +204,7 @@ class ZoneListItem extends StatelessWidget {
                       height: AppConstants.buttonSm,
                       child: ElevatedButton(
                         onPressed: () {
-                          showZoneActions(context);
+                          showZoneActions(context: context, onWater: onWater);
                         },
                         child: const Text(
                           "QUICK WATER",
@@ -172,9 +222,18 @@ class ZoneListItem extends StatelessWidget {
                       context.goEditZone(
                         '68de7e98ae6796d18a268a40',
                         '68de7e98ae6796d18a268a40',
+                        data,
                       );
                       break;
-                    default:
+                    case ZoneAction.delete:
+                      context.showConfirmDialog(
+                        title: 'Delete Zone',
+                        content:
+                            'Are you sure you want to delete the zone "${data.name}"?',
+                        confirmText: 'Delete',
+                        confirmColor: AppColors.error,
+                        onConfirm: onDelete,
+                      );
                   }
                 },
                 itemBuilder: (BuildContext context) =>
@@ -188,7 +247,8 @@ class ZoneListItem extends StatelessWidget {
                         ),
                       ),
                       const PopupMenuItem<ZoneAction>(
-                        value: ZoneAction.remove,
+                        value: ZoneAction.delete,
+
                         child: ListTile(
                           leading: Icon(Icons.delete),
                           title: Text('Delete'),

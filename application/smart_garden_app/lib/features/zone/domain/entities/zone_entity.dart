@@ -54,11 +54,12 @@ class ZoneEntity extends Equatable {
 
 class ZoneDetailEntity extends Equatable {
   final String? description;
+  final String? notes;
 
-  const ZoneDetailEntity({this.description});
+  const ZoneDetailEntity({this.description, this.notes});
 
   @override
-  List<Object?> get props => [description];
+  List<Object?> get props => [description, notes];
 }
 
 class NextWaterEntity extends Equatable {

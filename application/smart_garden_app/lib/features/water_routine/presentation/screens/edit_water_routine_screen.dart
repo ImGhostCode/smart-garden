@@ -84,8 +84,8 @@ class _EditWaterRoutineScreenState
 
     ref.listen(waterRoutineProvider, (previous, next) async {
       if (previous?.isEditingWR == true && next.isEditingWR == false) {
-        if (next.errEditingWR != null) {
-          EasyLoading.showError(next.errEditingWR ?? 'Error');
+        if (next.errEditingWR.isNotEmpty) {
+          EasyLoading.showError(next.errEditingWR);
         } else {
           EasyLoading.showSuccess(next.responseMsg ?? 'Water Routine edited');
           context.goBack();
@@ -203,7 +203,7 @@ class _DurationField extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return TextFormField(
-      initialValue: AppUtils.msToDuration(step.durationMs ?? 0),
+      initialValue: AppUtils.msToDurationString(step.durationMs ?? 0),
       decoration: const InputDecoration(hintText: 'e.g., 1h30m'),
       validator: AppValidators.combine([
         AppValidators.required,

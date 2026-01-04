@@ -10,10 +10,12 @@ import '../data/datasources/water_routine_local_datasource.dart';
 import '../data/datasources/water_routine_remote_datasource.dart';
 import '../data/repositories/water_routine_repository_impl.dart';
 import '../domain/repositories/water_routine_repository.dart';
+import '../domain/usecases/delete_water_routine.dart';
 import '../domain/usecases/edit_water_routine.dart';
 import '../domain/usecases/get_all_water_routines.dart';
 import '../domain/usecases/get_water_routine_by_id.dart';
 import '../domain/usecases/new_water_routine.dart';
+import '../domain/usecases/run_water_routine.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 
@@ -54,4 +56,12 @@ final newWaterRoutineUCProvider = Provider<NewWaterRoutine>(
 
 final editWaterRoutineUCProvider = Provider<EditWaterRoutine>(
   (ref) => EditWaterRoutine(ref.read(waterRoutineRepositoryProvider)),
+);
+
+final deleteWaterRoutineUCProvider = Provider<DeleteWaterRoutine>(
+  (ref) => DeleteWaterRoutine(ref.read(waterRoutineRepositoryProvider)),
+);
+
+final runWaterRoutineUCProvider = Provider<RunWaterRoutine>(
+  (ref) => RunWaterRoutine(ref.read(waterRoutineRepositoryProvider)),
 );

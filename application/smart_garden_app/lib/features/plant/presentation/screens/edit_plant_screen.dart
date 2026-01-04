@@ -1,14 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/ui/inputs/app_labeled_input.dart';
 import '../../../../core/utils/app_validators.dart';
+import '../../../../core/utils/extensions/navigation_extensions.dart';
+import '../../../zone/domain/entities/zone_entity.dart';
+import '../../domain/entities/plant_entity.dart';
+import '../providers/plant_provider.dart';
 
 class EditPlantScreen extends ConsumerStatefulWidget {
   final String plantId;
-  const EditPlantScreen({super.key, required this.plantId});
+  final PlantEntity plant;
+  const EditPlantScreen({
+    super.key,
+    required this.plantId,
+    required this.plant,
+  });
 
   @override
   ConsumerState<ConsumerStatefulWidget> createState() =>
@@ -20,7 +30,7 @@ class _EditPlantScreenState extends ConsumerState<EditPlantScreen> {
   late final TextEditingController _name;
   late final TextEditingController _timeToHarvest;
   late final TextEditingController _description;
-  late final TextEditingController _note;
+  late final TextEditingController _notes;
   late final TextEditingController _quantity;
 
   @override
@@ -28,8 +38,15 @@ class _EditPlantScreenState extends ConsumerState<EditPlantScreen> {
     _name = TextEditingController();
     _timeToHarvest = TextEditingController();
     _description = TextEditingController();
-    _note = TextEditingController();
+    _notes = TextEditingController();
     _quantity = TextEditingController();
+
+    _name.text = widget.plant.name ?? '';
+    _timeToHarvest.text = widget.plant.details?.timeToHarvest ?? '';
+    _description.text = widget.plant.details?.description ?? '';
+    _notes.text = widget.plant.details?.notes ?? '';
+    _quantity.text = widget.plant.details?.count?.toString() ?? '';
+
     super.initState();
   }
 
@@ -38,18 +55,53 @@ class _EditPlantScreenState extends ConsumerState<EditPlantScreen> {
     _name.dispose();
     _timeToHarvest.dispose();
     _description.dispose();
-    _note.dispose();
+    _notes.dispose();
     _quantity.dispose();
+    EasyLoading.dismiss();
     super.dispose();
   }
 
   void _onSave() {
     if (!_formKey.currentState!.validate()) return;
-    print('edit plant');
+    ref
+        .read(plantProvider.notifier)
+        .editPlant(
+          PlantEntity(
+            name: _name.text,
+            zone: const ZoneEntity(id: 'zone-id-placeholder'),
+            details: PlantDetailEntity(
+              timeToHarvest: _timeToHarvest.text,
+              description: _description.text,
+              notes: _notes.text,
+              count: int.tryParse(_quantity.text),
+            ),
+          ),
+        );
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(plantProvider.select((state) => state.isEditingPlant), (
+      previousLoading,
+      nextLoading,
+    ) {
+      if (nextLoading == true) {
+        EasyLoading.show(status: 'Loading...');
+      } else if (nextLoading == false && previousLoading == true) {
+        EasyLoading.dismiss();
+      }
+    });
+
+    ref.listen(plantProvider, (previous, next) async {
+      if (previous?.isEditingPlant == true && next.isEditingPlant == false) {
+        if (next.errEditingPlant.isNotEmpty) {
+          EasyLoading.showError(next.errEditingPlant);
+        } else {
+          EasyLoading.showSuccess(next.responseMsg ?? 'Plant edited');
+          context.goBack();
+        }
+      }
+    });
     return Scaffold(
       backgroundColor: AppColors.neutral50,
       appBar: AppBar(title: const Text('Edit Plant'), centerTitle: true),
@@ -60,7 +112,7 @@ class _EditPlantScreenState extends ConsumerState<EditPlantScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildTextField('Plant name'),
+              _buildTextField('Plant name', controller: _name),
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -93,8 +145,8 @@ class _EditPlantScreenState extends ConsumerState<EditPlantScreen> {
               _buildTextField('Quantity', controller: _quantity),
               const SizedBox(height: 12),
               _buildTextField(
-                'Note',
-                controller: _note,
+                'Notes',
+                controller: _notes,
                 maxLines: 3,
                 required: false,
               ),

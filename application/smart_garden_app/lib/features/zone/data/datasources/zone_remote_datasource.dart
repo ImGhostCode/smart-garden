@@ -5,6 +5,7 @@ import '../../../../core/error/exceptions.dart';
 import '../../../../core/utils/app_utils.dart';
 import '../../domain/usecases/get_all_zones.dart';
 import '../../domain/usecases/get_water_history.dart';
+import '../../domain/usecases/send_zone_action.dart';
 import '../models/water_history_model.dart';
 import '../models/zone_model.dart';
 
@@ -16,6 +17,14 @@ abstract class ZoneRemoteDataSource {
   Future<ZoneModel> getZoneById(String id);
 
   Future<List<WaterHistoryModel>> getWaterHistory(GetWaterHistoryParams params);
+
+  Future<ZoneModel> addZone(ZoneModel zone);
+
+  Future<ZoneModel> editZone(ZoneModel zone);
+
+  Future<String> deleteZone(String id);
+
+  Future<void> sendAction(ZoneActionParams params);
 }
 
 class ZoneRemoteDataSourceImpl implements ZoneRemoteDataSource {
@@ -506,6 +515,90 @@ class ZoneRemoteDataSourceImpl implements ZoneRemoteDataSource {
       ];
 
       return response.map((e) => WaterHistoryModel.fromJson(e)).toList();
+    } on Exception catch (e) {
+      throw _handleException(e);
+    }
+  }
+
+  @override
+  Future<ZoneModel> addZone(ZoneModel zone) async {
+    try {
+      // Check network connection
+      final hasNetwork = await AppUtils.hasNetworkConnection();
+      if (!hasNetwork) {
+        throw NetworkException();
+      }
+
+      await Future.delayed(const Duration(seconds: 1));
+      // final response = await _apiClient.post('/auth/login', data: {
+      //   'email': email,
+      //   'password': password,
+      // });
+
+      return ZoneModel.fromJson(zone.toJson());
+    } on Exception catch (e) {
+      throw _handleException(e);
+    }
+  }
+
+  @override
+  Future<ZoneModel> editZone(ZoneModel zone) async {
+    try {
+      // Check network connection
+      final hasNetwork = await AppUtils.hasNetworkConnection();
+      if (!hasNetwork) {
+        throw NetworkException();
+      }
+
+      await Future.delayed(const Duration(seconds: 1));
+      // final response = await _apiClient.post('/auth/login', data: {
+      //   'email': email,
+      //   'password': password,
+      // });
+
+      return ZoneModel.fromJson(zone.toJson());
+    } on Exception catch (e) {
+      throw _handleException(e);
+    }
+  }
+
+  @override
+  Future<String> deleteZone(String id) async {
+    try {
+      // Check network connection
+      final hasNetwork = await AppUtils.hasNetworkConnection();
+      if (!hasNetwork) {
+        throw NetworkException();
+      }
+
+      await Future.delayed(const Duration(seconds: 1));
+      // final response = await _apiClient.post('/auth/login', data: {
+      //   'email': email,
+      //   'password': password,
+      // });
+
+      return id;
+    } on Exception catch (e) {
+      throw _handleException(e);
+    }
+  }
+
+  @override
+  Future<void> sendAction(ZoneActionParams params) async {
+    try {
+      // Check network connection
+      final hasNetwork = await AppUtils.hasNetworkConnection();
+      if (!hasNetwork) {
+        throw NetworkException();
+      }
+
+      await Future.delayed(const Duration(seconds: 1));
+      // final response = await _apiClient.post('/auth/login', data: {
+      //   'email': email,
+      //   'password': password,
+      // });
+
+      return;
     } on Exception catch (e) {
       throw _handleException(e);
     }

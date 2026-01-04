@@ -4,12 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/extensions/build_context_extentions.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../domain/entities/weather_client_entity.dart';
 import '../../domain/usecases/get_all_weather_clients.dart';
 import '../providers/weather_client_provider.dart';
 
-enum WeatherClientAction { edit, remove }
+enum WeatherClientAction { edit, delete }
 
 enum WeatherClientType { netatmo, fake }
 
@@ -45,15 +46,38 @@ class _WeatherClientScreenState extends ConsumerState<WeatherClientScreen> {
   Widget build(BuildContext context) {
     final weatherClientState = ref.watch(weatherClientProvider);
 
-    ref.listen<WeatherClientState>(weatherClientProvider, (previous, next) {
-      if (previous?.isLoadingWeather == false &&
-          next.isLoadingWeather == true) {
+    ref.listen(
+      weatherClientProvider.select((state) => state.isLoadingWeather),
+      (previousLoading, nextLoading) {
+        if (nextLoading == true) {
+          EasyLoading.show(status: 'Loading...');
+        } else if (nextLoading == false && previousLoading == true) {
+          EasyLoading.dismiss();
+        }
+      },
+    );
+
+    ref.listen(weatherClientProvider.select((state) => state.isDeletingWC), (
+      previousLoading,
+      nextLoading,
+    ) {
+      if (nextLoading == true) {
         EasyLoading.show(status: 'Loading...');
-      } else {
+      } else if (nextLoading == false && previousLoading == true) {
         EasyLoading.dismiss();
       }
     });
 
+    ref.listen(weatherClientProvider, (previous, next) async {
+      if (previous?.isDeletingWC == true && next.isDeletingWC == false) {
+        if (next.errDeletingWC.isNotEmpty) {
+          EasyLoading.showError(next.errDeletingWC);
+        } else {
+          EasyLoading.showSuccess(next.responseMsg ?? 'Weather client deleted');
+          // refresh list
+        }
+      }
+    });
     return SafeArea(
       child: Scaffold(
         body: CustomScrollView(
@@ -142,10 +166,10 @@ class _WeatherClientScreenState extends ConsumerState<WeatherClientScreen> {
       );
     }
 
-    if (weatherClientState.errLoadingWCs != null) {
+    if (weatherClientState.errLoadingWCs.isNotEmpty) {
       return SliverFillRemaining(
         hasScrollBody: false,
-        child: Center(child: Text(weatherClientState.errLoadingWCs!)),
+        child: Center(child: Text(weatherClientState.errLoadingWCs)),
       );
     }
 
@@ -157,6 +181,11 @@ class _WeatherClientScreenState extends ConsumerState<WeatherClientScreen> {
           fetchWeatherData: () {
             ref.read(weatherClientProvider.notifier).getWeatherData(wc.id!);
           },
+          onDelete: () {
+            ref
+                .read(weatherClientProvider.notifier)
+                .deleteWeatherClient(wc.id!);
+          },
         );
       }, childCount: weatherClientState.weatherClients.length),
     );
@@ -166,10 +195,12 @@ class _WeatherClientScreenState extends ConsumerState<WeatherClientScreen> {
 class WeatherClientItem extends StatelessWidget {
   final WeatherClientEntity wc;
   final VoidCallback fetchWeatherData;
+  final VoidCallback? onDelete;
   const WeatherClientItem({
     super.key,
     required this.wc,
     required this.fetchWeatherData,
+    this.onDelete,
   });
 
   @override
@@ -221,7 +252,16 @@ class WeatherClientItem extends StatelessWidget {
                   case WeatherClientAction.edit:
                     context.goEditWeatherClient('68de7e98ae6796d18a268a40', wc);
                     break;
-                  default:
+                  case WeatherClientAction.delete:
+                    context.showConfirmDialog(
+                      title: 'Delete Weather Client',
+                      content:
+                          'Are you sure you want to delete the weather client "${wc.name}"?',
+                      confirmText: 'Delete',
+                      confirmColor: AppColors.error,
+                      onConfirm: onDelete,
+                    );
+                    break;
                 }
               },
               itemBuilder: (BuildContext context) =>
@@ -235,7 +275,7 @@ class WeatherClientItem extends StatelessWidget {
                       ),
                     ),
                     const PopupMenuItem<WeatherClientAction>(
-                      value: WeatherClientAction.remove,
+                      value: WeatherClientAction.delete,
                       child: ListTile(
                         leading: Icon(Icons.delete),
                         title: Text('Delete'),

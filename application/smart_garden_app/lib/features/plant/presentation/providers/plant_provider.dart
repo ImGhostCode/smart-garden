@@ -8,44 +8,67 @@ import '../../providers/plant_providers.dart';
 class PlantState {
   final bool isLoadingPlants;
   final List<PlantEntity> plants;
-  final String? errLoadingPlants;
+  final String errLoadingPlants;
 
   final bool isLoadingPlant;
   final PlantEntity? plant;
-  final String? errLoadingPlant;
+  final String errLoadingPlant;
+
+  final bool isEditingPlant;
+  final String errEditingPlant;
+
+  final bool isCreatingPlant;
+  final String errCreatingPlant;
+
+  final bool isDeletingPlant;
+  final String errDeletingPlant;
 
   final String? responseMsg;
 
   const PlantState({
     this.isLoadingPlants = false,
     this.isLoadingPlant = false,
+    this.isCreatingPlant = false,
+    this.isEditingPlant = false,
+    this.isDeletingPlant = false,
     this.plants = const [],
     this.plant,
     this.responseMsg,
-    this.errLoadingPlants,
-    this.errLoadingPlant,
+    this.errLoadingPlants = '',
+    this.errLoadingPlant = '',
+    this.errCreatingPlant = '',
+    this.errEditingPlant = '',
+    this.errDeletingPlant = '',
   });
 
   PlantState copyWith({
     bool? isLoadingPlants,
     bool? isLoadingPlant,
+    bool? isCreatingPlant,
+    bool? isEditingPlant,
+    bool? isDeletingPlant,
     List<PlantEntity>? plants,
-    PlantEntity? plant,
+    PlantEntity? Function()? plant,
     String? responseMsg,
     String? errLoadingPlants,
     String? errLoadingPlant,
+    String? errCreatingPlant,
+    String? errEditingPlant,
+    String? errDeletingPlant,
   }) {
     return PlantState(
       isLoadingPlants: isLoadingPlants ?? this.isLoadingPlants,
       isLoadingPlant: isLoadingPlant ?? this.isLoadingPlant,
+      isCreatingPlant: isCreatingPlant ?? this.isCreatingPlant,
+      isEditingPlant: isEditingPlant ?? this.isEditingPlant,
+      isDeletingPlant: isDeletingPlant ?? this.isDeletingPlant,
       plants: plants ?? this.plants,
-      plant:
-          plant ??
-          ((plant == null && this.plant != null && plant == null)
-              ? null
-              : this.plant),
+      plant: plant != null ? plant() : this.plant,
       errLoadingPlants: errLoadingPlants ?? this.errLoadingPlants,
       errLoadingPlant: errLoadingPlant ?? this.errLoadingPlant,
+      errCreatingPlant: errCreatingPlant ?? this.errCreatingPlant,
+      errEditingPlant: errEditingPlant ?? this.errEditingPlant,
+      errDeletingPlant: errDeletingPlant ?? this.errDeletingPlant,
       responseMsg: responseMsg,
     );
   }
@@ -61,7 +84,7 @@ class PlantNotifier extends Notifier<PlantState> {
   Future<void> getAllPlant(GetAllPlantParams params) async {
     state = state.copyWith(
       isLoadingPlants: true,
-      errLoadingPlants: null,
+      errLoadingPlants: '',
       plants: [],
     );
 
@@ -73,16 +96,16 @@ class PlantNotifier extends Notifier<PlantState> {
         isLoadingPlants: false,
         errLoadingPlants: failure.message,
       ),
-      (plants) =>
-          state = state.copyWith(isLoadingPlants: false, plants: plants),
+      (response) =>
+          state = state.copyWith(isLoadingPlants: false, plants: response.data),
     );
   }
 
   Future<void> getPlantById({required String id}) async {
     state = state.copyWith(
       isLoadingPlant: true,
-      errLoadingPlant: null,
-      plant: null,
+      errLoadingPlant: '',
+      plant: () => null,
     );
 
     final getPlantById = ref.read(getPlantByIdUCProvider);
@@ -93,7 +116,64 @@ class PlantNotifier extends Notifier<PlantState> {
         isLoadingPlant: false,
         errLoadingPlant: failure.message,
       ),
-      (plant) => state = state.copyWith(isLoadingPlant: false, plant: plant),
+      (response) => state = state.copyWith(
+        isLoadingPlant: false,
+        plant: () => response.data,
+      ),
+    );
+  }
+
+  Future<void> addPlant(PlantEntity plant) async {
+    state = state.copyWith(isCreatingPlant: true, errCreatingPlant: '');
+
+    final newPlant = ref.read(newPlantUCProvider);
+    final result = await newPlant.call(plant);
+
+    result.fold(
+      (failure) => state = state.copyWith(
+        isCreatingPlant: false,
+        errCreatingPlant: failure.message,
+      ),
+      (response) => state = state.copyWith(
+        isCreatingPlant: false,
+        responseMsg: 'Plant created successfully',
+      ),
+    );
+  }
+
+  Future<void> editPlant(PlantEntity plant) async {
+    state = state.copyWith(isEditingPlant: true, errEditingPlant: '');
+
+    final editPlant = ref.read(editPlantUCProvider);
+    final result = await editPlant.call(plant);
+
+    result.fold(
+      (failure) => state = state.copyWith(
+        isEditingPlant: false,
+        errEditingPlant: failure.message,
+      ),
+      (response) => state = state.copyWith(
+        isEditingPlant: false,
+        responseMsg: 'Plant edited successfully',
+      ),
+    );
+  }
+
+  Future<void> deletePlant(String id) async {
+    state = state.copyWith(isDeletingPlant: true, errDeletingPlant: '');
+
+    final deletePlant = ref.read(deletePlantUCProvider);
+    final result = await deletePlant.call(id);
+
+    result.fold(
+      (failure) => state = state.copyWith(
+        isDeletingPlant: false,
+        errDeletingPlant: failure.message,
+      ),
+      (response) => state = state.copyWith(
+        isDeletingPlant: false,
+        responseMsg: 'Plant deleted successfully',
+      ),
     );
   }
 }

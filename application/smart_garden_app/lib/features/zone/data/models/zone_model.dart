@@ -88,7 +88,7 @@ class ZoneModel {
 
 @JsonSerializable(fieldRename: FieldRename.snake)
 class ZoneDetailModel extends ZoneDetailEntity {
-  const ZoneDetailModel({super.description});
+  const ZoneDetailModel({super.description, super.notes});
 
   factory ZoneDetailModel.fromJson(Map<String, dynamic> json) =>
       _$ZoneDetailModelFromJson(json);
@@ -96,7 +96,10 @@ class ZoneDetailModel extends ZoneDetailEntity {
   Map<String, dynamic> toJson() => _$ZoneDetailModelToJson(this);
 
   static ZoneDetailModel fromEntity(ZoneDetailEntity entity) {
-    return ZoneDetailModel(description: entity.description);
+    return ZoneDetailModel(
+      description: entity.description,
+      notes: entity.notes,
+    );
   }
 }
 

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/garden/presentation/screens/edit_garden_screen.dart';
+import '../../features/plant/domain/entities/plant_entity.dart';
 import '../../features/plant/presentation/screens/add_plant_screen.dart';
 import '../../features/plant/presentation/screens/edit_plant_screen.dart';
 import '../../features/plant/presentation/screens/plant_detail_screen.dart';
@@ -16,6 +17,7 @@ import '../../features/water_schedule/presentation/screens/new_water_schedule_sc
 import '../../features/weather_client/domain/entities/weather_client_entity.dart';
 import '../../features/weather_client/presentation/screens/edit_weather_client_screen.dart';
 import '../../features/weather_client/presentation/screens/new_weather_client_screen.dart';
+import '../../features/zone/domain/entities/zone_entity.dart';
 import '../../features/zone/presentation/screens/add_zone_screen.dart';
 import '../../features/zone/presentation/screens/edit_zone_screen.dart';
 import '../../features/zone/presentation/screens/zone_detail_screen.dart';
@@ -68,8 +70,17 @@ class AppRoutes {
             GoRoute(
               path: 'edit',
               name: RouteNames.editZone,
-              builder: (context, state) =>
-                  EditZoneScreen(zoneId: state.pathParameters['zoneId']!),
+              builder: (context, state) => EditZoneScreen(
+                zoneId: state.pathParameters['zoneId']!,
+                zone: state.extra as ZoneEntity,
+              ),
+              redirect: (context, state) {
+                final zone = state.extra;
+                if (zone == null || zone is! ZoneEntity) {
+                  return AppConstants.gardenRoute;
+                }
+                return null;
+              },
             ),
           ],
         ),
@@ -95,8 +106,17 @@ class AppRoutes {
             GoRoute(
               path: 'edit',
               name: RouteNames.editPlant,
-              builder: (context, state) =>
-                  EditPlantScreen(plantId: state.pathParameters['plantId']!),
+              builder: (context, state) => EditPlantScreen(
+                plantId: state.pathParameters['plantId']!,
+                plant: state.extra as PlantEntity,
+              ),
+              redirect: (context, state) {
+                final plant = state.extra;
+                if (plant == null || plant is! PlantEntity) {
+                  return AppConstants.gardenRoute;
+                }
+                return null;
+              },
             ),
           ],
         ),

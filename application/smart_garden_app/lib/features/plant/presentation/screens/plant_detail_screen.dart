@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/assets.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/app_utils.dart';
+import '../../../../core/utils/extensions/build_context_extentions.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../providers/plant_provider.dart';
 
@@ -29,6 +32,28 @@ class _PlantDetailScreenState extends ConsumerState<PlantDetailScreen> {
   Widget build(BuildContext context) {
     final plantState = ref.watch(plantProvider);
 
+    ref.listen(plantProvider.select((state) => state.isDeletingPlant), (
+      previousLoading,
+      nextLoading,
+    ) {
+      if (nextLoading == true) {
+        EasyLoading.show(status: 'Loading...');
+      } else if (nextLoading == false && previousLoading == true) {
+        EasyLoading.dismiss();
+      }
+    });
+
+    ref.listen(plantProvider, (previous, next) async {
+      if (previous?.isDeletingPlant == true && next.isDeletingPlant == false) {
+        if (next.errDeletingPlant.isNotEmpty) {
+          EasyLoading.showError(next.errDeletingPlant);
+        } else {
+          EasyLoading.showSuccess(next.responseMsg ?? 'Plant deleted');
+          context.goBack();
+        }
+      }
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Plant Detail"),
@@ -39,6 +64,7 @@ class _PlantDetailScreenState extends ConsumerState<PlantDetailScreen> {
               context.goEditPlant(
                 '68de7e98ae6796d18a268a40',
                 '68de7e98ae6796d18a268a40',
+                plantState.plant!,
               );
             },
           ),
@@ -46,8 +72,8 @@ class _PlantDetailScreenState extends ConsumerState<PlantDetailScreen> {
       ),
       body: plantState.isLoadingPlant
           ? const Center(child: CircularProgressIndicator())
-          : plantState.errLoadingPlant != null
-          ? Center(child: Text(plantState.errLoadingPlant!))
+          : plantState.errLoadingPlant.isNotEmpty
+          ? Center(child: Text(plantState.errLoadingPlant))
           : plantState.plant != null
           ? SingleChildScrollView(
               padding: const EdgeInsets.all(AppConstants.paddingMd),
@@ -209,7 +235,19 @@ class _PlantDetailScreenState extends ConsumerState<PlantDetailScreen> {
 
                   Center(
                     child: TextButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        context.showConfirmDialog(
+                          title: "Delete Plant",
+                          content:
+                              "Are you sure you want to delete this plant?",
+                          confirmColor: AppColors.error,
+                          onConfirm: () {
+                            ref
+                                .read(plantProvider.notifier)
+                                .deletePlant(plantState.plant?.id ?? '');
+                          },
+                        );
+                      },
                       style: TextButton.styleFrom(foregroundColor: Colors.red),
                       child: const Text("Delete this plant"),
                     ),

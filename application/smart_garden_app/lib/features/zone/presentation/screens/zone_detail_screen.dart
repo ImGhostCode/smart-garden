@@ -12,6 +12,7 @@ import '../../../water_schedule/domain/entities/water_schedule_entity.dart';
 import '../../domain/entities/water_history_entity.dart';
 import '../../domain/entities/zone_entity.dart';
 import '../../domain/usecases/get_water_history.dart';
+import '../../domain/usecases/send_zone_action.dart';
 import '../providers/zone_provider.dart';
 
 class ZoneDetailScreen extends ConsumerStatefulWidget {
@@ -61,6 +62,7 @@ class _ZoneDetailScreenState extends ConsumerState<ZoneDetailScreen> {
               context.goEditZone(
                 '68de7e98ae6796d18a268a40',
                 '68de7e98ae6796d18a268a40',
+                zoneState.zone!,
               );
             },
           ),
@@ -255,7 +257,19 @@ class _ZoneDetailScreenState extends ConsumerState<ZoneDetailScreen> {
               onPressed: zoneState.isLoadingZone == true
                   ? null
                   : () {
-                      showZoneActions(context);
+                      showZoneActions(
+                        context: context,
+                        onWater: (durationMs) {
+                          ref
+                              .read(zoneProvider.notifier)
+                              .sendZoneAction(
+                                ZoneActionParams(
+                                  zoneId: zoneState.zone!.id!,
+                                  water: WaterAction(durationMs: durationMs),
+                                ),
+                              );
+                        },
+                      );
                     },
               child: const Text('ACTIONS'),
             ),
@@ -326,7 +340,7 @@ class _ZoneDetailScreenState extends ConsumerState<ZoneDetailScreen> {
   // --- Widget: Next Water Banner ---
   Widget _buildNextWaterBanner(NextWaterEntity nextWater) {
     final startTime = AppUtils.utcToLocalString(nextWater.time);
-    final duration = AppUtils.msToDuration(nextWater.durationMs);
+    final duration = AppUtils.msToDurationString(nextWater.durationMs);
     return Container(
       padding: const EdgeInsets.all(AppConstants.paddingMd),
       decoration: BoxDecoration(
@@ -491,7 +505,7 @@ class _ZoneDetailScreenState extends ConsumerState<ZoneDetailScreen> {
   Widget _buildTableRow(WaterHistoryEntity history) {
     String source = history.source ?? 'Unknown';
     String startAt = AppUtils.utcToLocalString(history.sentAt);
-    String duration = AppUtils.msToDuration(history.durationMs);
+    String duration = AppUtils.msToDurationString(history.durationMs);
     String? status = history.status ?? 'Unknown';
     Color? statusColor;
     switch (history.status?.toLowerCase() ?? 'unknown') {
@@ -602,7 +616,7 @@ Widget buildScheduleItem(WaterScheduleEntity schedule) {
           children: [
             _buildScheduleTag(
               Icons.timer_outlined,
-              AppUtils.msToDuration(schedule.durationMs),
+              AppUtils.msToDurationString(schedule.durationMs),
             ),
             const SizedBox(width: 8),
             _buildScheduleTag(

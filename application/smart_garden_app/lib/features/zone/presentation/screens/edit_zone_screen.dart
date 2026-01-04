@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/ui/inputs/app_labeled_input.dart';
 import '../../../../core/utils/app_validators.dart';
+import '../../../../core/utils/extensions/navigation_extensions.dart';
+import '../../../garden/domain/entities/garden_entity.dart';
+import '../../domain/entities/zone_entity.dart';
+import '../providers/zone_provider.dart';
 
 class EditZoneScreen extends ConsumerStatefulWidget {
   final String zoneId;
-  const EditZoneScreen({super.key, required this.zoneId});
+  final ZoneEntity zone;
+  const EditZoneScreen({super.key, required this.zoneId, required this.zone});
 
   @override
   ConsumerState<ConsumerStatefulWidget> createState() => _EditZoneScreenState();
@@ -20,14 +26,21 @@ class _EditZoneScreenState extends ConsumerState<EditZoneScreen> {
   late final TextEditingController _name;
   late final TextEditingController _skipCount;
   late final TextEditingController _description;
-  late final TextEditingController _note;
+  late final TextEditingController _notes;
 
   @override
   void initState() {
     _name = TextEditingController();
     _skipCount = TextEditingController();
     _description = TextEditingController();
-    _note = TextEditingController();
+    _notes = TextEditingController();
+
+    _name.text = widget.zone.name ?? '';
+    _position = widget.zone.position ?? 1;
+    _skipCount.text = (widget.zone.skipCount ?? 0).toString();
+    _description.text = widget.zone.details?.description ?? '';
+    _notes.text = widget.zone.details?.notes ?? '';
+
     super.initState();
   }
 
@@ -36,17 +49,54 @@ class _EditZoneScreenState extends ConsumerState<EditZoneScreen> {
     _name.dispose();
     _skipCount.dispose();
     _description.dispose();
-    _note.dispose();
+    _notes.dispose();
+    EasyLoading.dismiss();
     super.dispose();
   }
 
-  void _onSave() {
+  void _onEdit() {
     if (!_formKey.currentState!.validate()) return;
-    print('edit zone');
+    ref
+        .read(zoneProvider.notifier)
+        .editZone(
+          ZoneEntity(
+            id: '',
+            name: _name.text,
+            position: _position!,
+            garden: const GardenEntity(id: ''),
+            waterSchedules: const [],
+            skipCount: int.tryParse(_skipCount.text) ?? 0,
+            details: ZoneDetailEntity(
+              description: _description.text,
+              notes: _notes.text,
+            ),
+          ),
+        );
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(zoneProvider.select((state) => state.isEditingZone), (
+      previousLoading,
+      nextLoading,
+    ) {
+      if (nextLoading == true) {
+        EasyLoading.show(status: 'Loading...');
+      } else if (nextLoading == false && previousLoading == true) {
+        EasyLoading.dismiss();
+      }
+    });
+
+    ref.listen(zoneProvider, (previous, next) async {
+      if (previous?.isEditingZone == true && next.isEditingZone == false) {
+        if (next.errEditingZone != null) {
+          EasyLoading.showError(next.errEditingZone ?? 'Error');
+        } else {
+          EasyLoading.showSuccess(next.responseMsg ?? 'Zone edited');
+          context.goBack();
+        }
+      }
+    });
     return Scaffold(
       backgroundColor: AppColors.neutral50,
       appBar: AppBar(title: const Text('Edit Zone'), centerTitle: true),
@@ -60,7 +110,9 @@ class _EditZoneScreenState extends ConsumerState<EditZoneScreen> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: _buildTextField('Zone name')),
+                  Expanded(
+                    child: _buildTextField('Zone name', controller: _name),
+                  ),
                   const SizedBox(width: 8),
                   SizedBox(
                     width: 100,
@@ -133,8 +185,8 @@ class _EditZoneScreenState extends ConsumerState<EditZoneScreen> {
               ),
               const SizedBox(height: 12),
               _buildTextField(
-                'Note',
-                controller: _note,
+                'Notes',
+                controller: _notes,
                 maxLines: 3,
                 required: false,
               ),
@@ -149,7 +201,7 @@ class _EditZoneScreenState extends ConsumerState<EditZoneScreen> {
         child: SizedBox(
           width: double.infinity,
           height: AppConstants.buttonMd,
-          child: ElevatedButton(onPressed: _onSave, child: const Text('Save')),
+          child: ElevatedButton(onPressed: _onEdit, child: const Text('Save')),
         ),
       ),
     );

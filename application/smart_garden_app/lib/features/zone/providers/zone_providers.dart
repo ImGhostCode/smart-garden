@@ -10,9 +10,13 @@ import '../data/datasources/zone_local_datasource.dart';
 import '../data/datasources/zone_remote_datasource.dart';
 import '../data/repositories/zone_repository_impl.dart';
 import '../domain/repositories/zone_repository.dart';
+import '../domain/usecases/delete_zone.dart';
+import '../domain/usecases/edit_zone.dart';
 import '../domain/usecases/get_all_zones.dart';
 import '../domain/usecases/get_water_history.dart';
 import '../domain/usecases/get_zone_by_id.dart';
+import '../domain/usecases/new_zone.dart';
+import '../domain/usecases/send_zone_action.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 
@@ -45,4 +49,20 @@ final getZoneByIdUCProvider = Provider<GetZoneById>(
 
 final getWaterHistoryUCProvider = Provider<GetWaterHistory>(
   (ref) => GetWaterHistory(ref.read(zoneRepositoryProvider)),
+);
+
+final newZoneUCProvider = Provider<NewZone>(
+  (ref) => NewZone(ref.read(zoneRepositoryProvider)),
+);
+
+final editZoneUCProvider = Provider<EditZone>(
+  (ref) => EditZone(ref.read(zoneRepositoryProvider)),
+);
+
+final deleteZoneUCProvider = Provider<DeleteZone>(
+  (ref) => DeleteZone(ref.read(zoneRepositoryProvider)),
+);
+
+final sendZoneActionUCProvider = Provider<SendZoneAction>(
+  (ref) => SendZoneAction(ref.read(zoneRepositoryProvider)),
 );

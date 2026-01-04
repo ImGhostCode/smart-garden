@@ -131,8 +131,8 @@ class _NewWeatherClientScreenState
 
     ref.listen(weatherClientProvider, (previous, next) async {
       if (previous?.isCreatingWC == true && next.isCreatingWC == false) {
-        if (next.errCreatingWC != null) {
-          EasyLoading.showError(next.errCreatingWC ?? 'Error');
+        if (next.errCreatingWC.isNotEmpty) {
+          EasyLoading.showError(next.errCreatingWC);
         } else {
           EasyLoading.showSuccess(next.responseMsg ?? 'Weather Client created');
           context.goBack();

@@ -4,17 +4,21 @@
 import 'package:dartz/dartz.dart';
 
 import '../../../../core/error/failures.dart';
+import '../../../../core/network/api_response.dart';
 import '../../../../core/usecases/usecase.dart';
 import '../entities/plant_entity.dart';
 import '../repositories/plant_repository.dart';
 
-class GetAllPlants implements UseCase<List<PlantEntity>, GetAllPlantParams> {
+class GetAllPlants
+    implements UseCase<ApiResponse<List<PlantEntity>>, GetAllPlantParams> {
   final PlantRepository repository;
 
   GetAllPlants(this.repository);
 
   @override
-  Future<Either<Failure, List<PlantEntity>>> call(GetAllPlantParams params) {
+  Future<Either<Failure, ApiResponse<List<PlantEntity>>>> call(
+    GetAllPlantParams params,
+  ) {
     return repository.getAllPlants(params);
   }
 }

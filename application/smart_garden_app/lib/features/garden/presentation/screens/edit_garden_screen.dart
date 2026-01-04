@@ -70,9 +70,11 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
         // Light Schedule
         if (garden.lightSchedule != null) {
           final ls = garden.lightSchedule!;
-          _lsDuration = AppUtils.msToDuration(ls.durationMs ?? 0);
+          _lsDuration = Duration(
+            milliseconds: garden.lightSchedule?.durationMs ?? 0,
+          ).inHours.toString();
           final timeParts = ls.startTime?.split(':') ?? [];
-          if (timeParts.length == 3) {
+          if (timeParts.length >= 2) {
             _hourController.text = timeParts[0];
             _minuteController.text = timeParts[1];
           }
@@ -84,8 +86,9 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
           isSensorEnabled = true;
           _sensorPinController.text =
               garden.controllerConfig!.tempHumidityPin?.toString() ?? '';
-          _intervalController.text =
-              garden.controllerConfig!.tempHumIntervalMs?.toString() ?? '';
+          _intervalController.text = AppUtils.msToDurationString(
+            garden.controllerConfig!.tempHumIntervalMs,
+          );
         } else {
           isSensorEnabled = false;
         }
@@ -169,8 +172,8 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
 
     ref.listen(gardenProvider, (previous, next) async {
       if (previous?.isEditingGarden == true && next.isEditingGarden == false) {
-        if (next.errEditingGarden != null) {
-          EasyLoading.showError(next.errEditingGarden ?? 'Error');
+        if (next.errEditingGarden.isNotEmpty) {
+          EasyLoading.showError(next.errEditingGarden);
         } else {
           EasyLoading.showSuccess(next.responseMsg ?? 'Garden edited');
           context.goBack();
@@ -182,8 +185,8 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
       appBar: AppBar(title: const Text('Edit Garden'), centerTitle: true),
       body: gardenState.isLoadingGarden
           ? const Center(child: CircularProgressIndicator())
-          : gardenState.errLoadingGarden != null
-          ? Center(child: Text(gardenState.errLoadingGarden!))
+          : gardenState.errLoadingGarden.isNotEmpty
+          ? Center(child: Text(gardenState.errLoadingGarden))
           : gardenState.garden != null
           ? SingleChildScrollView(
               padding: const EdgeInsets.all(AppConstants.paddingMd),
@@ -353,7 +356,10 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
                               child: TextFormField(
                                 controller: _intervalController,
                                 keyboardType: TextInputType.number,
-                                validator: AppValidators.required,
+                                validator: AppValidators.combine([
+                                  AppValidators.required,
+                                  AppValidators.durationFormat,
+                                ]),
                                 textInputAction: TextInputAction.next,
                               ),
                             ),
@@ -400,7 +406,7 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
           : const Center(child: Text('No garden data found.')),
       bottomSheet:
           gardenState.isLoadingGarden == true ||
-              gardenState.errLoadingGarden != null
+              gardenState.errLoadingGarden.isNotEmpty
           ? null
           : Container(
               color: Colors.white,

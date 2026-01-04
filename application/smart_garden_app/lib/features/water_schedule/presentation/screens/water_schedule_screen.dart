@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/app_utils.dart';
+import '../../../../core/utils/extensions/build_context_extentions.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../domain/entities/water_schedule_entity.dart';
 import '../../domain/usecases/get_all_water_schedules.dart';
 import '../providers/water_schedule_provider.dart';
 
-enum WaterScheduleAction { edit, remove }
+enum WaterScheduleAction { edit, delete }
 
 class WaterScheduleScreen extends ConsumerStatefulWidget {
   const WaterScheduleScreen({super.key});
@@ -35,6 +37,28 @@ class _WaterScheduleScreenState extends ConsumerState<WaterScheduleScreen> {
   @override
   Widget build(BuildContext context) {
     final waterScheduleState = ref.watch(waterScheduleProvider);
+
+    ref.listen(waterScheduleProvider.select((state) => state.isDeletingWS), (
+      previousLoading,
+      nextLoading,
+    ) {
+      if (nextLoading == true) {
+        EasyLoading.show(status: 'Loading...');
+      } else if (nextLoading == false && previousLoading == true) {
+        EasyLoading.dismiss();
+      }
+    });
+
+    ref.listen(waterScheduleProvider, (previous, next) async {
+      if (previous?.isDeletingWS == true && next.isDeletingWS == false) {
+        if (next.errDeletingWS.isNotEmpty) {
+          EasyLoading.showError(next.errDeletingWS);
+        } else {
+          EasyLoading.showSuccess(next.responseMsg ?? 'Water schedule deleted');
+          // refresh list
+        }
+      }
+    });
 
     return SafeArea(
       child: Scaffold(
@@ -124,10 +148,10 @@ class _WaterScheduleScreenState extends ConsumerState<WaterScheduleScreen> {
       );
     }
 
-    if (waterScheduleState.errLoadingWSs != null) {
+    if (waterScheduleState.errLoadingWSs.isNotEmpty) {
       return SliverFillRemaining(
         hasScrollBody: false,
-        child: Center(child: Text(waterScheduleState.errLoadingWSs!)),
+        child: Center(child: Text(waterScheduleState.errLoadingWSs)),
       );
     }
 
@@ -135,7 +159,14 @@ class _WaterScheduleScreenState extends ConsumerState<WaterScheduleScreen> {
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
         final ws = waterScheduleState.waterSchedules[index];
-        return WaterScheduleItem(ws: ws);
+        return WaterScheduleItem(
+          ws: ws,
+          onDelete: () {
+            ref
+                .read(waterScheduleProvider.notifier)
+                .deleteWaterSchedule(ws.id!);
+          },
+        );
       }, childCount: waterScheduleState.waterSchedules.length),
     );
   }
@@ -143,11 +174,12 @@ class _WaterScheduleScreenState extends ConsumerState<WaterScheduleScreen> {
 
 class WaterScheduleItem extends StatelessWidget {
   final WaterScheduleEntity ws;
-  const WaterScheduleItem({super.key, required this.ws});
+  final VoidCallback? onDelete;
+  const WaterScheduleItem({super.key, required this.ws, this.onDelete});
 
   @override
   Widget build(BuildContext context) {
-    final duration = AppUtils.msToDuration(ws.durationMs);
+    final duration = AppUtils.msToDurationString(ws.durationMs);
     final startTime = AppUtils.to12HourFormat(ws.startTime);
     return Container(
       margin: const EdgeInsets.only(bottom: AppConstants.paddingMd),
@@ -177,7 +209,16 @@ class WaterScheduleItem extends StatelessWidget {
                   case WaterScheduleAction.edit:
                     context.goEditWaterSchedule(ws.id!, ws);
                     break;
-                  default:
+                  case WaterScheduleAction.delete:
+                    context.showConfirmDialog(
+                      title: 'Delete Water Schedule',
+                      content:
+                          'Are you sure you want to delete the water schedule "${ws.name}"?',
+                      confirmText: 'Delete',
+                      confirmColor: AppColors.error,
+                      onConfirm: onDelete,
+                    );
+                    break;
                 }
               },
               itemBuilder: (BuildContext context) =>
@@ -191,7 +232,7 @@ class WaterScheduleItem extends StatelessWidget {
                       ),
                     ),
                     const PopupMenuItem<WaterScheduleAction>(
-                      value: WaterScheduleAction.remove,
+                      value: WaterScheduleAction.delete,
                       child: ListTile(
                         leading: Icon(Icons.delete),
                         title: Text('Delete'),

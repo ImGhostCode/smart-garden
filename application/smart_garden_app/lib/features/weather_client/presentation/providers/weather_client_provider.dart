@@ -8,20 +8,23 @@ import '../../providers/weather_client_providers.dart';
 class WeatherClientState {
   final bool isLoadingWCs;
   final List<WeatherClientEntity> weatherClients;
-  final String? errLoadingWCs;
+  final String errLoadingWCs;
 
   final bool isLoadingWC;
   final WeatherClientEntity? weatherClient;
-  final String? errLoadingWC;
+  final String errLoadingWC;
 
   final bool isLoadingWeather;
-  final String? errLoadingWeather;
+  final String errLoadingWeather;
 
   final bool isCreatingWC;
-  final String? errCreatingWC;
+  final String errCreatingWC;
 
   final bool isEditingWC;
-  final String? errEditingWC;
+  final String errEditingWC;
+
+  final bool isDeletingWC;
+  final String errDeletingWC;
 
   final String? responseMsg;
 
@@ -31,14 +34,16 @@ class WeatherClientState {
     this.isLoadingWeather = false,
     this.isCreatingWC = false,
     this.isEditingWC = false,
+    this.isDeletingWC = false,
     this.weatherClients = const [],
     this.weatherClient,
     this.responseMsg,
-    this.errLoadingWCs,
-    this.errLoadingWC,
-    this.errLoadingWeather,
-    this.errCreatingWC,
-    this.errEditingWC,
+    this.errLoadingWCs = "",
+    this.errLoadingWC = "",
+    this.errLoadingWeather = "",
+    this.errCreatingWC = "",
+    this.errEditingWC = "",
+    this.errDeletingWC = "",
   });
 
   WeatherClientState copyWith({
@@ -47,6 +52,7 @@ class WeatherClientState {
     bool? isLoadingWeather,
     bool? isCreatingWC,
     bool? isEditingWC,
+    bool? isDeletingWC,
     List<WeatherClientEntity>? weatherClients,
     WeatherClientEntity? Function()? weatherClient,
     String? responseMsg,
@@ -55,6 +61,7 @@ class WeatherClientState {
     String? errLoadingWeather,
     String? errCreatingWC,
     String? errEditingWC,
+    String? errDeletingWC,
   }) {
     return WeatherClientState(
       isLoadingWCs: isLoadingWCs ?? this.isLoadingWCs,
@@ -62,6 +69,7 @@ class WeatherClientState {
       isLoadingWeather: isLoadingWeather ?? this.isLoadingWeather,
       isCreatingWC: isCreatingWC ?? this.isCreatingWC,
       isEditingWC: isEditingWC ?? this.isEditingWC,
+      isDeletingWC: isDeletingWC ?? this.isDeletingWC,
       weatherClients: weatherClients ?? this.weatherClients,
       weatherClient: weatherClient != null
           ? weatherClient()
@@ -71,6 +79,7 @@ class WeatherClientState {
       errLoadingWeather: errLoadingWeather ?? this.errLoadingWeather,
       errCreatingWC: errCreatingWC ?? this.errCreatingWC,
       errEditingWC: errEditingWC ?? this.errEditingWC,
+      errDeletingWC: errDeletingWC ?? this.errDeletingWC,
       responseMsg: responseMsg,
     );
   }
@@ -86,7 +95,7 @@ class WeatherClientNotifier extends Notifier<WeatherClientState> {
   Future<void> getAllWeatherClients(GetAllWeatherClientsParams params) async {
     state = state.copyWith(
       isLoadingWCs: true,
-      errLoadingWCs: null,
+      errLoadingWCs: '',
       weatherClients: [],
     );
 
@@ -98,9 +107,9 @@ class WeatherClientNotifier extends Notifier<WeatherClientState> {
         isLoadingWCs: false,
         errLoadingWCs: failure.message,
       ),
-      (weatherClients) => state = state.copyWith(
+      (response) => state = state.copyWith(
         isLoadingWCs: false,
-        weatherClients: weatherClients,
+        weatherClients: response.data,
       ),
     );
   }
@@ -108,7 +117,7 @@ class WeatherClientNotifier extends Notifier<WeatherClientState> {
   Future<void> getWeatherClientById(GetWeatherClientParams params) async {
     state = state.copyWith(
       isLoadingWC: true,
-      errLoadingWC: null,
+      errLoadingWC: '',
       weatherClient: () => null,
     );
 
@@ -120,9 +129,9 @@ class WeatherClientNotifier extends Notifier<WeatherClientState> {
         isLoadingWC: false,
         errLoadingWC: failure.message,
       ),
-      (weatherClient) => state = state.copyWith(
+      (response) => state = state.copyWith(
         isLoadingWC: false,
-        weatherClient: () => weatherClient,
+        weatherClient: () => response.data,
       ),
     );
   }
@@ -130,7 +139,7 @@ class WeatherClientNotifier extends Notifier<WeatherClientState> {
   Future<void> getWeatherData(String weatherClientId) async {
     state = state.copyWith(
       isLoadingWeather: true,
-      errLoadingWeather: null,
+      errLoadingWeather: '',
       weatherClients: state.weatherClients.map((e) {
         if (e.id == weatherClientId) {
           return e.copyWith(latestWeatherData: null, error: null);
@@ -153,11 +162,11 @@ class WeatherClientNotifier extends Notifier<WeatherClientState> {
           return e;
         }).toList(),
       ),
-      (weatherClient) => state = state.copyWith(
+      (response) => state = state.copyWith(
         isLoadingWeather: false,
         weatherClients: state.weatherClients.map((e) {
           if (e.id == weatherClientId) {
-            return e.copyWith(latestWeatherData: weatherClient);
+            return e.copyWith(latestWeatherData: response.data);
           }
           return e;
         }).toList(),
@@ -166,7 +175,7 @@ class WeatherClientNotifier extends Notifier<WeatherClientState> {
   }
 
   Future<void> newWeatherClient(WeatherClientEntity weatherClient) async {
-    state = state.copyWith(isCreatingWC: true, errCreatingWC: null);
+    state = state.copyWith(isCreatingWC: true, errCreatingWC: '');
 
     final newWeatherClient = ref.read(newWeatherClientUCProvider);
     final result = await newWeatherClient.call(weatherClient);
@@ -176,15 +185,15 @@ class WeatherClientNotifier extends Notifier<WeatherClientState> {
         isCreatingWC: false,
         errCreatingWC: failure.message,
       ),
-      (newWC) => state = state.copyWith(
+      (response) => state = state.copyWith(
         isCreatingWC: false,
-        responseMsg: 'Weather client created successfully',
+        responseMsg: response.message,
       ),
     );
   }
 
   Future<void> editWeatherClient(WeatherClientEntity weatherClient) async {
-    state = state.copyWith(isEditingWC: true, errEditingWC: null);
+    state = state.copyWith(isEditingWC: true, errEditingWC: '');
 
     final editWeatherClient = ref.read(editWeatherClientUCProvider);
     final result = await editWeatherClient.call(weatherClient);
@@ -194,9 +203,27 @@ class WeatherClientNotifier extends Notifier<WeatherClientState> {
         isEditingWC: false,
         errEditingWC: failure.message,
       ),
-      (editedWC) => state = state.copyWith(
+      (response) => state = state.copyWith(
         isEditingWC: false,
-        responseMsg: 'Weather client edited successfully',
+        responseMsg: response.message,
+      ),
+    );
+  }
+
+  Future<void> deleteWeatherClient(String id) async {
+    state = state.copyWith(isDeletingWC: true, errDeletingWC: null);
+
+    final deleteWeatherClient = ref.read(deleteWeatherClientUCProvider);
+    final result = await deleteWeatherClient.call(id);
+
+    result.fold(
+      (failure) => state = state.copyWith(
+        isDeletingWC: false,
+        errDeletingWC: failure.message,
+      ),
+      (response) => state = state.copyWith(
+        isDeletingWC: false,
+        responseMsg: response.message,
       ),
     );
   }

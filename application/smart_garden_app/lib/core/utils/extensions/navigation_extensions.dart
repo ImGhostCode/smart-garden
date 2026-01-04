@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../features/plant/domain/entities/plant_entity.dart';
 import '../../../features/water_routine/domain/entities/water_routine_entity.dart';
 import '../../../features/water_schedule/domain/entities/water_schedule_entity.dart';
 import '../../../features/weather_client/domain/entities/weather_client_entity.dart';
+import '../../../features/zone/domain/entities/zone_entity.dart';
 import '../../router/app_routers.dart';
 
 extension NavigationContext on BuildContext {
@@ -34,10 +36,11 @@ extension NavigationContext on BuildContext {
     );
   }
 
-  void goEditZone(String gardenId, String zoneId) {
+  void goEditZone(String gardenId, String zoneId, ZoneEntity zone) {
     pushNamed(
       RouteNames.editZone,
       pathParameters: {'gardenId': gardenId, 'zoneId': zoneId},
+      extra: zone,
     );
   }
 
@@ -56,10 +59,11 @@ extension NavigationContext on BuildContext {
     );
   }
 
-  void goEditPlant(String gardenId, String plantId) {
+  void goEditPlant(String gardenId, String plantId, PlantEntity plant) {
     pushNamed(
       RouteNames.editPlant,
       pathParameters: {'gardenId': gardenId, 'plantId': plantId},
+      extra: plant,
     );
   }
 

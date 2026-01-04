@@ -82,7 +82,9 @@ class _EditWeatherClientScreenState
       } else if (wc.type == "fake") {
         // Fake fields
         _rainMm.text = options.rainMm?.toString() ?? '';
-        _rainInterval.text = AppUtils.msToDuration(options.rainIntervalMs);
+        _rainInterval.text = AppUtils.msToDurationString(
+          options.rainIntervalMs,
+        );
         _avgHighTemperature.text = options.avgHighTemperature?.toString() ?? '';
         _error.text = options.error ?? '';
       }
@@ -108,7 +110,7 @@ class _EditWeatherClientScreenState
     super.dispose();
   }
 
-  void _onSave() {
+  void _onEdit() {
     if (!_formKey.currentState!.validate()) return;
     ref
         .read(weatherClientProvider.notifier)
@@ -149,6 +151,8 @@ class _EditWeatherClientScreenState
 
   @override
   Widget build(BuildContext context) {
+    final waterClientState = ref.watch(weatherClientProvider);
+    print(waterClientState.isEditingWC);
     ref.listen(weatherClientProvider.select((state) => state.isEditingWC), (
       previousLoading,
       nextLoading,
@@ -162,8 +166,8 @@ class _EditWeatherClientScreenState
 
     ref.listen(weatherClientProvider, (previous, next) async {
       if (previous?.isEditingWC == true && next.isEditingWC == false) {
-        if (next.errEditingWC != null) {
-          EasyLoading.showError(next.errEditingWC ?? 'Error');
+        if (next.errEditingWC.isNotEmpty) {
+          EasyLoading.showError(next.errEditingWC);
         } else {
           EasyLoading.showSuccess(next.responseMsg ?? 'Weather Client edited');
           context.goBack();
@@ -285,7 +289,7 @@ class _EditWeatherClientScreenState
         child: SizedBox(
           width: double.infinity,
           height: AppConstants.buttonMd,
-          child: ElevatedButton(onPressed: _onSave, child: const Text('Save')),
+          child: ElevatedButton(onPressed: _onEdit, child: const Text('Save')),
         ),
       ),
     );

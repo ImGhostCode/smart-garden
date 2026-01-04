@@ -4,6 +4,7 @@
 import 'package:dartz/dartz.dart';
 
 import '../../../../core/error/failures.dart';
+import '../../../../core/network/api_response.dart';
 import '../../../../core/network/network_info.dart';
 import '../../domain/entities/water_routine_entity.dart';
 import '../../domain/repositories/water_routine_repository.dart';
@@ -24,16 +25,23 @@ class WaterRoutineRepositoryImpl implements WaterRoutineRepository {
   });
 
   @override
-  Future<Either<Failure, List<WaterRoutineEntity>>> getAllWaterRoutines(
-    GetAllWRParams params,
-  ) async {
+  Future<Either<Failure, ApiResponse<List<WaterRoutineEntity>>>>
+  getAllWaterRoutines(GetAllWRParams params) async {
     if (await networkInfo.isConnected) {
       try {
-        final remoteWaterRoutines = await remoteDataSource.getAllWaterRoutines(
-          params,
+        final response = await remoteDataSource.getAllWaterRoutines(params);
+        if (response.status != "success") {
+          return Left(ServerFailure(message: response.message));
+        }
+        localDataSource.cacheWaterRoutines(response.data ?? []);
+        return Right(
+          ApiResponse<List<WaterRoutineEntity>>(
+            status: response.status,
+            code: response.code,
+            message: response.message,
+            data: response.data!.map((e) => e.toEntity()).toList(),
+          ),
         );
-        localDataSource.cacheWaterRoutines(remoteWaterRoutines);
-        return Right(remoteWaterRoutines.map((e) => e.toEntity()).toList());
       } catch (e) {
         return const Left(ServerFailure());
       }
@@ -41,7 +49,14 @@ class WaterRoutineRepositoryImpl implements WaterRoutineRepository {
       try {
         final localWaterRoutines = await localDataSource
             .getCachedWaterRoutines();
-        return Right(localWaterRoutines.map((e) => e.toEntity()).toList());
+        return Right(
+          ApiResponse<List<WaterRoutineEntity>>(
+            status: "success",
+            code: 200,
+            message: "Cached water routines retrieved successfully",
+            data: localWaterRoutines.map((e) => e.toEntity()).toList(),
+          ),
+        );
       } catch (e) {
         return const Left(CacheFailure());
       }
@@ -49,13 +64,23 @@ class WaterRoutineRepositoryImpl implements WaterRoutineRepository {
   }
 
   @override
-  Future<Either<Failure, WaterRoutineEntity>> getWaterRoutineById(
+  Future<Either<Failure, ApiResponse<WaterRoutineEntity>>> getWaterRoutineById(
     String id,
   ) async {
     if (await networkInfo.isConnected) {
       try {
-        final waterRoutine = await remoteDataSource.getWaterRoutineById(id);
-        return Right(waterRoutine.toEntity());
+        final response = await remoteDataSource.getWaterRoutineById(id);
+        if (response.status != "success") {
+          return Left(ServerFailure(message: response.message));
+        }
+        return Right(
+          ApiResponse<WaterRoutineEntity>(
+            status: response.status,
+            code: response.code,
+            message: response.message,
+            data: response.data!.toEntity(),
+          ),
+        );
       } catch (e) {
         return const Left(ServerFailure());
       }
@@ -65,15 +90,25 @@ class WaterRoutineRepositoryImpl implements WaterRoutineRepository {
   }
 
   @override
-  Future<Either<Failure, WaterRoutineEntity>> editWaterRoutine(
+  Future<Either<Failure, ApiResponse<WaterRoutineEntity>>> editWaterRoutine(
     WaterRoutineEntity waterRoutine,
   ) async {
     if (await networkInfo.isConnected) {
       try {
-        final editedWR = await remoteDataSource.editWaterRoutine(
+        final response = await remoteDataSource.editWaterRoutine(
           WaterRoutineModel.fromEntity(waterRoutine),
         );
-        return Right(editedWR.toEntity());
+        if (response.status != "success") {
+          return Left(ServerFailure(message: response.message));
+        }
+        return Right(
+          ApiResponse<WaterRoutineEntity>(
+            status: response.status,
+            code: response.code,
+            message: response.message,
+            data: response.data!.toEntity(),
+          ),
+        );
       } catch (e) {
         return const Left(ServerFailure());
       }
@@ -83,15 +118,75 @@ class WaterRoutineRepositoryImpl implements WaterRoutineRepository {
   }
 
   @override
-  Future<Either<Failure, WaterRoutineEntity>> newWaterRoutine(
+  Future<Either<Failure, ApiResponse<WaterRoutineEntity>>> newWaterRoutine(
     WaterRoutineEntity waterRoutine,
   ) async {
     if (await networkInfo.isConnected) {
       try {
-        final newWR = await remoteDataSource.newWaterRoutine(
+        final response = await remoteDataSource.newWaterRoutine(
           WaterRoutineModel.fromEntity(waterRoutine),
         );
-        return Right(newWR.toEntity());
+        if (response.status != "success") {
+          return Left(ServerFailure(message: response.message));
+        }
+        return Right(
+          ApiResponse<WaterRoutineEntity>(
+            status: response.status,
+            code: response.code,
+            message: response.message,
+            data: response.data!.toEntity(),
+          ),
+        );
+      } catch (e) {
+        return const Left(ServerFailure());
+      }
+    } else {
+      return const Left(NetworkFailure());
+    }
+  }
+
+  @override
+  Future<Either<Failure, ApiResponse<String>>> deleteWaterRoutine(
+    String id,
+  ) async {
+    if (await networkInfo.isConnected) {
+      try {
+        final response = await remoteDataSource.deleteWaterRoutine(id);
+        if (response.status != "success") {
+          return Left(ServerFailure(message: response.message));
+        }
+        return Right(
+          ApiResponse<String>(
+            status: response.status,
+            code: response.code,
+            message: response.message,
+            data: response.data!,
+          ),
+        );
+      } catch (e) {
+        return const Left(ServerFailure());
+      }
+    } else {
+      return const Left(NetworkFailure());
+    }
+  }
+
+  @override
+  Future<Either<Failure, ApiResponse<void>>> runWaterRoutine(String id) async {
+    if (await networkInfo.isConnected) {
+      try {
+        final response = await remoteDataSource.runWaterRoutine(id);
+        if (response.status != "success") {
+          return Left(ServerFailure(message: response.message));
+        }
+        return Right(
+          ApiResponse<void>(
+            status: response.status,
+            code: response.code,
+            message: response.message,
+            data: null,
+          ),
+        );
       } catch (e) {
         return const Left(ServerFailure());
       }

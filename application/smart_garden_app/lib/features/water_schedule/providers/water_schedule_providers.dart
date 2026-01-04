@@ -10,6 +10,7 @@ import '../data/datasources/water_schedule_local_datasource.dart';
 import '../data/datasources/water_schedule_remote_datasource.dart';
 import '../data/repositories/water_schedule_repository_impl.dart';
 import '../domain/repositories/water_schedule_repository.dart';
+import '../domain/usecases/delete_water_schedule.dart';
 import '../domain/usecases/edit_water_schedule.dart';
 import '../domain/usecases/get_all_water_schedules.dart';
 import '../domain/usecases/get_water_schedule_by_id.dart';
@@ -54,4 +55,8 @@ final newWaterScheduleUCProvider = Provider<NewWaterSchedule>(
 
 final editWaterScheduleUCProvider = Provider<EditWaterSchedule>(
   (ref) => EditWaterSchedule(ref.read(waterScheduleRepositoryProvider)),
+);
+
+final deleteWaterScheduleUCProvider = Provider<DeleteWaterSchedule>(
+  (ref) => DeleteWaterSchedule(ref.read(waterScheduleRepositoryProvider)),
 );

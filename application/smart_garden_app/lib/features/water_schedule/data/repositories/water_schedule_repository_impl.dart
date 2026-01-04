@@ -4,6 +4,7 @@
 import 'package:dartz/dartz.dart';
 
 import '../../../../core/error/failures.dart';
+import '../../../../core/network/api_response.dart';
 import '../../../../core/network/network_info.dart';
 import '../../domain/entities/water_schedule_entity.dart';
 import '../../domain/repositories/water_schedule_repository.dart';
@@ -25,15 +26,23 @@ class WaterScheduleRepositoryImpl implements WaterScheduleRepository {
   });
 
   @override
-  Future<Either<Failure, List<WaterScheduleEntity>>> getAllWaterSchedules(
-    GetAllWSParams params,
-  ) async {
+  Future<Either<Failure, ApiResponse<List<WaterScheduleEntity>>>>
+  getAllWaterSchedules(GetAllWSParams params) async {
     if (await networkInfo.isConnected) {
       try {
-        final remoteWaterSchedules = await remoteDataSource
-            .getAllWaterSchedules(params);
-        localDataSource.cacheWaterSchedules(remoteWaterSchedules);
-        return Right(remoteWaterSchedules.map((e) => e.toEntity()).toList());
+        final response = await remoteDataSource.getAllWaterSchedules(params);
+        if (response.status != "success") {
+          return Left(ServerFailure(message: response.message));
+        }
+        localDataSource.cacheWaterSchedules(response.data ?? []);
+        return Right(
+          ApiResponse<List<WaterScheduleEntity>>(
+            status: response.status,
+            code: response.code,
+            message: response.message,
+            data: response.data!.map((e) => e.toEntity()).toList(),
+          ),
+        );
       } catch (e) {
         return const Left(ServerFailure());
       }
@@ -41,7 +50,14 @@ class WaterScheduleRepositoryImpl implements WaterScheduleRepository {
       try {
         final localWaterSchedules = await localDataSource
             .getCachedWaterSchedules();
-        return Right(localWaterSchedules.map((e) => e.toEntity()).toList());
+        return Right(
+          ApiResponse<List<WaterScheduleEntity>>(
+            status: "success",
+            code: 200,
+            message: "Cached water schedules retrieved successfully",
+            data: localWaterSchedules.map((e) => e.toEntity()).toList(),
+          ),
+        );
       } catch (e) {
         return const Left(CacheFailure());
       }
@@ -49,15 +65,22 @@ class WaterScheduleRepositoryImpl implements WaterScheduleRepository {
   }
 
   @override
-  Future<Either<Failure, WaterScheduleEntity>> getWaterScheduleById(
-    GetWSParams params,
-  ) async {
+  Future<Either<Failure, ApiResponse<WaterScheduleEntity>>>
+  getWaterScheduleById(GetWSParams params) async {
     if (await networkInfo.isConnected) {
       try {
-        final waterSchedule = await remoteDataSource.getWaterScheduleById(
-          params,
+        final response = await remoteDataSource.getWaterScheduleById(params);
+        if (response.status != "success") {
+          return Left(ServerFailure(message: response.message));
+        }
+        return Right(
+          ApiResponse<WaterScheduleEntity>(
+            status: response.status,
+            code: response.code,
+            message: response.message,
+            data: response.data!.toEntity(),
+          ),
         );
-        return Right(waterSchedule.toEntity());
       } catch (e) {
         return const Left(ServerFailure());
       }
@@ -67,15 +90,25 @@ class WaterScheduleRepositoryImpl implements WaterScheduleRepository {
   }
 
   @override
-  Future<Either<Failure, WaterScheduleEntity>> newWaterSchedule(
+  Future<Either<Failure, ApiResponse<WaterScheduleEntity>>> newWaterSchedule(
     WaterScheduleEntity waterSchedule,
   ) async {
     if (await networkInfo.isConnected) {
       try {
-        final newWS = await remoteDataSource.newWaterSchedule(
+        final response = await remoteDataSource.newWaterSchedule(
           WaterScheduleModel.fromEntity(waterSchedule),
         );
-        return Right(newWS.toEntity());
+        if (response.status != "success") {
+          return Left(ServerFailure(message: response.message));
+        }
+        return Right(
+          ApiResponse<WaterScheduleEntity>(
+            status: response.status,
+            code: response.code,
+            message: response.message,
+            data: response.data!.toEntity(),
+          ),
+        );
       } catch (e) {
         return const Left(ServerFailure());
       }
@@ -85,15 +118,51 @@ class WaterScheduleRepositoryImpl implements WaterScheduleRepository {
   }
 
   @override
-  Future<Either<Failure, WaterScheduleEntity>> editWaterSchedule(
+  Future<Either<Failure, ApiResponse<WaterScheduleEntity>>> editWaterSchedule(
     WaterScheduleEntity waterSchedule,
   ) async {
     if (await networkInfo.isConnected) {
       try {
-        final editedWS = await remoteDataSource.editWaterSchedule(
+        final response = await remoteDataSource.editWaterSchedule(
           WaterScheduleModel.fromEntity(waterSchedule),
         );
-        return Right(editedWS.toEntity());
+        if (response.status != "success") {
+          return Left(ServerFailure(message: response.message));
+        }
+        return Right(
+          ApiResponse<WaterScheduleEntity>(
+            status: response.status,
+            code: response.code,
+            message: response.message,
+            data: response.data!.toEntity(),
+          ),
+        );
+      } catch (e) {
+        return const Left(ServerFailure());
+      }
+    } else {
+      return const Left(NetworkFailure());
+    }
+  }
+
+  @override
+  Future<Either<Failure, ApiResponse<String>>> deleteWaterSchedule(
+    String id,
+  ) async {
+    if (await networkInfo.isConnected) {
+      try {
+        final response = await remoteDataSource.deleteWaterSchedule(id);
+        if (response.status != "success") {
+          return Left(ServerFailure(message: response.message));
+        }
+        return Right(
+          ApiResponse<String>(
+            status: response.status,
+            code: response.code,
+            message: response.message,
+            data: response.data!,
+          ),
+        );
       } catch (e) {
         return const Left(ServerFailure());
       }

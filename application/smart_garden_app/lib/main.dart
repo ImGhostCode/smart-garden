@@ -72,7 +72,7 @@ class MyApp extends ConsumerWidget {
         horizontal: AppConstants.paddingLg,
         vertical: AppConstants.paddingSm,
       )
-      ..displayDuration = const Duration(milliseconds: 4000);
+      ..displayDuration = const Duration(milliseconds: 3000);
 
     return MaterialApp.router(
       title: AppConstants.appName,

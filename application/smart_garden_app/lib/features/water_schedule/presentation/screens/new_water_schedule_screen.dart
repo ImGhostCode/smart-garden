@@ -110,8 +110,8 @@ class _NewWaterScheduleScreenState
 
     ref.listen(waterScheduleProvider, (previous, next) async {
       if (previous?.isCreatingWS == true && next.isCreatingWS == false) {
-        if (next.errCreatingWS != null) {
-          EasyLoading.showError(next.errCreatingWS ?? 'Error');
+        if (next.errCreatingWS.isNotEmpty) {
+          EasyLoading.showError(next.errCreatingWS);
         } else {
           EasyLoading.showSuccess(next.responseMsg ?? 'Water Schedule created');
           context.goBack();

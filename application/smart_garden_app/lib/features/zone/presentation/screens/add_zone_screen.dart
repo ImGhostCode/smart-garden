@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/ui/inputs/app_labeled_input.dart';
 import '../../../../core/utils/app_validators.dart';
+import '../../../../core/utils/extensions/navigation_extensions.dart';
+import '../../../garden/domain/entities/garden_entity.dart';
+import '../../domain/entities/zone_entity.dart';
+import '../providers/zone_provider.dart';
 
 class AddZoneScreen extends ConsumerStatefulWidget {
   const AddZoneScreen({super.key});
@@ -19,14 +24,14 @@ class _AddZoneScreenState extends ConsumerState<AddZoneScreen> {
   late final TextEditingController _name;
   late final TextEditingController _skipCount;
   late final TextEditingController _description;
-  late final TextEditingController _note;
+  late final TextEditingController _notes;
 
   @override
   void initState() {
     _name = TextEditingController();
     _skipCount = TextEditingController();
     _description = TextEditingController();
-    _note = TextEditingController();
+    _notes = TextEditingController();
     super.initState();
   }
 
@@ -35,17 +40,54 @@ class _AddZoneScreenState extends ConsumerState<AddZoneScreen> {
     _name.dispose();
     _skipCount.dispose();
     _description.dispose();
-    _note.dispose();
+    _notes.dispose();
+    EasyLoading.dismiss();
     super.dispose();
   }
 
-  void _onSave() {
+  void _onAdd() {
     if (!_formKey.currentState!.validate()) return;
-    print('add zone');
+    ref
+        .read(zoneProvider.notifier)
+        .addZone(
+          ZoneEntity(
+            id: '',
+            name: _name.text,
+            position: _position!,
+            garden: const GardenEntity(id: ''),
+            waterSchedules: const [],
+            skipCount: int.tryParse(_skipCount.text) ?? 0,
+            details: ZoneDetailEntity(
+              description: _description.text,
+              notes: _notes.text,
+            ),
+          ),
+        );
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(zoneProvider.select((state) => state.isCreatingZone), (
+      previousLoading,
+      nextLoading,
+    ) {
+      if (nextLoading == true) {
+        EasyLoading.show(status: 'Loading...');
+      } else if (nextLoading == false && previousLoading == true) {
+        EasyLoading.dismiss();
+      }
+    });
+
+    ref.listen(zoneProvider, (previous, next) async {
+      if (previous?.isCreatingZone == true && next.isCreatingZone == false) {
+        if (next.errCreatingZone != null) {
+          EasyLoading.showError(next.errCreatingZone ?? 'Error');
+        } else {
+          EasyLoading.showSuccess(next.responseMsg ?? 'Zone created');
+          context.goBack();
+        }
+      }
+    });
     return Scaffold(
       backgroundColor: AppColors.neutral50,
       appBar: AppBar(title: const Text('Add Zone'), centerTitle: true),
@@ -59,7 +101,9 @@ class _AddZoneScreenState extends ConsumerState<AddZoneScreen> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: _buildTextField('Zone name')),
+                  Expanded(
+                    child: _buildTextField('Zone name', controller: _name),
+                  ),
                   const SizedBox(width: 8),
                   SizedBox(
                     width: 100,
@@ -132,8 +176,8 @@ class _AddZoneScreenState extends ConsumerState<AddZoneScreen> {
               ),
               const SizedBox(height: 12),
               _buildTextField(
-                'Note',
-                controller: _note,
+                'Notes',
+                controller: _notes,
                 maxLines: 3,
                 required: false,
               ),
@@ -149,7 +193,7 @@ class _AddZoneScreenState extends ConsumerState<AddZoneScreen> {
         child: SizedBox(
           width: double.infinity,
           height: AppConstants.buttonMd,
-          child: ElevatedButton(onPressed: _onSave, child: const Text('Save')),
+          child: ElevatedButton(onPressed: _onAdd, child: const Text('Add')),
         ),
       ),
     );

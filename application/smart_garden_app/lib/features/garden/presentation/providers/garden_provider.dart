@@ -3,22 +3,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/garden_entity.dart';
 import '../../domain/usecases/get_all_gardens.dart';
 import '../../domain/usecases/get_garden_by_id.dart';
+import '../../domain/usecases/send_garden_action.dart';
 import '../../providers/garden_providers.dart';
 
 class GardenState {
   final bool isLoadingGardens;
   final List<GardenEntity> gardens;
-  final String? errLoadingGardens;
+  final String errLoadingGardens;
 
   final bool isLoadingGarden;
   final GardenEntity? garden;
-  final String? errLoadingGarden;
+  final String errLoadingGarden;
 
   final bool isCreatingGarden;
-  final String? errCreatingGarden;
+  final String errCreatingGarden;
 
   final bool isEditingGarden;
-  final String? errEditingGarden;
+  final String errEditingGarden;
+
+  final bool isDeletingGarden;
+  final String errDeletingGarden;
+
+  final bool isSendingAction;
+  final String errSendingAction;
 
   final String? responseMsg;
 
@@ -27,13 +34,17 @@ class GardenState {
     this.isLoadingGarden = false,
     this.isCreatingGarden = false,
     this.isEditingGarden = false,
+    this.isDeletingGarden = false,
+    this.isSendingAction = false,
     this.gardens = const [],
     this.garden,
     this.responseMsg,
-    this.errLoadingGardens,
-    this.errLoadingGarden,
-    this.errCreatingGarden,
-    this.errEditingGarden,
+    this.errLoadingGardens = "",
+    this.errLoadingGarden = "",
+    this.errCreatingGarden = "",
+    this.errEditingGarden = "",
+    this.errDeletingGarden = "",
+    this.errSendingAction = "",
   });
 
   GardenState copyWith({
@@ -41,6 +52,8 @@ class GardenState {
     bool? isLoadingGarden,
     bool? isCreatingGarden,
     bool? isEditingGarden,
+    bool? isDeletingGarden,
+    bool? isSendingAction,
     List<GardenEntity>? gardens,
     GardenEntity? Function()? garden,
     String? responseMsg,
@@ -48,18 +61,24 @@ class GardenState {
     String? errLoadingGarden,
     String? errCreatingGarden,
     String? errEditingGarden,
+    String? errDeletingGarden,
+    String? errSendingAction,
   }) {
     return GardenState(
       isLoadingGardens: isLoadingGardens ?? this.isLoadingGardens,
       isLoadingGarden: isLoadingGarden ?? this.isLoadingGarden,
       isCreatingGarden: isCreatingGarden ?? this.isCreatingGarden,
       isEditingGarden: isEditingGarden ?? this.isEditingGarden,
+      isDeletingGarden: isDeletingGarden ?? this.isDeletingGarden,
+      isSendingAction: isSendingAction ?? this.isSendingAction,
       gardens: gardens ?? this.gardens,
       garden: garden != null ? garden() : this.garden,
       errLoadingGardens: errLoadingGardens ?? this.errLoadingGardens,
       errLoadingGarden: errLoadingGarden ?? this.errLoadingGarden,
       errCreatingGarden: errCreatingGarden ?? this.errCreatingGarden,
       errEditingGarden: errEditingGarden ?? this.errEditingGarden,
+      errDeletingGarden: errDeletingGarden ?? this.errDeletingGarden,
+      errSendingAction: errSendingAction ?? this.errSendingAction,
       responseMsg: responseMsg,
     );
   }
@@ -75,7 +94,7 @@ class GardenNotifier extends Notifier<GardenState> {
   Future<void> getAllGarden(GetAllGardenParams params) async {
     state = state.copyWith(
       isLoadingGardens: true,
-      errLoadingGardens: null,
+      errLoadingGardens: '',
       gardens: [],
     );
 
@@ -87,15 +106,17 @@ class GardenNotifier extends Notifier<GardenState> {
         isLoadingGardens: false,
         errLoadingGardens: failure.message,
       ),
-      (gardens) =>
-          state = state.copyWith(isLoadingGardens: false, gardens: gardens),
+      (response) => state = state.copyWith(
+        isLoadingGardens: false,
+        gardens: response.data,
+      ),
     );
   }
 
   Future<void> getGardenById({required String id}) async {
     state = state.copyWith(
       isLoadingGarden: true,
-      errLoadingGarden: null,
+      errLoadingGarden: '',
       garden: () => null,
     );
 
@@ -107,13 +128,15 @@ class GardenNotifier extends Notifier<GardenState> {
         isLoadingGarden: false,
         errLoadingGarden: failure.message,
       ),
-      (garden) =>
-          state = state.copyWith(isLoadingGarden: false, garden: () => garden),
+      (response) => state = state.copyWith(
+        isLoadingGarden: false,
+        garden: () => response.data,
+      ),
     );
   }
 
   Future<void> createGarden(GardenEntity garden) async {
-    state = state.copyWith(isCreatingGarden: true, errCreatingGarden: null);
+    state = state.copyWith(isCreatingGarden: true, errCreatingGarden: '');
 
     final createGarden = ref.read(createGardenUCProvider);
     final result = await createGarden.call(garden);
@@ -123,15 +146,15 @@ class GardenNotifier extends Notifier<GardenState> {
         isCreatingGarden: false,
         errCreatingGarden: failure.message,
       ),
-      (createdGarden) => state = state.copyWith(
+      (response) => state = state.copyWith(
         isCreatingGarden: false,
-        responseMsg: 'Garden created successfully',
+        responseMsg: response.message,
       ),
     );
   }
 
   Future<void> editGarden(GardenEntity garden) async {
-    state = state.copyWith(isEditingGarden: true, errEditingGarden: null);
+    state = state.copyWith(isEditingGarden: true, errEditingGarden: '');
 
     final editGarden = ref.read(editGardenUCProvider);
     final result = await editGarden.call(garden);
@@ -141,9 +164,45 @@ class GardenNotifier extends Notifier<GardenState> {
         isEditingGarden: false,
         errEditingGarden: failure.message,
       ),
-      (editedGarden) => state = state.copyWith(
+      (response) => state = state.copyWith(
         isEditingGarden: false,
-        responseMsg: 'Garden edited successfully',
+        responseMsg: response.message,
+      ),
+    );
+  }
+
+  Future<void> deleteGarden(String id) async {
+    state = state.copyWith(isDeletingGarden: true, errDeletingGarden: '');
+
+    final deleteGarden = ref.read(deleteGardenUCProvider);
+    final result = await deleteGarden.call(id);
+
+    result.fold(
+      (failure) => state = state.copyWith(
+        isDeletingGarden: false,
+        errDeletingGarden: failure.message,
+      ),
+      (response) => state = state.copyWith(
+        isDeletingGarden: false,
+        responseMsg: response.message,
+      ),
+    );
+  }
+
+  Future<void> sendGardenAction(GardenActionParams params) async {
+    state = state.copyWith(isSendingAction: true, errSendingAction: '');
+
+    final sendGardenAction = ref.read(sendGardenActionUCProvider);
+    final result = await sendGardenAction.call(params);
+
+    result.fold(
+      (failure) => state = state.copyWith(
+        isSendingAction: false,
+        errSendingAction: failure.message,
+      ),
+      (response) => state = state.copyWith(
+        isSendingAction: false,
+        responseMsg: response.message,
       ),
     );
   }

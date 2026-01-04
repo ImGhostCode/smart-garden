@@ -15,8 +15,10 @@ import '../../../plant/domain/usecases/get_all_plants.dart';
 import '../../../plant/presentation/providers/plant_provider.dart';
 import '../../../zone/domain/entities/zone_entity.dart';
 import '../../../zone/domain/usecases/get_all_zones.dart';
+import '../../../zone/domain/usecases/send_zone_action.dart';
 import '../../../zone/presentation/providers/zone_provider.dart';
 import '../../domain/entities/garden_entity.dart';
+import '../../domain/usecases/send_garden_action.dart';
 import '../providers/garden_provider.dart';
 
 class GardenDetailScreen extends ConsumerStatefulWidget {
@@ -46,6 +48,29 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
     final gardenState = ref.watch(gardenProvider);
     final zoneState = ref.watch(zoneProvider);
     final plantState = ref.watch(plantProvider);
+
+    // ref.listen(zoneProvider.select((state) => state.isSendingAction), (
+    //   previousLoading,
+    //   nextLoading,
+    // ) {
+    //   if (nextLoading == true) {
+    //     EasyLoading.show(status: 'Loading...');
+    //   } else if (nextLoading == false && previousLoading == true) {
+    //     EasyLoading.dismiss();
+    //   }
+    // });
+
+    // ref.listen(zoneProvider, (previous, next) async {
+    //   if (previous?.isSendingAction == true && next.isSendingAction == false) {
+    //     if (next.errSendingAction != null) {
+    //       EasyLoading.showError(next.errSendingAction ?? 'Error');
+    //     } else {
+    //       EasyLoading.showSuccess(next.responseMsg ?? 'Zone action sent');
+    //       // context.goBack();
+    //     }
+    //   }
+    // });
+
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
@@ -64,8 +89,8 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
       ),
       body: gardenState.isLoadingGarden
           ? const Center(child: CircularProgressIndicator())
-          : gardenState.errLoadingGarden != null
-          ? Center(child: Text(gardenState.errLoadingGarden!))
+          : gardenState.errLoadingGarden.isNotEmpty
+          ? Center(child: Text(gardenState.errLoadingGarden))
           : gardenState.garden != null
           ? SingleChildScrollView(
               padding: const EdgeInsets.all(AppConstants.paddingMd),
@@ -161,8 +186,8 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
                   const SizedBox(height: 8),
                   plantState.isLoadingPlants
                       ? const Center(child: CircularProgressIndicator())
-                      : plantState.errLoadingPlants != null
-                      ? Center(child: Text(plantState.errLoadingPlants!))
+                      : plantState.errLoadingPlants.isNotEmpty
+                      ? Center(child: Text(plantState.errLoadingPlants))
                       : SizedBox(
                           height: 210,
                           child: ListView.separated(
@@ -198,7 +223,33 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
               onPressed: gardenState.isLoadingGarden == true
                   ? null
                   : () {
-                      showGardenActions(context, gardenState.garden!);
+                      showGardenActions(
+                        context: context,
+                        garden: gardenState.garden!,
+                        onToggleLight: (isOn) {
+                          ref
+                              .read(gardenProvider.notifier)
+                              .sendGardenAction(
+                                GardenActionParams(
+                                  gardenId: gardenState.garden!.id,
+                                  light: LightAction(
+                                    state: isOn ? 'ON' : 'OFF',
+                                    forDuration: '30m',
+                                  ),
+                                ),
+                              );
+                        },
+                        onStopAll: () {
+                          ref
+                              .read(gardenProvider.notifier)
+                              .sendGardenAction(
+                                GardenActionParams(
+                                  gardenId: gardenState.garden!.id,
+                                  stop: StopAction(all: true),
+                                ),
+                              );
+                        },
+                      );
                     },
               child: const Text('ACTIONS'),
             ),
@@ -347,7 +398,7 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
     final nextActionTime = nextLightAction != null
         ? AppUtils.utcToLocalString(nextLightAction.time)
         : "N/A";
-    final duration = AppUtils.msToDuration(lightSchedule.durationMs ?? 0);
+    final duration = AppUtils.msToDurationString(lightSchedule.durationMs ?? 0);
     final startTime = AppUtils.to12HourFormat(lightSchedule.startTime);
 
     return Container(
@@ -475,7 +526,19 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
               height: AppConstants.buttonSm,
               child: ElevatedButton(
                 onPressed: () {
-                  showZoneActions(context);
+                  showZoneActions(
+                    context: context,
+                    onWater: (durationMs) {
+                      ref
+                          .read(zoneProvider.notifier)
+                          .sendZoneAction(
+                            ZoneActionParams(
+                              zoneId: zone.id!,
+                              water: WaterAction(durationMs: durationMs),
+                            ),
+                          );
+                    },
+                  );
                 },
                 child: const Text(
                   "QUICK WATER",
@@ -549,7 +612,10 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
   }
 }
 
-void showZoneActions(BuildContext context) {
+void showZoneActions({
+  required BuildContext context,
+  required Function(int) onWater,
+}) {
   int durationMinutes = 15;
   final TextEditingController timeController = TextEditingController(
     text: '${durationMinutes}m',
@@ -633,8 +699,8 @@ void showZoneActions(BuildContext context) {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
-                      print("Watering in $durationMinutes minutes");
-                      Navigator.pop(context);
+                      onWater(durationMinutes * 60 * 1000);
+                      Navigator.of(context).pop();
                     },
                     child: const Text('Submit'),
                   ),
