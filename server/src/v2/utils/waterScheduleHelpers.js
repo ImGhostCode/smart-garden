@@ -1,5 +1,6 @@
 const {
-    millisToDuration, durationToMillis, validMonthToNumber
+    validMonthToNumber,
+    intervalToMillis
 } = require('./helpers');
 const db = require('../models/database');
 const WeatherClient = require('../services/weatherClientService');
@@ -19,8 +20,11 @@ const getCronScheduler = () => {
 const getNextWaterDetails = async (waterSchedule, excludeWeatherData = false) => {
     const result = {
         time: null,
-        duration: waterSchedule.duration,
-        water_schedule_id: waterSchedule._id,
+        duration_ms: waterSchedule.duration_ms,
+        water_schedule: {
+            id: waterSchedule._id,
+            name: waterSchedule.name
+        },
         message: 'Next scheduled watering'
     };
 
@@ -40,9 +44,9 @@ const getNextWaterDetails = async (waterSchedule, excludeWeatherData = false) =>
     if (waterSchedule.hasWeatherControl() && !excludeWeatherData) {
         try {
             const scaledDurationMs = await scaleWateringDuration(waterSchedule);
-            if (scaledDurationMs !== durationToMillis(waterSchedule.duration)) {
-                result.duration = millisToDuration(scaledDurationMs);
-                const scalePercent = Math.round((scaledDurationMs / durationToMillis(waterSchedule.duration)) * 100);
+            if (scaledDurationMs !== waterSchedule.duration_ms) {
+                result.duration_ms = Math.round(scaledDurationMs);
+                const scalePercent = Math.round((scaledDurationMs / waterSchedule.duration_ms) * 100);
                 result.message = `Watering adjusted by weather (${scalePercent}%)`;
             }
 
@@ -104,7 +108,7 @@ const scaleWateringDuration = async (waterSchedule) => {
                 throw new Error('WeatherClient not found for TemperatureControl');
             }
             const avgHighTemp = await new WeatherClient(weatherClient).getAverageHighTemperature(
-                durationToMillis(waterSchedule.interval)
+                intervalToMillis(waterSchedule.interval)
             );
             const tempScaleFactor = waterSchedule.weather_control.temperature_control.scale(avgHighTemp);
             scaleFactor *= tempScaleFactor;
@@ -121,7 +125,7 @@ const scaleWateringDuration = async (waterSchedule) => {
                 throw new Error('WeatherClient not found for RainControl');
             }
             const totalRain = await new WeatherClient(weatherClient).getTotalRain(
-                durationToMillis(waterSchedule.interval)
+                intervalToMillis(waterSchedule.interval)
             );
             const rainScaleFactor = waterSchedule.weather_control.rain_control.invertedScaleDownOnly(totalRain);
             scaleFactor *= rainScaleFactor;
@@ -133,17 +137,17 @@ const scaleWateringDuration = async (waterSchedule) => {
     }
 
     console.log('Final scale factor:', scaleFactor);
-    return durationToMillis(waterSchedule.duration) * scaleFactor;
+    return waterSchedule.duration_ms * scaleFactor;
 }
 
 // Internal helper method for calculating effective watering duration
 const calEffectiveWatering = (schedule, weatherData) => {
-    const originalDuration = durationToMillis(schedule.duration);
+    const originalDuration = schedule.duration_ms;
 
     // Check active period
     if (!isActiveTime(schedule)) {
         return {
-            duration: 0,
+            duration_ms: 0,
             scaleFactor: 0,
             reason: 'outside_active_period',
             adjustments: [],
@@ -154,7 +158,7 @@ const calEffectiveWatering = (schedule, weatherData) => {
     // Apply weather scaling if enabled
     if (!schedule.hasWeatherControl() || !weatherData) {
         return {
-            duration: originalDuration,
+            duration_ms: originalDuration,
             scaleFactor: 1.0,
             reason: 'normal_watering',
             adjustments: [],
@@ -194,7 +198,7 @@ const calEffectiveWatering = (schedule, weatherData) => {
     // Skip if duration too low
     if (finalDuration < 1000) { // Less than 1 second
         return {
-            duration: 0,
+            duration_ms: 0,
             scaleFactor,
             reason: 'weather_conditions_skip',
             adjustments,
@@ -203,7 +207,7 @@ const calEffectiveWatering = (schedule, weatherData) => {
     }
 
     return {
-        duration: finalDuration,
+        duration_ms: finalDuration,
         scaleFactor,
         reason: 'weather_adjusted_watering',
         adjustments,
@@ -216,105 +220,40 @@ const getMockNextWaterTime = () => {
 };
 
 // Calculate the next water time based on schedule properties
-const calculateNextWaterTime = (schedule) => {
+// Calculate the next water time based on schedule properties
+const calculateNextWaterTime = (startTime, interval) => {
+    // startTime: "HH:MM:SS"
+    // interval: string or number (days)
     const now = new Date();
-    now.setMilliseconds(0);
-    // Parse start_time (format: "HH:MM:SS±HH:MM")
-    const timeMatch = schedule.start_time.match(/^(\d{2}):(\d{2}):(\d{2})([+-])(\d{2}):(\d{2})$/);
+    now.setUTCMilliseconds(0);
+
+    // Parse start_time (format: "HH:MM:SS")
+    const timeMatch = startTime.match(/^(\d{2}):(\d{2}):(\d{2})$/);
     if (!timeMatch) {
         throw new Error('Invalid start_time format');
     }
-
-    const [, hours, minutes, seconds, tzSign, tzHours, tzMinutes] = timeMatch;
+    const [, hours, minutes, seconds] = timeMatch;
     const startHour = parseInt(hours, 10);
     const startMinute = parseInt(minutes, 10);
     const startSecond = parseInt(seconds, 10);
 
-    // Get timezone offset in hours
-    const timezoneOffsetHours = (tzSign === '+' ? 1 : -1) * parseInt(tzHours, 10);
-    const timezoneOffset = timezoneOffsetHours * 60 * 60 * 1000; // Convert to milliseconds
-
-    // Parse interval to hours
-    const intervalMatch = schedule.interval.match(/^(\d+)([smhd])$/);
-    if (!intervalMatch) {
+    // Parse interval as integer days
+    let intervalDays = parseInt(interval, 10);
+    if (isNaN(intervalDays) || intervalDays < 1) {
         throw new Error('Invalid interval format');
     }
 
-    const value = parseInt(intervalMatch[1]);
-    const unit = intervalMatch[2];
-    let intervalHours;
+    // Find the first start time (today at start time)
+    let nextExecution = new Date(Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        startHour, startMinute, startSecond, 0
+    ));
 
-    switch (unit) {
-        case 's': intervalHours = value / 3600; break;
-        case 'm': intervalHours = value / 60; break;
-        case 'h': intervalHours = value; break;
-        case 'd': intervalHours = value * 24; break;
-        default: throw new Error('Invalid interval unit');
-    }
-
-    // Calculate execution times based on interval (similar to cron logic)
-    let executionHours = [startHour];
-
-    if (intervalHours === 12) {
-        // Twice daily: original hour and 12 hours later
-        executionHours = [startHour, (startHour + 12) % 24];
-    } else if (intervalHours < 24) {
-        // Multiple times per day
-        executionHours = [];
-        for (let h = 0; h < 24; h += intervalHours) {
-            executionHours.push((startHour + h) % 24);
-        }
-    }
-    // For 24h or longer intervals, keep original hour
-
-    // Get current time in the schedule's timezone
-    const nowInTimezone = new Date(now.getTime() + timezoneOffset);
-
-    // Find next execution time
-    let nextExecution = null;
-    const sortedHours = [...executionHours].sort((a, b) => a - b);
-
-    // Check today's times first
-    for (const targetHour of sortedHours) {
-        // Create time in target timezone
-        const timezoneTime = new Date();
-        timezoneTime.setUTCFullYear(nowInTimezone.getUTCFullYear());
-        timezoneTime.setUTCMonth(nowInTimezone.getUTCMonth());
-        timezoneTime.setUTCDate(nowInTimezone.getUTCDate());
-        timezoneTime.setUTCHours(targetHour, startMinute, startSecond, 0);
-
-        // Convert to UTC by subtracting timezone offset
-        const utcTime = new Date(timezoneTime.getTime() - timezoneOffset);
-
-        if (utcTime >= now) {
-            nextExecution = utcTime;
-            break;
-        }
-    }
-
-    // If no time today works, use tomorrow's earliest time
-    if (!nextExecution) {
-        const tomorrowInTimezone = new Date(nowInTimezone);
-        tomorrowInTimezone.setUTCDate(tomorrowInTimezone.getUTCDate() + 1);
-        tomorrowInTimezone.setUTCHours(sortedHours[0], startMinute, startSecond, 0);
-
-        nextExecution = new Date(tomorrowInTimezone.getTime() - timezoneOffset);
-    }
-
-    // Handle day intervals (e.g., every 2 days, every 3 days)
-    if (intervalHours >= 24 && intervalHours % 24 === 0) {
-        const dayInterval = intervalHours / 24;
-        let testExecution = new Date(nextExecution);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        let daysDiff = Math.floor((testExecution - today) / (24 * 60 * 60 * 1000));
-        while (daysDiff % dayInterval !== 0) {
-            testExecution.setDate(testExecution.getDate() + 1);
-            daysDiff++;
-        }
-
-        nextExecution = testExecution;
+    // If the next execution is in the past, add interval days until it's in the future
+    while (nextExecution <= now) {
+        nextExecution.setUTCDate(nextExecution.getUTCDate() + intervalDays);
     }
 
     return nextExecution;

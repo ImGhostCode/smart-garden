@@ -1,6 +1,7 @@
 @hostname = http://localhost
 @port = 3000
 @host = {{hostname}}:{{port}}
+@weatherClientId = 6961ddb0913188586a0c3f7e
 ### Weater Clients API ###:
 GET    {{host}}/weather_clients?end_dated=false
 ###
@@ -9,9 +10,10 @@ Content-Type: application/json
 
 {
   "type": "fake",
+  "name": "Test Fake Client",
   "options": {
     "rain_mm": 25.4,
-    "rain_interval": "24h",
+    "rain_interval_ms": 86400000,
     "avg_high_temperature": 80.0,
     "error": ""
   }
@@ -22,6 +24,7 @@ Content-Type: application/json
 
 {
   "type": "netatmo",
+  "name": "Ha Noi",
   "options": {
     "station_id": "STATION_ID",
     "station_name": "Weather Station",
@@ -37,26 +40,28 @@ Content-Type: application/json
   }
 }
 ###
-GET    {{host}}/weather_clients/690588a431116ae2f99f21aa
+GET    {{host}}/weather_clients/{{weatherClientId}}
 ###
-PATCH  {{host}}/weather_clients/690588bc31116ae2f99f21ac
+PATCH  {{host}}/weather_clients/6961dd9e913188586a0c3f7b
 Content-Type: application/json
 
 {
   "type": "fake",
+  "name": "Updated Fake Client",
   "options": {
     "rain_mm": 26.4,
-    "rain_interval": "24h",
+    "rain_interval_ms": 43200000,
     "avg_high_temperature": 80.0,
     "error": ""
   }
 }
 ###
-PATCH  {{host}}/weather_clients/690588a431116ae2f99f21aa
+PATCH  {{host}}/weather_clients/6961ddb0913188586a0c3f7e
 Content-Type: application/json
 
 {
   "type": "netatmo",
+  "name": "Updated Ha Noi",
   "options": {
     "station_id": "STATION_ID",
     "station_name": "Weather Station",
@@ -74,10 +79,10 @@ Content-Type: application/json
   }
 }
 ###
-DELETE {{host}}/weather_clients/69058ce59f2df4a4e1658bd0
+DELETE {{host}}/weather_clients/{{weatherClientId}}
 
 ### Test Netatmo client
-GET {{host}}/weather_clients/690588a431116ae2f99f21aa/test
+GET {{host}}/weather_clients/6961ddb0913188586a0c3f7e/test
 
 ### Test Fake client
-GET {{host}}/weather_clients/690588bc31116ae2f99f21ac/test
+GET {{host}}/weather_clients/6961dd9e913188586a0c3f7b/test

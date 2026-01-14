@@ -4,10 +4,10 @@ const { xidPattern } = require('../utils/validation');
 // Zone Schema
 const zoneSchema = new Schema({
     garden_id: {
-        type: String,
+        type: Schema.Types.ObjectId,
         required: true,
         ref: 'Garden',
-        index: true,
+        // index: true,
         validate: {
             validator: function (v) {
                 return xidPattern.test(v);
@@ -36,7 +36,7 @@ const zoneSchema = new Schema({
         min: 0
     },
     water_schedule_ids: [{
-        type: String,
+        type: Schema.Types.ObjectId,
         ref: 'WaterSchedule',
         validate: {
             validator: function (v) {

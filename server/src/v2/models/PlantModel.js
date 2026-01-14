@@ -9,7 +9,7 @@ const plantSchema = new Schema({
         trim: true
     },
     garden_id: {
-        type: String,
+        type: Schema.Types.ObjectId,
         required: true,
         ref: 'Garden',
         // index: true,
@@ -21,7 +21,7 @@ const plantSchema = new Schema({
         }
     },
     zone_id: {
-        type: String,
+        type: Schema.Types.ObjectId,
         required: true,
         ref: 'Zone',
         // index: true,

@@ -63,7 +63,16 @@ Content-Type: application/json
 ###
 
 # Manually trigger a water schedule (test execution)
-POST http://localhost:3000/scheduler/water_schedules/68de83cb66de8a502e0e4334/trigger
+POST http://localhost:3000/scheduler/water_schedules/6966fb19cc7a5d3913abd8b1/trigger
+Content-Type: application/json
+
+{
+    "force": false
+}
+###
+
+# Manually trigger a water schedule (test execution)
+POST http://localhost:3000/scheduler/water_schedules/69661b144ce1de3bcf8a87f4/trigger
 Content-Type: application/json
 
 {
@@ -73,17 +82,37 @@ Content-Type: application/json
 ###
 
 # Force trigger a water schedule (ignores conditions)
-POST http://localhost:3000/scheduler/water_schedules/68de83cb66de8a502e0e4334/trigger
+POST http://localhost:3000/scheduler/water_schedules/69661b784ce1de3bcf8a87f6/trigger
 Content-Type: application/json
 
 {
-    "force": true
+    "force": false
+}
+
+###
+
+# Force trigger a water schedule (ignores conditions)
+POST http://localhost:3000/scheduler/water_schedules/69661bb7adb93d8d2b03c748/trigger
+Content-Type: application/json
+
+{
+    "force": false
+}
+
+###
+
+# Force trigger a water schedule (ignores conditions)
+POST http://localhost:3000/scheduler/water_schedules/69661aca4ce1de3bcf8a87ee/trigger
+Content-Type: application/json
+
+{
+    "force": false
 }
 
 ###
 
 # Schedule a specific water schedule (if not already scheduled)
-POST http://localhost:3000/scheduler/water_schedules/68de80dc1a38491918156281/schedule
+POST http://localhost:3000/scheduler/water_schedules/69661aca4ce1de3bcf8a87ee/schedule
 Content-Type: application/json
 
 ###

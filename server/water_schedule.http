@@ -5,27 +5,38 @@
 GET    {{host}}/water_schedules?end_dated=false&exclude_weather_data=true
 
 ###
-POST   {{host}}/water_schedules?exclude_weather_data=true
+POST   {{host}}/water_schedules?exclude_weather_data=false
+Content-Type: application/json
+
+{
+  "name": "Seedlings",
+  "description": "Water seedlings a bit every day",
+  "duration_ms": 60000,
+  "interval": 1,
+  "start_time": "15:00:00"
+}
+###
+POST   {{host}}/water_schedules?exclude_weather_data=false
 Content-Type: application/json
 
 {
   "name": "Morning Lawn",
   "description": "Water lawn every morning",
-  "duration": "15m",
-  "interval": "24h",
-  "start_time": "06:00:00+07:00",
+  "duration_ms": 900000,
+  "interval": 1,
+  "start_time": "06:00:00",
    "weather_control": {
         "temperature_control": {
             "baseline_value": 25,
             "factor": 0.9,
             "range": 12,
-            "client_id": "68e1f4b4681d52cf1e8b34b0"
+            "client_id": "6961dd9e913188586a0c3f7b"
         },
         "rain_control": {
             "baseline_value": 3.0,
             "factor": 0.85,
             "range": 6.0,
-            "client_id": "68e1f4b4681d52cf1e8b34b0"
+            "client_id": "6961dd9e913188586a0c3f7b"
         }
     }
 }
@@ -37,21 +48,21 @@ Content-Type: application/json
 {
   "name": "Shrubs",
   "description": "Water shrubs every 5 days",
-  "duration": "45m",
-  "interval": "120h",
-  "start_time": "22:00:00+07:00",
+  "duration_ms": 2700000,
+  "interval": 5,
+  "start_time": "15:04:00",
   "weather_control": {
         "temperature_control": {
             "baseline_value": 25,
             "factor": 0.9,
             "range": 12,
-            "client_id": "68e1f4b4681d52cf1e8b34b0"
+            "client_id": "6961ddb0913188586a0c3f7e"
         },
         "rain_control": {
             "baseline_value": 3.0,
             "factor": 0.85,
             "range": 6.0,
-            "client_id": "68e1f4b4681d52cf1e8b34b0"
+            "client_id": "6961dd9e913188586a0c3f7b"
         }
     }
 }
@@ -63,21 +74,21 @@ Content-Type: application/json
 {
   "name": "Summer Trees",
   "description": "Water deeply every 10 days",
-  "duration": "90m",
-  "interval": "240h",
-  "start_time": "22:00:00+07:00",
+  "duration_ms": 5400000,
+  "interval": 10,
+  "start_time": "12:00:00",
  "weather_control": {
         "temperature_control": {
             "baseline_value": 30,
             "factor": 0.7,
             "range": 15,
-            "client_id": "68e1f4b4681d52cf1e8b34b0"
+            "client_id": "6961ddb0913188586a0c3f7e"
         },
         "rain_control": {
             "baseline_value": 2.0,
             "factor": 0.8,
             "range": 5.0,
-            "client_id": "68e1f4b4681d52cf1e8b34b0"
+            "client_id": "6961ddb0913188586a0c3f7e"
         }
     },
   "active_period": {
@@ -93,46 +104,69 @@ Content-Type: application/json
 {
   "name": "Winter Trees",
   "description": "Water deeply and infrequently in the winter",
-  "duration": "1h",
-  "interval": "480h",
-  "start_time": "19:00:00+07:00",
+  "duration_ms": 3600000,
+  "interval": 20,
+  "start_time": "12:00:00",
   "active_period": {
     "start_month": "Oct",
     "end_month": "Mar"
   }
 }
 ###
-GET    {{host}}/water_schedules/68de82101a38491918156283?exclude_weather_data=false
+GET    {{host}}/water_schedules/69661bb7adb93d8d2b03c748?exclude_weather_data=false
 ###
-PATCH  {{host}}/water_schedules/68de80dc1a38491918156281?exclude_weather_data=true
+PATCH  {{host}}/water_schedules/69661b144ce1de3bcf8a87f4?exclude_weather_data=false
 Content-Type: application/json
 
 {
-  "start_time": "15:00:00+07:00",
-  "interval": "120h"
+  "name": "Shrubs",
+  "description": "Water shrubs every 5 days",
+  "duration_ms": 2700000,
+  "interval": 5,
+  "start_time": "02:08:00",
+  "weather_control": {
+        "temperature_control": {
+            "baseline_value": 25,
+            "factor": 0.9,
+            "range": 12,
+            "client_id": "6961ddb0913188586a0c3f7e"
+        },
+        "rain_control": {
+            "baseline_value": 3.0,
+            "factor": 0.85,
+            "range": 6.0,
+            "client_id": "6961dd9e913188586a0c3f7b"
+        }
+    }
 }
 ###
-DELETE {{host}}/water_schedules/68de801e1a3849191815627f?exclude_weather_data=false
-
-###
-GET   {{host}}/water_schedules/68de801e1a3849191815627f/preview?include_zones=true
-###
-GET   {{host}}/water_schedules/68de80dc1a38491918156281/preview?include_zones=false
-###
-GET   {{host}}/water_schedules/68de82101a38491918156283/preview?include_zones=false
-###
-GET   {{host}}/water_schedules/68de83cb66de8a502e0e4334/preview?include_zones=true
-
-###
-POST   {{host}}/water_schedules/68de801e1a3849191815627f/execute
+PATCH  {{host}}/water_schedules/6966fb19cc7a5d3913abd8b1?exclude_weather_data=false
 Content-Type: application/json
 
 {
-  "force_execution": true,
-  "simulate": true
+  "name": "Seedlings",
+  "description": "Water seedlings a bit every day",
+  "duration_ms": 60000,
+  "interval": 1,
+  "start_time": "15:00:00"
 }
+
 ###
-POST   {{host}}/water_schedules/68de80dc1a38491918156281/execute
+DELETE {{host}}/water_schedules/69661bb7adb93d8d2b03c748?exclude_weather_data=false
+
+###
+GET   {{host}}/water_schedules/6966fb19cc7a5d3913abd8b1/preview?include_zones=true
+###
+GET   {{host}}/water_schedules/69661b784ce1de3bcf8a87f6/preview?include_zones=true
+###
+GET   {{host}}/water_schedules/69661b144ce1de3bcf8a87f4/preview?include_zones=false
+###
+GET   {{host}}/water_schedules/69661aca4ce1de3bcf8a87ee/preview?include_zones=false
+###
+GET   {{host}}/water_schedules/69661bb7adb93d8d2b03c748/preview?include_zones=true
+
+###
+POST   {{host}}/water_schedules/69661b784ce1de3bcf8a87f6/execute
 Content-Type: application/json
 
 {
@@ -140,7 +174,15 @@ Content-Type: application/json
   "simulate": true
 }
 ###
-POST   {{host}}/water_schedules/68de82101a38491918156283/execute
+POST   {{host}}/water_schedules/69661b144ce1de3bcf8a87f4/execute
+Content-Type: application/json
+
+{
+  "force_execution": false,
+  "simulate": true
+}
+###
+POST   {{host}}/water_schedules/69661aca4ce1de3bcf8a87ee/execute
 Content-Type: application/json
 
 {
@@ -148,10 +190,10 @@ Content-Type: application/json
   "simulate": false
 }
 ###
-POST   {{host}}/water_schedules/68de83cb66de8a502e0e4334/execute
+POST   {{host}}/water_schedules/69661bb7adb93d8d2b03c748/execute
 Content-Type: application/json
 
 {
   "force_execution": false,
-  "simulate": true
+  "simulate": false
 }

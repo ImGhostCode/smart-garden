@@ -371,14 +371,14 @@ class MQTTService extends EventEmitter {
     async sendUpdateAction(garden, config) {
         const topic = `${garden.topic_prefix}${this.TOPICS.COMMANDS.UPDATE_CONFIG}`;
         const command = {
-            "num_zones": config.valvePins.length,
-            "valve_pins": config.valvePins,
-            "pump_pins": config.pumpPins,
-            "light": config.lightPin !== undefined,
-            "light_pin": config.lightPin,
-            "temp_humidity": config.tempHumidityPin !== undefined,
-            "temp_humidity_pin": config.tempHumidityPin,
-            "temp_humidity_interval": config.tempHumidityInterval
+            "num_zones": config.valve_pins.length,
+            "valve_pins": config.valve_pins,
+            "pump_pins": config.pump_pins,
+            "light": config.light_pin !== undefined,
+            "light_pin": config.light_pin,
+            "temp_humidity": config.temp_humidity_pin !== undefined,
+            "temp_humidity_pin": config.temp_humidity_pin,
+            "temp_humidity_interval": config.temp_hum_interval_ms
         };
 
         await this.publish(topic, command);

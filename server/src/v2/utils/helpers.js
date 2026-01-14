@@ -83,6 +83,12 @@ const millisToDuration = (ms) => {
   return parts.join(' ') || '0s';
 };
 
+// 1,2,3, ... => milliseconds
+const intervalToMillis = (interval) => {
+  const num = parseInt(interval, 10);
+  if (isNaN(num) || num <= 0) return 0;
+  return num * 24 * 60 * 60 * 1000; // days to milliseconds
+}
 
 module.exports = {
   generateXid,
@@ -90,5 +96,6 @@ module.exports = {
   validMonthToNumber,
   durationToMillis,
   millisToDuration,
-  durationToSeconds
+  durationToSeconds,
+  intervalToMillis
 };

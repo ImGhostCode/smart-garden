@@ -1,6 +1,6 @@
 const db = require('../models/database');
 const { ApiSuccess, ApiError } = require('../utils/apiResponse');
-const { createLink } = require('../utils/helpers');
+const { createLink, intervalToMillis } = require('../utils/helpers');
 const { getNextWaterDetails, getNextActiveWaterSchedule } = require('../utils/waterScheduleHelpers');
 
 const PlantsController = {
@@ -16,11 +16,11 @@ const PlantsController = {
         }
 
         try {
-            const plants = await db.plants.getAll(filters);
+            const plants = await db.plants.getAll({ filters: filters, zone: true, garden: true });
 
             return res.json(new ApiSuccess(200, 'Plants retrieved successfully', await Promise.all(plants.map(async (plant) => {
-                const zone = await db.zones.getById(plant.zone_id);
-                if (!zone || zone.garden_id !== gardenID) {
+                const zone = await db.zones.getById({ id: plant.zone_id._id.toString() });
+                if (!zone || zone.garden_id._id.toString() !== gardenID) {
                     throw new ApiError(404, 'Zone not found');
                 }
 
@@ -33,15 +33,19 @@ const PlantsController = {
                     // Apply skip count if present
                     if (zone.skip_count && zone.skip_count > 0 && nextWaterDetails.time) {
                         //A adjust the time based on skip count: skip_count * interval
-                        nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + zone.skip_count * durationToMillis(nextSchedule.interval));
+                        nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + zone.skip_count * intervalToMillis(nextSchedule.interval));
                     }
                 }
                 return {
                     ...plant.toObject(),
+                    garden_id: undefined,
+                    garden: plant.garden_id,
+                    zone_id: undefined,
+                    zone: plant.zone_id,
                     links: [
-                        createLink('self', `/gardens/${gardenID}/plants/${plant.id}`),
+                        createLink('self', `/gardens/${gardenID}/plants/${plant._id}`),
                         createLink('garden', `/gardens/${gardenID}`),
-                        createLink('zone', `/gardens/${gardenID}/zones/${plant.zone_id}`)
+                        createLink('zone', `/gardens/${gardenID}/zones/${plant.zone_id._id}`)
                     ],
                     next_water_time: nextWaterDetails.time
                 }
@@ -63,8 +67,8 @@ const PlantsController = {
             }
 
             // Check if zone exists and belongs to the garden
-            const zone = await db.zones.getById(zone_id);
-            if (!zone || zone.garden_id !== gardenID) {
+            const zone = await db.zones.getById({ id: zone_id });
+            if (!zone || zone.garden_id.toString() !== gardenID) {
                 throw new ApiError(400, 'Invalid zone_id for the specified garden');
             }
 
@@ -75,14 +79,18 @@ const PlantsController = {
                 details,
             };
 
-            const result = await db.plants.create(plant);
+            const result = await db.plants.create({ data: plant, zone: true, garden: true });
 
             res.status(201).json(new ApiSuccess(201, 'Plant added successfully', {
                 ...result.toObject(),
+                garden_id: undefined,
+                garden: result.garden_id,
+                zone_id: undefined,
+                zone: result.zone_id,
                 links: [
-                    createLink('self', `/gardens/${gardenID}/plants/${plant.id}`),
+                    createLink('self', `/gardens/${gardenID}/plants/${plant._id}`),
                     createLink('garden', `/gardens/${gardenID}`),
-                    createLink('zone', `/gardens/${gardenID}/zones/${plant.zone_id}`)
+                    createLink('zone', `/gardens/${gardenID}/zones/${plant.zone_id._id}`)
                 ],
             }));
         } catch (error) {
@@ -94,14 +102,14 @@ const PlantsController = {
         const { gardenID, plantID } = req.params;
 
         try {
-            const plant = await db.plants.getById(plantID);
+            const plant = await db.plants.getById({ id: plantID, zone: true, garden: true });
 
-            if (!plant || plant.garden_id !== gardenID) {
+            if (!plant || plant.garden_id._id.toString() !== gardenID) {
                 throw new ApiError(404, 'Plant not found');
             }
 
-            const zone = await db.zones.getById(plant.zone_id);
-            if (!zone || zone.garden_id !== gardenID) {
+            const zone = await db.zones.getById({ id: plant.zone_id._id.toString() });
+            if (!zone || zone.garden_id.toString() !== gardenID) {
                 throw new ApiError(404, 'Zone not found');
             }
 
@@ -114,16 +122,20 @@ const PlantsController = {
                 // Apply skip count if present
                 if (zone.skip_count && zone.skip_count > 0 && nextWaterDetails.time) {
                     //A adjust the time based on skip count: skip_count * interval
-                    nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + zone.skip_count * durationToMillis(nextSchedule.interval));
+                    nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + zone.skip_count * intervalToMillis(nextSchedule.interval));
                 }
             }
 
             return res.json(new ApiSuccess(200, 'Plant retrieved successfully', {
                 ...plant.toObject(),
+                garden_id: undefined,
+                garden: plant.garden_id,
+                zone_id: undefined,
+                zone: plant.zone_id,
                 links: [
-                    createLink('self', `/gardens/${gardenID}/plants/${plant.id}`),
+                    createLink('self', `/gardens/${gardenID}/plants/${plant._id}`),
                     createLink('garden', `/gardens/${gardenID}`),
-                    createLink('zone', `/gardens/${gardenID}/zones/${plant.zone_id}`)
+                    createLink('zone', `/gardens/${gardenID}/zones/${plant.zone_id._id}`)
                 ],
                 next_water_time: nextWaterDetails.time
             }));
@@ -138,15 +150,15 @@ const PlantsController = {
 
         try {
             // Check if plant exists and belongs to the garden
-            const plant = await db.plants.getById(plantID);
-            if (!plant || plant.garden_id !== gardenID) {
+            const plant = await db.plants.getById({ id: plantID, zone: true, garden: true });
+            if (!plant || plant.garden_id._id.toString() !== gardenID) {
                 throw new ApiError(404, 'Plant not found');
             }
 
             // Check if zone exists and belongs to the garden (if zone_id is being updated)
-            const zone = await db.zones.getById(zone_id);
+            const zone = await db.zones.getById({ id: zone_id });
             if (zone_id) {
-                if (!zone || zone.garden_id !== gardenID) {
+                if (!zone || zone.garden_id.toString() !== gardenID) {
                     throw new ApiError(400, 'Invalid zone_id for the specified garden');
                 }
             }
@@ -156,7 +168,7 @@ const PlantsController = {
             if (zone_id) update.zone_id = zone_id;
             if (details) update.details = details;
 
-            const result = await db.plants.updateById(plantID, update);
+            const result = await db.plants.updateById({ id: plantID, data: update, zone: true, garden: true });
 
             const nextSchedule = await getNextActiveWaterSchedule(zone.water_schedule_ids || []);
             let nextWaterDetails = {
@@ -167,16 +179,20 @@ const PlantsController = {
                 // Apply skip count if present
                 if (zone.skip_count && zone.skip_count > 0 && nextWaterDetails.time) {
                     //A adjust the time based on skip count: skip_count * interval
-                    nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + zone.skip_count * durationToMillis(nextSchedule.interval));
+                    nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + zone.skip_count * intervalToMillis(nextSchedule.interval));
                 }
             }
 
             return res.json(new ApiSuccess(200, 'Plant updated successfully', {
                 ...result.toObject(),
+                garden_id: undefined,
+                garden: result.garden_id,
+                zone_id: undefined,
+                zone: result.zone_id,
                 links: [
-                    createLink('self', `/gardens/${gardenID}/plants/${plant.id}`),
+                    createLink('self', `/gardens/${gardenID}/plants/${plant._id}`),
                     createLink('garden', `/gardens/${gardenID}`),
-                    createLink('zone', `/gardens/${gardenID}/zones/${plant.zone_id}`)
+                    createLink('zone', `/gardens/${gardenID}/zones/${plant.zone_id._id}`)
                 ],
                 next_water_time: nextWaterDetails.time
             }));
@@ -189,8 +205,8 @@ const PlantsController = {
         const { gardenID, plantID } = req.params;
 
         try {
-            const plant = await db.plants.getById(plantID);
-            if (!plant || plant.garden_id !== gardenID) {
+            const plant = await db.plants.getById({ id: plantID });
+            if (!plant || plant.garden_id.toString() !== gardenID) {
                 throw new ApiError(404, 'Plant not found');
             }
 

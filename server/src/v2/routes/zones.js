@@ -1,8 +1,9 @@
 const { Router } = require('express');
 const router = Router();
 const ZonesController = require('../controllers/zonesController');
-const { schemas, validateBody, validateParams, validateQuery } = require('../utils/validation');
 const Joi = require('joi');
+const { validateBody, validateParams, validateQuery } = require('../middlewares/validationMiddleware');
+const { schemas } = require('../utils/validation');
 
 // Zones routes
 // GET /:gardenID/zones - Get all zones (with optional query params)

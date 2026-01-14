@@ -1,5 +1,5 @@
 const { Schema, model } = require('mongoose');
-const { durationPattern } = require('../utils/validation');
+const config = require('../config/app.config');
 
 // WaterRoutineStep specifies a Zone and Duration to water
 const waterRoutineStepSchema = new Schema({
@@ -8,14 +8,13 @@ const waterRoutineStepSchema = new Schema({
         ref: 'Zone',
         required: true
     },
-    duration: {
-        type: String,
+    duration_ms: {
+        type: Number,
         validate: {
             validator: function (v) {
-                // Duration format validation (e.g., "15000ms", "15m", "1h")
-                return durationPattern.test(v);
+                return Number.isInteger(v) && v >= config.minWaterDuration && v <= config.maxWaterDuration;
             },
-            message: 'Duration must be in valid format (e.g., "15000ms", "15m")'
+            message: `Duration must be between ${config.minWaterDuration}ms and ${config.maxWaterDuration}ms`
         }
     }
 }, { _id: false });

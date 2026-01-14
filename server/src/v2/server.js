@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const errorHandler = require('./middlewares/errorHandler');
+const client = require('prom-client');
 
 // Import MQTT service
 const mqttService = require('./services/mqttService');
@@ -21,6 +22,10 @@ const waterRoutineRoutes = require('./routes/waterRoutine');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const register = new client.Registry();
+
+// Collect default metrics (CPU, memory usage, etc.)
+client.collectDefaultMetrics({ register });
 
 // Middleware
 app.use(cors());
@@ -138,38 +143,62 @@ app.get('/health', (req, res) => {
         const cronScheduler = require('./services/cronScheduler');
         const activeJobs = cronScheduler.getActiveJobs();
 
-        res.json({
-            status: 'OK',
-            timestamp: new Date().toISOString(),
-            uptime: process.uptime(),
-            mqtt_status: mqttService.getConnectionStatus(),
-            database_status: db.getConnectionStatus(),
-            scheduler_status: {
-                active: true,
-                active_jobs_count: activeJobs.length,
-                next_execution: activeJobs.length > 0 ? activeJobs[0].next_execution : null
-            }
+        res.status(200).json({
+            code: 200,
+            status: 'success',
+            message: 'Server is healthy',
+            data: {
+                timestamp: new Date().toISOString(),
+                uptime: process.uptime(),
+                mqtt_status: mqttService.getConnectionStatus(),
+                database_status: db.getConnectionStatus(),
+                scheduler_status: {
+                    active: true,
+                    active_jobs_count: activeJobs.length,
+                    next_execution: activeJobs.length > 0 ? activeJobs[0].next_execution : null
+                }
+            },
+            meta: {
+                timestamp: new Date().toISOString(),
+                request_id: req.headers['x-request-id'] || 'N/A'
+            },
         });
     } catch (error) {
         res.json({
-            status: 'OK',
-            timestamp: new Date().toISOString(),
-            uptime: process.uptime(),
-            mqtt_status: mqttService.getConnectionStatus(),
-            database_status: db.getConnectionStatus(),
-            scheduler_status: {
-                active: false,
-                error: error.message
-            }
+            code: 500,
+            status: 'error',
+            message: 'Server health check failed',
+            data: {
+                timestamp: new Date().toISOString(),
+                uptime: process.uptime(),
+                mqtt_status: mqttService.getConnectionStatus(),
+                database_status: db.getConnectionStatus(),
+                scheduler_status: {
+                    active: false,
+                    error: error.message
+                }
+            },
+            meta: {
+                timestamp: new Date().toISOString(),
+                request_id: req.headers['x-request-id'] || 'N/A'
+            },
         });
     }
 });
 
 // MQTT status endpoint
 app.get('/mqtt/status', (req, res) => {
-    res.json({
-        mqtt_status: mqttService.getConnectionStatus(),
-        broker_url: process.env.MQTT_BROKER_URL || 'mqtt://localhost:1883'
+    res.status(200).json({
+        code: 200,
+        status: 'success',
+        message: 'MQTT connection status retrieved successfully',
+        data: {
+            mqtt_status: mqttService.getConnectionStatus(),
+            broker_url: process.env.MQTT_BROKER_URL || 'mqtt://localhost:1883'
+        }, meta: {
+            timestamp: new Date().toISOString(),
+            request_id: req.headers['x-request-id'] || 'N/A'
+        },
     });
 });
 
@@ -181,15 +210,24 @@ app.post('/mqtt/reconnect', (req, res) => {
             initializeMQTT();
         }, 1000);
 
-        res.json({
+        res.status(200).json({
+            code: 200,
+            status: 'success',
             message: 'MQTT reconnection initiated'
         });
     } catch (error) {
         res.status(500).json({
-            error: 'Failed to reconnect MQTT',
-            details: error.message
+            code: 500,
+            status: 'error',
+            message: 'Failed to initiate MQTT reconnection',
         });
     }
+});
+
+// Metrics endpoint for Prometheus to scrape
+app.get('/metrics', async (req, res) => {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
 });
 
 
@@ -199,8 +237,10 @@ app.use(errorHandler);
 // 404 handler
 app.use((req, res) => {
     res.status(404).json({
-        error: 'Not found',
-        message: `Route ${req.method} ${req.path} not found`
+        status: 'error',
+        code: 404,
+        message: `Route ${req.method} ${req.path} not found`,
+        errors: [],
     });
 });
 

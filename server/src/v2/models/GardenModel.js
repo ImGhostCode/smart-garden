@@ -1,4 +1,5 @@
 const { Schema, model } = require('mongoose');
+const config = require('../config/app.config');
 
 const gardenSchema = new Schema({
     name: {
@@ -27,35 +28,33 @@ const gardenSchema = new Schema({
         default: 1
     },
     light_schedule: {
-        duration: {
-            type: String,
+        duration_ms: {
+            type: Number,
             validate: {
                 validator: function (v) {
-                    // Validate duration format (e.g., "14h", "30m", "1h30m")
-                    return !v || /^(\d+h)?(\d+m)?(\d+s)?$/.test(v);
+                    return Number.isInteger(v) && v >= config.minLightDuration && v <= config.maxLightDuration;
                 },
-                message: 'Duration must be in valid format (e.g., "14h", "30m")'
+                message: `Duration must be between ${config.minLightDuration}ms and ${config.maxLightDuration}ms`
             }
         },
         start_time: {
             type: String,
             validate: {
                 validator: function (v) {
-                    // Validate time format (e.g., "23:00:00-07:00")
-                    return !v || /^\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/.test(v);
+                    // Validate time format (e.g., "23:00:00")
+                    return !v || /^\d{2}:\d{2}:\d{2}$/.test(v);
                 },
-                message: 'Start time must be in format "HH:MM:SS±HH:MM"'
+                message: 'Start time must be in format "HH:MM:SS"'
             },
             default: null
         },
         adhoc_on_time: {
-            type: String,
+            type: Date,
             validate: {
                 validator: function (v) {
-                    // Validate time format (e.g., "23:00:00-07:00")
-                    return !v || /^\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/.test(v);
+                    return !v || v instanceof Date;
                 },
-                message: 'Adhoc on time must be in format "HH:MM:SS±HH:MM"'
+                message: 'Adhoc on time must be a valid date'
             }
         }
     },
@@ -64,11 +63,11 @@ const gardenSchema = new Schema({
         default: null
     },
     controller_config: {
-        valvePins: { type: [Number], default: [] },
-        pumpPins: { type: [Number], default: [] },
-        lightPin: { type: Number, default: null },
-        tempHumidityPin: { type: Number, default: null },
-        tempHumidityInterval: { type: Number, default: 5000 }, // in minutes
+        valve_pins: { type: [Number], default: [] },
+        pump_pins: { type: [Number], default: [] },
+        light_pin: { type: Number, default: null },
+        temp_humidity_pin: { type: Number, default: null },
+        temp_hum_interval_ms: { type: Number, default: 5000 }, // in minutes
     }
 }, {
     timestamps: true

@@ -2,7 +2,8 @@ const { Router } = require('express');
 const Joi = require('joi');
 const router = Router();
 const GardensController = require('../controllers/gardensController');
-const { schemas, validateBody, validateParams, validateQuery } = require('../utils/validation');
+const { validateBody, validateParams, validateQuery } = require('../middlewares/validationMiddleware');
+const { schemas } = require('../utils/validation');
 
 // Gardens routes with Joi validation
 

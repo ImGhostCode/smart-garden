@@ -1,6 +1,6 @@
 const db = require("../models/database");
 const WeatherClient = require("../services/weatherClientService");
-const { durationToMillis } = require("./helpers");
+const { intervalToMillis } = require("./helpers");
 
 const getMockWeatherData = () => ({
     rain: {
@@ -41,7 +41,7 @@ const getRainData = async (waterSchedule) => {
         if (weatherClient == null) {
             throw new Error(`Error getting WeatherClient RainControl: ${waterSchedule._id.toString()}`);
         }
-        const totalRain = await new WeatherClient(weatherClient).getTotalRain(durationToMillis(waterSchedule.interval));
+        const totalRain = await new WeatherClient(weatherClient).getTotalRain(intervalToMillis(waterSchedule.interval));
         return totalRain;
     } catch (error) {
         console.error('Error getting rain data:', error);
@@ -55,7 +55,7 @@ const getTemperatureData = async (waterSchedule) => {
         if (weatherClient == null) {
             throw new Error(`Error getting WeatherClient for TemperatureControl: ${waterSchedule._id.toString()}`);
         }
-        const totalRain = await new WeatherClient(weatherClient).getAverageHighTemperature(durationToMillis(waterSchedule.interval));
+        const totalRain = await new WeatherClient(weatherClient).getAverageHighTemperature(intervalToMillis(waterSchedule.interval));
         return totalRain;
     } catch (error) {
         console.error('Error getting temperature data:', error);

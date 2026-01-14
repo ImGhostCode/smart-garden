@@ -1,38 +1,43 @@
 const Joi = require('joi');
-
+const config = require('../config/app.config');
+const { millisToDuration } = require('./helpers');
 // MongoDB ObjectId pattern (24 hex characters)
 const xidPattern = /^[0-9a-v]{24}$/;
 
-// Duration validation pattern (supports formats like "72h", "30m", "15s", "15000ms")
-const durationPattern = /^(\d+(\.\d+)?)(ns|μs|ms|s|m|h)$/;
-
-// Light duration pattern (e.g., "14h", "30m", "1h30m")
-// const lightDurationPattern = /^(\d+h)?(\d+m)?$/;
-const lightDurationPattern = /^(\d+h)?(\d+m)?(\d+s)?$/;
-
-// Time validation pattern (HH:MM:SS with optional timezone offset)
-const timePattern = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]([+-][0-1][0-9]:[0-5][0-9])?$/;;
+// Time validation pattern (HH:MM:SS)
+const timePattern = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]?$/;
 
 const topicPrefixPattern = /^[^#$+>*]+$/; // No spaces or MQTT wildcards
 
 const validMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const durationValidator = Joi.number().integer().min(0).required().messages({
+    'number.base': 'Duration must be a non-negative integer representing milliseconds',
+});
+const waterDurValidator = Joi.number().integer().min(config.minWaterDuration).max(config.maxWaterDuration).messages({
+    'number.min': `Duration must be at least ${millisToDuration(config.minWaterDuration)}`,
+    'number.max': `Duration must not exceed ${millisToDuration(config.maxWaterDuration)}`,
+    'number.base': 'Duration must be between 1 minute and 1 day in milliseconds',
+});
+const lightDurValidator = Joi.number().integer().messages({
+    'number.min': `Duration must be at least ${millisToDuration(config.minLightDuration)}`,
+    'number.max': `Duration must not exceed ${millisToDuration(config.maxLightDuration)}`,
+    'number.base': 'Duration must be between 1 minute and 24 hours in milliseconds',
+});
+
+const startTimeValidator = Joi.string().pattern(timePattern).messages({
+    'string.pattern.base': 'Time must be in HH:MM:SS format'
+});
+const durationPattern = /^(\d+(\.\d+)?)(ns|μs|ms|s|m|h)$/;
+// const lightDurationPattern = /^(\d+h)?(\d+m)?(\d+s)?$/;
 
 // Base schemas
 const schemas = {
     gardenAction: Joi.object({
         light: Joi.object({
             state: Joi.string().valid('ON', 'OFF', '').optional(),
-            // for_duration: Joi.string().pattern(durationPattern).when('state', {
-            //     is: 'ON',
-            //     then: Joi.optional(),
-            //     otherwise: Joi.forbidden().messages({
-            //         'any.unknown': 'for_duration can only be used with state=OFF'
-            //     })
-            // }).messages({
-            //     'string.pattern.base': 'Duration must be in valid format (e.g., "14h", "30m", "15s")'
-            // })
-            for_duration: Joi.string().pattern(durationPattern).optional().messages({
-                'string.pattern.base': 'Duration must be in valid format (e.g., "14h", "30m", "15s")'
+            for_duration_ms: Joi.number().integer().min(0).optional().messages({
+                'number.base': 'for_duration_ms must be a non-negative integer representing milliseconds'
             })
         }).optional(),
         stop: Joi.object({
@@ -42,25 +47,25 @@ const schemas = {
             config: Joi.boolean().required(),
             controller_config: Joi.object({
                 max_zones: Joi.number().integer().min(1).required(),
-                valvePins: Joi.array().items(Joi.number().integer().min(0).required()).required().when('max_zones', {
+                valve_pins: Joi.array().items(Joi.number().integer().min(0).required()).required().when('max_zones', {
                     is: Joi.number().integer().min(1),
                     then: Joi.array().min(Joi.ref('max_zones')).max(Joi.ref('max_zones')).messages({
-                        'array.min': 'valvePins must have at least as many pins as max_zones',
-                        'array.max': 'valvePins cannot have more pins than max_zones'
+                        'array.min': 'valve_pins must have at least as many pins as max_zones',
+                        'array.max': 'valve_pins cannot have more pins than max_zones'
                     }),
                     otherwise: Joi.forbidden()
                 }),
-                pumpPins: Joi.array().items(Joi.number().integer().min(0).required()).required().when('max_zones', {
+                pump_pins: Joi.array().items(Joi.number().integer().min(0).required()).required().when('max_zones', {
                     is: Joi.number().integer().min(1),
                     then: Joi.array().min(Joi.ref('max_zones')).max(Joi.ref('max_zones')).messages({
-                        'array.min': 'pumpPins must have at least as many pins as max_zones',
-                        'array.max': 'pumpPins cannot have more pins than max_zones'
+                        'array.min': 'pump_pins must have at least as many pins as max_zones',
+                        'array.max': 'pump_pins cannot have more pins than max_zones'
                     }),
                     otherwise: Joi.forbidden()
                 }),
-                lightPin: Joi.number().integer().min(0).optional(),
-                tempHumidityPin: Joi.number().integer().min(0).optional(),
-                tempHumidityInterval: Joi.number().integer().min(0).optional()
+                light_pin: Joi.number().integer().min(0).optional(),
+                temp_humidity_pin: Joi.number().integer().min(0).optional(),
+                temp_hum_interval_ms: Joi.number().integer().min(0).optional()
             }).required()
         }).optional()
     }).or('light', 'stop', 'update').messages({
@@ -69,10 +74,8 @@ const schemas = {
 
     zoneAction: Joi.object({
         water: Joi.object({
-            duration: Joi.string().pattern(durationPattern).required().messages({
-                'string.pattern.base': 'Duration must be in valid format (e.g., "14h", "30m", "15s")'
-            })
-        }).required()
+            duration_ms: durationValidator.required()
+        }).optional()
     }).required(),
 
     // Request Body Schemas
@@ -93,20 +96,16 @@ const schemas = {
         }),
         max_zones: Joi.number().integer().min(1).required(),
         light_schedule: Joi.object({
-            duration: Joi.string().pattern(lightDurationPattern).required().messages({
-                'string.pattern.base': 'Duration must be in valid format (e.g., "14h", "30m", "15s")'
-            }),
-            start_time: Joi.string().pattern(timePattern).required().messages({
-                'string.pattern.base': 'Time must be in HH:MM:SS format with optional timezone offset'
-            }),
+            duration_ms: lightDurValidator.required(),
+            start_time: startTimeValidator.required(),
             // adhoc_on_time: Joi.string().isoDate().optional(),
         }).optional(),
         controller_config: Joi.object({
-            valvePins: Joi.array().items(Joi.number().integer().min(0).required()).required(),
-            pumpPins: Joi.array().items(Joi.number().integer().min(0).required()).required(),
-            lightPin: Joi.number().integer().min(0).optional(),
-            tempHumidityPin: Joi.number().integer().min(0).optional(),
-            tempHumidityInterval: Joi.number().integer().min(0).optional().default(5000)
+            valve_pins: Joi.array().items(Joi.number().integer().min(0).required()).required(),
+            pump_pins: Joi.array().items(Joi.number().integer().min(0).required()).required(),
+            light_pin: Joi.number().integer().min(0).optional(),
+            temp_humidity_pin: Joi.number().integer().min(0).optional(),
+            temp_hum_interval_ms: Joi.number().integer().min(0).optional().default(5000)
         }).optional()
     }),
 
@@ -124,21 +123,17 @@ const schemas = {
         }),
         max_zones: Joi.number().integer().min(1).optional(),
         light_schedule: Joi.object({
-            duration: Joi.string().pattern(lightDurationPattern).required().messages({
-                'string.pattern.base': 'Duration must be in valid format (e.g., "14h", "30m", "15s")'
-            }),
-            start_time: Joi.string().pattern(timePattern).required().messages({
-                'string.pattern.base': 'Time must be in HH:MM:SS format with optional timezone offset'
-            }),
+            duration_ms: durationValidator.optional(),
+            start_time: startTimeValidator.optional(),
             adhoc_on_time: Joi.string().isoDate().optional(),
         }).optional().allow(null),
         // temperature_humidity_sensor: Joi.boolean().optional(),
         controller_config: Joi.object({
-            valvePins: Joi.array().items(Joi.number().integer().min(0).required()).required(),
-            pumpPins: Joi.array().items(Joi.number().integer().min(0).required()).required(),
-            lightPin: Joi.number().integer().min(0).optional(),
-            tempHumidityPin: Joi.number().integer().min(0).optional(),
-            tempHumidityInterval: Joi.number().integer().min(0).optional().default(5000)
+            valve_pins: Joi.array().items(Joi.number().integer().min(0).required()).required(),
+            pump_pins: Joi.array().items(Joi.number().integer().min(0).required()).required(),
+            light_pin: Joi.number().integer().min(0).optional(),
+            temp_humidity_pin: Joi.number().integer().min(0).optional(),
+            temp_hum_interval_ms: Joi.number().integer().min(0).optional().default(5000)
         }).optional().allow(null)
     }).min(1).messages({
         'object.min': 'At least one field must be provided for update'
@@ -224,15 +219,11 @@ const schemas = {
 
     // Water Schedule requests
     createWaterScheduleRequest: Joi.object({
-        duration: Joi.string().pattern(durationPattern).required().messages({
-            'string.pattern.base': 'Duration must be in valid format (e.g., "14h", "30m", "15s")'
+        duration_ms: waterDurValidator.required(),
+        interval: Joi.number().min(1).required().messages({
+            'number.base': 'Interval must be a positive number (e.g., 1, 2, ...) representing days between watering'
         }),
-        interval: Joi.string().pattern(durationPattern).required().messages({
-            'string.pattern.base': 'Interval must be in valid format (e.g., "14h", "30m", "15s")'
-        }),
-        start_time: Joi.string().pattern(timePattern).required().messages({
-            'string.pattern.base': 'Time must be in HH:MM:SS format with optional timezone offset'
-        }),
+        start_time: startTimeValidator.required(),
         weather_control: Joi.object({
             rain_control: Joi.object({
                 baseline_value: Joi.number().required(),
@@ -256,15 +247,11 @@ const schemas = {
     }),
 
     updateWaterScheduleRequest: Joi.object({
-        duration: Joi.string().pattern(durationPattern).optional().messages({
-            'string.pattern.base': 'Duration must be in valid format (e.g., "14h", "30m", "15s")'
+        duration_ms: waterDurValidator.optional(),
+        interval: Joi.number().min(1).optional().messages({
+            'number.base': 'Interval must be a positive number (e.g., 1, 2, ...) representing days between watering'
         }),
-        interval: Joi.string().pattern(durationPattern).optional().messages({
-            'string.pattern.base': 'Interval must be in valid format (e.g., "14h", "30m", "15s")'
-        }),
-        start_time: Joi.string().pattern(timePattern).optional().messages({
-            'string.pattern.base': 'Time must be in HH:MM:SS format with optional timezone offset'
-        }),
+        start_time: startTimeValidator.optional(),
         weather_control: Joi.object({
             rain_control: Joi.object({
                 baseline_value: Joi.number().required(),
@@ -292,6 +279,7 @@ const schemas = {
     // Weather Client Config requests
     createWeatherClientRequest: Joi.object({
         type: Joi.string().valid('netatmo', 'fake').required(),
+        name: Joi.string().min(1).required(),
         options: Joi.when('type', {
             switch: [
                 {
@@ -300,10 +288,7 @@ const schemas = {
                         rain_mm: Joi.number().required().messages({
                             'any.required': 'rain_mm is required for fake weather client'
                         }),
-                        rain_interval: Joi.string().pattern(durationPattern).required().messages({
-                            'string.pattern.base': 'rain_interval must be in valid duration format (e.g., "24h", "30m")',
-                            'any.required': 'rain_interval is required for fake weather client'
-                        }),
+                        rain_interval_ms: durationValidator.required(),
                         avg_high_temperature: Joi.number().required().messages({
                             'any.required': 'avg_high_temperature is required for fake weather client'
                         }),
@@ -339,15 +324,14 @@ const schemas = {
 
     updateWeatherClientRequest: Joi.object({
         type: Joi.string().valid('netatmo', 'fake').required(),
+        name: Joi.string().min(1).optional(),
         options: Joi.when('type', {
             switch: [
                 {
                     is: 'fake',
                     then: Joi.object({
                         rain_mm: Joi.number().optional(),
-                        rain_interval: Joi.string().pattern(durationPattern).optional().messages({
-                            'string.pattern.base': 'rain_interval must be in valid duration format (e.g., "24h", "30m")'
-                        }),
+                        rain_interval_ms: durationValidator.optional(),
                         avg_high_temperature: Joi.number().optional(),
                         error: Joi.string().optional().allow('')
                     }).min(1).messages({
@@ -392,10 +376,7 @@ const schemas = {
                     'string.pattern.base': 'Zone ID must be a 24 character XID format',
                     'any.required': 'Zone ID is required'
                 }),
-                duration: Joi.string().pattern(durationPattern).required().messages({
-                    'string.pattern.base': 'Duration must be in valid format (e.g., "15000ms", "15m")',
-                    'any.required': 'Duration is required'
-                })
+                duration_ms: waterDurValidator.required()
             })
         ).min(1).required().messages({
             'array.min': 'At least one step is required in the water routine',
@@ -411,12 +392,8 @@ const schemas = {
             Joi.object({
                 zone_id: Joi.string().pattern(xidPattern).required().messages({
                     'string.pattern.base': 'Zone ID must be a 24 character XID format',
-                    'any.required': 'Zone ID is required'
                 }),
-                duration: Joi.string().pattern(durationPattern).required().messages({
-                    'string.pattern.base': 'Duration must be in valid format (e.g., "15000ms", "15m")',
-                    'any.required': 'Duration is required'
-                })
+                duration_ms: waterDurValidator.optional()
             })
         ).min(1).messages({
             'array.min': 'At least one step is required in the water routine'
@@ -444,62 +421,6 @@ const schemas = {
     }
 };
 
-// Validation middleware factory
-const createValidationMiddleware = (schema, source = 'body') => {
-    return (req, res, next) => {
-        let dataToValidate;
-
-        switch (source) {
-            case 'body':
-                dataToValidate = req.body;
-                break;
-            case 'params':
-                dataToValidate = req.params;
-                break;
-            case 'query':
-                dataToValidate = req.query;
-                break;
-            default:
-                return res.status(500).json({ error: 'Invalid validation source' });
-        }
-
-        const { error, value } = schema.validate(dataToValidate, {
-            abortEarly: false, // Return all errors, not just the first one
-            stripUnknown: true, // Remove unknown fields
-            convert: true // Convert strings to numbers/booleans when appropriate
-        });
-
-        if (error) {
-            const errorMessage = error.details.map(detail => detail.message).join(', ');
-            return res.status(400).json({
-                error: 'Validation failed',
-                message: errorMessage,
-                details: error.details
-            });
-        }
-
-        // Replace the original data with the validated/converted data
-        switch (source) {
-            case 'body':
-                req.body = value;
-                break;
-            case 'params':
-                req.params = value;
-                break;
-            case 'query':
-                req.query = value;
-                break;
-        }
-
-        next();
-    };
-};
-
-// Convenience middleware creators
-const validateBody = (schema) => createValidationMiddleware(schema, 'body');
-const validateParams = (schema) => createValidationMiddleware(schema, 'params');
-const validateQuery = (schema) => createValidationMiddleware(schema, 'query');
-
 // Combined validation for endpoints that need multiple validations
 const validateEndpoint = (bodySchema, paramsSchema, querySchema) => {
     const middlewares = [];
@@ -517,9 +438,5 @@ module.exports = {
     timePattern,
     topicPrefixPattern,
     schemas,
-    validateBody,
-    validateParams,
-    validateQuery,
     validateEndpoint,
-    createValidationMiddleware
 };

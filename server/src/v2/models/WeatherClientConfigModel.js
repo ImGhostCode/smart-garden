@@ -5,6 +5,10 @@ const weatherClientConfigSchema = new Schema({
         type: String,
         required: true,
     },
+    name: {
+        type: String,
+        required: true,
+    },
     // Map of configuration options specific to the weather client type
     options: {
         type: Object,

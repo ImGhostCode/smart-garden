@@ -2,7 +2,9 @@ const { Router } = require('express');
 const router = Router();
 const WaterSchedulesController = require('../controllers/waterSchedulesController');
 const Joi = require('joi');
-const { schemas, validateBody, validateParams, validateQuery } = require('../utils/validation');
+const { validateBody, validateParams, validateQuery } = require('../middlewares/validationMiddleware');
+const { schemas } = require('../utils/validation');
+
 // Water Schedules routes
 
 // GET /water_schedules - Get all water schedules (with optional query params)

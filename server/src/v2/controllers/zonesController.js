@@ -1,7 +1,6 @@
 const db = require('../models/database');
-const { createLink, durationToMillis } = require('../utils/helpers');
+const { createLink, intervalToMillis } = require('../utils/helpers');
 const { getNextActiveWaterSchedule, getNextWaterDetails } = require('../utils/waterScheduleHelpers');
-const mqttService = require('../services/mqttService');
 const influxdbService = require('../services/influxdbService');
 const { getWeatherData } = require('../utils/weatherHelper');
 const { ApiSuccess, ApiError } = require('../utils/apiResponse');
@@ -16,15 +15,16 @@ const ZonesController = {
         }
 
         try {
-            const zones = await db.zones.getAll(filters);
+            const zones = await db.zones.getAll({ filters: filters, garden: true, waterSchedules: true });
 
             return res.json(new ApiSuccess(200, 'Zones retrieved successfully',
                 await Promise.all(zones.map(async (zone) => {
                     // Get next active water schedule for this zone
-                    const nextSchedule = await getNextActiveWaterSchedule(zone.water_schedule_ids || []);
+                    const waterScheduleIds = zone.water_schedule_ids.map(ws => ws._id);
+                    const nextSchedule = await getNextActiveWaterSchedule(waterScheduleIds || []);
                     let weatherData;
                     let nextWaterDetails;
-                    if (nextSchedule.hasWeatherControl() && nextSchedule.end_date == null && exclude_weather_data !== 'true') {
+                    if (nextSchedule && nextSchedule.hasWeatherControl() && nextSchedule.end_date == null && exclude_weather_data !== 'true') {
                         weatherData = await getWeatherData(nextSchedule);
                     }
 
@@ -39,7 +39,7 @@ const ZonesController = {
                             nextWaterDetails.message = `skip_count ${zone.skip_count} affected the time`;
                             //A adjust the time based on skip count: skip_count * interval
                             if (nextWaterDetails.time) {
-                                nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + zone.skip_count * durationToMillis(nextSchedule.interval));
+                                nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + zone.skip_count * intervalToMillis(nextSchedule.interval));
                             }
                         }
                     } else {
@@ -51,6 +51,13 @@ const ZonesController = {
 
                     return {
                         ...zone.toObject(),
+                        garden_id: undefined,
+                        garden: {
+                            _id: zone.garden_id._id,
+                            name: zone.garden_id.name
+                        },
+                        water_schedule_ids: undefined,
+                        water_schedules: zone.water_schedule_ids,
                         links: [
                             createLink('self', `/gardens/${gardenID}/zones/${zone.id}`),
                             createLink('garden', `/gardens/${gardenID}`),
@@ -80,7 +87,7 @@ const ZonesController = {
             }
 
             // Check if position is already taken
-            const existingZone = Array.from(await db.zones.getAll({ garden_id: gardenID, end_date: null }))
+            const existingZone = Array.from(await db.zones.getAll({ filters: { garden_id: gardenID, end_date: null } }))
                 .find(z => z.position === position && !z.end_date);
 
             if (existingZone) {
@@ -101,10 +108,17 @@ const ZonesController = {
                 skip_count: skip_count || 0,
             };
 
-            await db.zones.create(zone);
+            const newZone = await db.zones.create({ data: zone, garden: true, waterSchedules: true });
 
             return res.status(201).json(new ApiSuccess(201, 'Zone added successfully', {
-                ...zone,
+                ...newZone.toObject(),
+                garden_id: undefined,
+                garden: {
+                    _id: newZone.garden_id._id,
+                    name: newZone.garden_id.name
+                },
+                water_schedule_ids: undefined,
+                water_schedules: newZone.water_schedule_ids,
                 links: [
                     createLink('self', `/gardens/${gardenID}/zones/${zone.id}`),
                     createLink('garden', `/gardens/${gardenID}`),
@@ -122,30 +136,31 @@ const ZonesController = {
         const { exclude_weather_data } = req.query;
 
         try {
-            const zone = await db.zones.getById(zoneID);
-            if (!zone || zone.garden_id !== gardenID) {
+            const zone = await db.zones.getById({ id: zoneID, garden: true, waterSchedules: true });
+            if (!zone || zone.garden_id._id.toString() !== gardenID) {
                 throw new ApiError(404, 'Zone not found');
             }
 
-            const nextSchedule = await getNextActiveWaterSchedule(zone.water_schedule_ids || []);
+            const waterScheduleIds = zone.water_schedule_ids.map(ws => ws._id);
+            const nextSchedule = await getNextActiveWaterSchedule(waterScheduleIds || []);
             let weatherData;
-            if (nextSchedule.hasWeatherControl() && nextSchedule.end_date == null && exclude_weather_data !== 'true') {
+            if (nextSchedule && nextSchedule.hasWeatherControl() && nextSchedule.end_date == null && exclude_weather_data !== 'true') {
                 weatherData = await getWeatherData(nextSchedule);
             }
 
             let nextWaterDetails;
             if (nextSchedule) {
-                nextWaterDetails = getNextWaterDetails(
+                nextWaterDetails = await getNextWaterDetails(
                     nextSchedule,
                     exclude_weather_data === 'true'
                 );
 
                 // Apply skip count if present
                 if (zone.skip_count && zone.skip_count > 0) {
-                    nextWaterDetails.message = `skip_count ${zone.skip_count} affected the time`;
+                    nextWaterDetails.message = `Skip count ${zone.skip_count} affected the time`;
                     //A adjust the time based on skip count: skip_count * interval
                     if (nextWaterDetails.time) {
-                        nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + zone.skip_count * durationToMillis(nextSchedule.interval));
+                        nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + zone.skip_count * intervalToMillis(nextSchedule.interval));
                     }
                 }
             } else {
@@ -157,6 +172,13 @@ const ZonesController = {
 
             return res.json(new ApiSuccess(200, 'Zone retrieved successfully', {
                 ...zone.toObject(),
+                garden_id: undefined,
+                garden: {
+                    _id: zone.garden_id._id,
+                    name: zone.garden_id.name
+                },
+                water_schedule_ids: undefined,
+                water_schedules: zone.water_schedule_ids,
                 links: [
                     createLink('self', `/gardens/${gardenID}/zones/${zone.id}`),
                     createLink('garden', `/gardens/${gardenID}`),
@@ -177,8 +199,8 @@ const ZonesController = {
         const { name, details, position, water_schedule_ids, skip_count } = req.body;
 
         try {
-            const zone = await db.zones.getById(zoneID);
-            if (!zone || zone.garden_id !== gardenID) {
+            const zone = await db.zones.getById({ id: zoneID });
+            if (!zone || zone.garden_id.toString() !== gardenID) {
                 throw new ApiError(404, 'Zone not found');
             }
 
@@ -193,7 +215,7 @@ const ZonesController = {
 
             // Check if position is being changed and if it conflicts with existing zones
             if (position !== undefined && position !== zone.position) {
-                const existingZone = Array.from(await db.zones.getAll({ garden_id: gardenID, end_date: null }))
+                const existingZone = Array.from(await db.zones.getAll({ filters: { garden_id: gardenID, end_date: null } }))
                     .find(z => z.garden_id === gardenID && z.position === position && z.id !== zoneID && !z.end_date);
 
                 if (existingZone) {
@@ -209,9 +231,14 @@ const ZonesController = {
             if (water_schedule_ids !== undefined) updates.water_schedule_ids = water_schedule_ids;
             if (skip_count !== undefined) updates.skip_count = skip_count;
 
-            const updatedZone = await db.zones.updateById(zoneID, updates);
+            const updatedZone = await db.zones.updateById({
+                id: zoneID, data: updates,
+                garden: true,
+                waterSchedules: true
+            });
 
-            const nextSchedule = await getNextActiveWaterSchedule(updatedZone.water_schedule_ids || []);
+            const waterScheduleIds = updatedZone.water_schedule_ids.map(ws => ws._id);
+            const nextSchedule = await getNextActiveWaterSchedule(waterScheduleIds || []);
             let weatherData;
             if (nextSchedule != null && nextSchedule.hasWeatherControl() && nextSchedule.end_date == null && exclude_weather_data !== 'true') {
                 weatherData = await getWeatherData(nextSchedule);
@@ -219,7 +246,7 @@ const ZonesController = {
 
             let nextWaterDetails;
             if (nextSchedule) {
-                nextWaterDetails = getNextWaterDetails(
+                nextWaterDetails = await getNextWaterDetails(
                     nextSchedule,
                     exclude_weather_data === 'true'
                 );
@@ -229,12 +256,19 @@ const ZonesController = {
                     nextWaterDetails.message = `skip_count ${updatedZone.skip_count} affected the time`;
                     //A adjust the time based on skip count: skip_count * interval
                     if (nextWaterDetails.time) {
-                        nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + updatedZone.skip_count * durationToMillis(nextSchedule.interval));
+                        nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + updatedZone.skip_count * intervalToMillis(nextSchedule.interval));
                     }
                 }
             }
             return res.json(new ApiSuccess(200, 'Zone updated successfully', {
                 ...updatedZone.toObject(),
+                garden_id: undefined,
+                garden: {
+                    _id: updatedZone.garden_id._id,
+                    name: updatedZone.garden_id.name
+                },
+                water_schedule_ids: undefined,
+                water_schedules: updatedZone.water_schedule_ids,
                 links: [
                     createLink('self', `/gardens/${gardenID}/zones/${zone.id}`),
                     createLink('garden', `/gardens/${gardenID}`),
@@ -253,8 +287,8 @@ const ZonesController = {
         const { gardenID, zoneID } = req.params;
 
         try {
-            const zone = await db.zones.getById(zoneID);
-            if (!zone || zone.garden_id !== gardenID) {
+            const zone = await db.zones.getById({ id: zoneID });
+            if (!zone || zone.garden_id.toString() !== gardenID) {
                 throw new ApiError(404, 'Zone not found');
             }
 
@@ -276,8 +310,8 @@ const ZonesController = {
         const action = req.body;
 
         try {
-            const zone = await db.zones.getById(zoneID);
-            if (!zone || zone.garden_id !== gardenID) {
+            const zone = await db.zones.getById({ id: zoneID });
+            if (!zone || zone.garden_id.toString() !== gardenID) {
                 throw new ApiError(404, 'Zone not found');
             }
 
@@ -288,12 +322,11 @@ const ZonesController = {
 
             try {
                 // Handle water action
-                if (action.water && action.water.duration) {
-                    const durationMs = durationToMillis(action.water.duration);
+                if (action.water && action.water.duration_ms) {
                     const cronScheduler = require('../services/cronScheduler');
-                    await cronScheduler.executeWaterAction(garden, zone, durationMs, "command");
+                    await cronScheduler.executeWaterAction(garden, zone, action.water.duration_ms, "command");
                 }
-                res.status(202);
+                res.status(202).json(new ApiSuccess(202, 'Zone action executed successfully'));
             } catch (error) {
                 console.error('Error executing zone action:', error);
                 throw new ApiError(500, 'Failed to execute zone action');
@@ -308,8 +341,8 @@ const ZonesController = {
         const { range = '72h', limit = 5 } = req.query;
 
         try {
-            const zone = await db.zones.getById(zoneID);
-            if (!zone || zone.garden_id !== gardenID) {
+            const zone = await db.zones.getById({ id: zoneID });
+            if (!zone || zone.garden_id.toString() !== gardenID) {
                 throw new ApiError(404, 'Zone not found');
             }
 

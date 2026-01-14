@@ -50,8 +50,8 @@ const WeatherClientsController = {
 
     addWeatherClient: async (req, res, next) => {
         try {
-            const { type, options } = req.body;
-            const clientData = { type, options };
+            const { type, name, options } = req.body;
+            const clientData = { type, name, options };
 
             const newClient = await db.weatherClientConfigs.create(clientData);
             const response = new ApiSuccess(201, 'Weather client configuration created successfully', {
@@ -69,11 +69,12 @@ const WeatherClientsController = {
     updateWeatherClient: async (req, res, next) => {
         const { weatherClientID } = req.params;
         const {
-            type, options
+            type, options, name
         } = req.body;
 
         const updates = {};
         if (type !== undefined) updates.type = type;
+        if (name !== undefined) updates.name = name;
         if (type === "netatmo" && options !== undefined) {
             if (options.station_id !== undefined) updates['options.station_id'] = options.station_id;
             if (options.station_name !== undefined) updates['options.station_name'] = options.station_name;

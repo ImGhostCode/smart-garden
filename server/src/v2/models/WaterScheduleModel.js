@@ -1,5 +1,6 @@
 const { Schema, model } = require('mongoose');
-const { durationPattern, timePattern } = require('../utils/validation');
+const { timePattern } = require('../utils/validation');
+const config = require('../config/app.config');
 
 const scaleControlSchema = new Schema({
     baseline_value: {
@@ -103,26 +104,24 @@ const waterScheduleSchema = new Schema({
         type: String,
         trim: true
     },
-    duration: {
-        type: String,
+    duration_ms: {
+        type: Number,
         required: true,
         validate: {
             validator: function (v) {
-                // Duration format validation (e.g., "15000ms", "15m", "1h")
-                return durationPattern.test(v);
+                return Number.isInteger(v) && v >= config.minWaterDuration && v <= config.maxWaterDuration;
             },
-            message: 'Duration must be in valid format (e.g., "15000ms", "15m")'
+            message: `Duration must be between ${config.minWaterDuration}ms and ${config.maxWaterDuration}ms`
         }
     },
     interval: {
-        type: String,
+        type: Number,
         required: true,
         validate: {
             validator: function (v) {
-                // Duration format validation for intervals (e.g., "72h", "24h")
-                return durationPattern.test(v);
+                return Number.isInteger(v) && v > 0; // 1, 2, 3, ...
             },
-            message: 'Interval must be in valid duration format (e.g., "72h")'
+            message: 'Interval must be a positive number'
         }
     },
     start_time: {
@@ -133,7 +132,7 @@ const waterScheduleSchema = new Schema({
                 // Time format validation
                 return timePattern.test(v);
             },
-            message: 'Start time must be in format "HH:MM:SS±HH:MM"'
+            message: 'Start time must be in format "HH:MM:SS"'
         }
     },
     weather_control: weatherControlSchema,

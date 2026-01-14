@@ -96,19 +96,13 @@ const GardensController = {
             const { name, topic_prefix, max_zones, light_schedule, controller_config } = req.body;
 
             if (light_schedule != null) {
-                // Check if duration is valid < 24 hours
-                const durationMatch = light_schedule.duration.match(/^(\d+h)?(\d+m)?(\d+s)?$/);
-                const hours = durationMatch[1] ? parseInt(durationMatch[1]) : 0;
-                const minutes = durationMatch[2] ? parseInt(durationMatch[2]) : 0;
-                const seconds = durationMatch[3] ? parseInt(durationMatch[3]) : 0;
-                const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
-                if (totalSeconds <= 0 || totalSeconds >= 86400) {
-                    throw new ApiError(400, 'Light schedule duration must be greater than 0 and less than or equal to 24 hours');
+                if (light_schedule.duration_ms <= 0 || light_schedule.duration_ms >= (24 * 60 * 60 * 1000)) {
+                    throw new ApiError(400, 'Light schedule duration must be greater than 0 and less than or equal to 24 hours in milliseconds');
                 }
             }
 
-            if (controller_config != null && (controller_config.valvePins.length !== controller_config.pumpPins.length || controller_config.valvePins.length > max_zones)) {
-                throw new ApiError(400, 'Controller config valvePins and pumpPins length must match and be less than or equal to max zones');
+            if (controller_config != null && (controller_config.valve_pins.length !== controller_config.pump_pins.length || controller_config.valve_pins.length > max_zones)) {
+                throw new ApiError(400, 'Controller config valve pins and pump pins length must match and be less than or equal to max zones');
             }
 
             const newGarden = {
@@ -131,7 +125,6 @@ const GardensController = {
                     // Proceed without failing the request
                 }
             }
-
             if (light_schedule) {
                 try {
                     await cronScheduler.scheduleLightActions(savedGarden);
@@ -252,13 +245,8 @@ const GardensController = {
             if (light_schedule !== undefined) {
                 if (light_schedule !== null) {
                     // Check if duration is valid < 24 hours
-                    const durationMatch = light_schedule.duration.match(/^(\d+h)?(\d+m)?(\d+s)?$/);
-                    const hours = durationMatch[1] ? parseInt(durationMatch[1]) : 0;
-                    const minutes = durationMatch[2] ? parseInt(durationMatch[2]) : 0;
-                    const seconds = durationMatch[3] ? parseInt(durationMatch[3]) : 0;
-                    const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
-                    if (totalSeconds <= 0 || totalSeconds >= 86400) {
-                        throw new ApiError(400, 'Light schedule duration must be greater than 0 and less than or equal to 24 hours');
+                    if (light_schedule.duration_ms <= 0 || light_schedule.duration_ms >= (24 * 60 * 60 * 1000)) {
+                        throw new ApiError(400, 'Light schedule duration must be greater than 0 and less than or equal to 24 hours in milliseconds');
                     }
 
                     if (light_schedule.adhoc_on_time) {
@@ -279,29 +267,27 @@ const GardensController = {
             }
 
             if (max_zones !== undefined && controller_config !== null) {
-                if (controller_config.valvePins.length !== controller_config.pumpPins.length) {
-                    throw new ApiError(400, 'Controller config valvePins and pumpPins length must match');
+                if (controller_config.valve_pins.length !== controller_config.pump_pins.length) {
+                    throw new ApiError(400, 'Controller config valve_pins and pump_pins length must match');
                 }
-                if (controller_config.valvePins.length > max_zones || controller_config.pumpPins.length > max_zones) {
-                    throw new ApiError(400, 'Controller config valvePins and pumpPins length exceed max zones');
+                if (controller_config.valve_pins.length > max_zones || controller_config.pump_pins.length > max_zones) {
+                    throw new ApiError(400, 'Controller config valve_pins and pump_pins length exceed max zones');
                 }
             } else if (max_zones !== undefined && controller_config === null) {
                 const garden = await db.gardens.getById(gardenID);
                 if (garden.controller_config) {
-                    if (garden.controller_config.valvePins.length > max_zones || garden.controller_config.pumpPins.length > max_zones) {
-                        throw new ApiError(400, 'Existing controller config valvePins and pumpPins length exceed new max zones');
+                    if (garden.controller_config.valve_pins.length > max_zones || garden.controller_config.pump_pins.length > max_zones) {
+                        throw new ApiError(400, 'Existing controller config valve_pins and pump_pins length exceed new max zones');
                     }
                 }
             } else if (max_zones === undefined && controller_config !== null) {
                 const garden = await db.gardens.getById(gardenID);
                 if (garden) {
-                    if (controller_config.valvePins.length !== controller_config.pumpPins.length) {
-                        // return res.status(400).json({ error: 'New controller_config valvePins and pumpPins length must match' });
-                        throw new ApiError(400, 'Controller config valvePins and pumpPins length must match');
+                    if (controller_config.valve_pins.length !== controller_config.pump_pins.length) {
+                        throw new ApiError(400, 'Controller config valve_pins and pump_pins length must match');
                     }
-                    if (controller_config.valvePins.length > garden.max_zones || controller_config.pumpPins.length > garden.max_zones) {
-                        // return res.status(400).json({ error: 'New controller_config valvePins and pumpPins length exceed existing max_zones' });
-                        throw new ApiError(400, 'Controller config valvePins and pumpPins length exceed max zones');
+                    if (controller_config.valve_pins.length > garden.max_zones || controller_config.pump_pins.length > garden.max_zones) {
+                        throw new ApiError(400, 'Controller config valve_pins and pump_pins length exceed max zones');
                     }
                 }
             }
@@ -404,63 +390,7 @@ const GardensController = {
             const cronScheduler = require('../services/cronScheduler');
             cronScheduler.removeLightJobsByGardenId(endDatedGarden._id.toString());
 
-            // Get plant and zone counts
-            const [plantsCount, zonesCount, lastContact, nextOnTime, nextOffTime
-            ] = await Promise.all([
-                db.plants.getByGardenId(gardenID).then(plants =>
-                    plants.filter(p => !p.end_date).length
-                ),
-                db.zones.getByGardenId(gardenID).then(zones =>
-                    zones.filter(z => !z.end_date).length
-                ),
-                influxdbService.getLastContact(endDatedGarden.topic_prefix).then(data => data),
-                cronScheduler.getNextLightTime(endDatedGarden, 'ON'),
-                cronScheduler.getNextLightTime(endDatedGarden, 'OFF')
-            ]);
-
-            // Format response
-            const formattedGarden = formatGardenResponse(endDatedGarden, req);
-            if (lastContact) {
-                formattedGarden.health = {
-                    // Garden is considered "UP" if it's last contact was less than 5 minutes ago
-                    status: (new Date() - new Date(lastContact)) < 5 * 60 * 1000 ? 'UP' : 'DOWN',
-                    details: 'last contact from Garden was ' + Math.round((new Date() - new Date(lastContact)) / 60000) + ' minutes ago',
-                    last_contact: lastContact
-                };
-            } else {
-                formattedGarden.health = {
-                    status: 'DOWN',
-                    details: 'no last contact time available',
-                    last_contact: null
-                };
-            }
-            if (nextOnTime && nextOffTime) {
-                if (nextOnTime < nextOffTime) {
-                    formattedGarden.next_light_action = {
-                        action: 'ON',
-                        time: nextOnTime
-                    };
-                } else {
-                    formattedGarden.next_light_action = {
-                        action: 'OFF',
-                        time: nextOffTime
-                    };
-                }
-            } else if (nextOnTime) {
-                formattedGarden.next_light_action = {
-                    action: 'ON',
-                    time: nextOnTime
-                };
-            } else if (nextOffTime) {
-                formattedGarden.next_light_action = {
-                    action: 'OFF',
-                    time: nextOffTime
-                };
-            }
-            formattedGarden.num_plants = plantsCount;
-            formattedGarden.num_zones = zonesCount;
-
-            return res.json(new ApiSuccess(200, 'Garden end-dated successfully', formattedGarden));
+            return res.json(new ApiSuccess(200, 'Garden end-dated successfully', gardenID));
 
         } catch (error) {
             next(error);
@@ -510,7 +440,7 @@ const GardensController = {
                 throw new ApiError(404, 'Garden not found');
             }
 
-            if (!garden.light_schedule || !garden.light_schedule.duration || !garden.light_schedule.start_time) {
+            if (!garden.light_schedule || !garden.light_schedule.duration_ms || !garden.light_schedule.start_time) {
                 throw new ApiError(400, 'Garden does not have a valid light schedule to schedule');
             }
 

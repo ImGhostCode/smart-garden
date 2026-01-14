@@ -2,7 +2,8 @@ const { Router } = require('express');
 const router = Router();
 const PlantsController = require('../controllers/plantsController');
 const Joi = require('joi');
-const { schemas, validateBody, validateParams, validateQuery } = require('../utils/validation');
+const { validateBody, validateParams, validateQuery } = require('../middlewares/validationMiddleware');
+const { schemas } = require('../utils/validation');
 
 // Plants routes
 

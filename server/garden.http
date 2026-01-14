@@ -1,7 +1,7 @@
 @hostname = http://localhost
 @port = 3000
 @host = {{hostname}}:{{port}}
-@gardenId = 68de7e98ae6796d18a268a34
+@gardenId = 6961d1f049bfbf9e55918bac
 ### Gardens:
 GET {{host}}/health
 ###
@@ -15,16 +15,42 @@ Content-Type: application/json
   "topic_prefix": "seed-garden",
   "max_zones": 3,
   "light_schedule": {
-    "duration": "10h",
-    "start_time": "18:00:00+07:00"
+    "duration_ms": 36000000,
+    "start_time": "18:00:00"
   },
   "controller_config": {
-    "valvePins": [1,2,3],
-    "pumpPins": [4,5,6],
-    "lightPin": 7,
-    "tempHumidityPin": 8,
-    "tempHumidityInterval": 15000
+    "valve_pins": [1,2,3],
+    "pump_pins": [4,5,6],
+    "light_pin": 7,
+    "temp_humidity_pin": 8,
+    "temp_hum_interval_ms": 15000
   }
+}
+###
+POST   {{host}}/gardens
+Content-Type: application/json
+
+{
+    "name": "Front Yard",
+    "topic_prefix": "front-yard",
+    "max_zones": 2,
+    "light_schedule": {
+      "duration_ms": 43200000,
+      "start_time": "21:35:00"
+    },
+    "controller_config": {
+      "valve_pins": [
+        32,
+        33
+      ],
+      "pump_pins": [
+        26,
+        27
+      ],
+      "light_pin": 14,
+      "temp_humidity_pin": 12,
+      "temp_hum_interval_ms": 60000
+    }
 }
 ###
 GET    {{host}}/gardens/{{gardenId}}
@@ -37,25 +63,26 @@ Content-Type: application/json
     "topic_prefix": "front-yard",
     "max_zones": 2,
     "light_schedule": {
-      "duration": "12h",
-      "start_time": "21:35:00+07:00"
+      "duration_ms": 43200000,
+      "start_time": "21:35:00",
+      "adhoc_on_time": "2026-01-10T14:41:05.979Z"
     },
     "controller_config": {
-      "valvePins": [
+      "valve_pins": [
         32,
         33
       ],
-      "pumpPins": [
+      "pump_pins": [
         26,
         27
       ],
-      "lightPin": 14,
-      "tempHumidityPin": 12,
-      "tempHumidityInterval": 60000
+      "light_pin": 14,
+      "temp_humidity_pin": 12,
+      "temp_hum_interval_ms": 60000
     }
 }
 ###
-PATCH  {{host}}/gardens/68de7f1a1a3849191815627d
+PATCH  {{host}}/gardens/6961d1d049bfbf9e55918baa
 Content-Type: application/json
 
 {
@@ -63,27 +90,26 @@ Content-Type: application/json
   "topic_prefix": "seed-garden",
   "max_zones": 3,
   "light_schedule": {
-    "duration": "10h",
-    "start_time": "18:00:00+07:00",
-    "adhoc_on_time": "2024-12-31T18:00:00+07:00"
+    "duration_ms":57600000,
+    "start_time": "11:00:00"
   },
   "controller_config": {
-    "valvePins": [1,2,3],
-    "pumpPins": [4,5,6],
-    "lightPin": 7,
-    "tempHumidityPin": 8,
-    "tempHumidityInterval": 15000
+    "valve_pins": [1,2,3],
+    "pump_pins": [4,5,6],
+    "light_pin": 7,
+    "temp_humidity_pin": 8,
+    "temp_hum_interval_ms": 15000
   }
 }
 ###
-DELETE {{host}}/gardens/68cbe14c49d2c049a5f415ec
+DELETE {{host}}/gardens/{{gardenId}}
 ###
 POST   {{host}}/gardens/{{gardenId}}/action
 Content-Type: application/json
 
 {
   "light": {
-    "state": "ON"
+    "state": ""
   }
 }
 ###
@@ -93,7 +119,7 @@ Content-Type: application/json
 {
   "light": {
     "state": "OFF",
-    "for_duration": "1m"
+    "for_duration": "1h"
   }
 }
 
@@ -116,16 +142,16 @@ Content-Type: application/json
     "config":true,
     "controller_config": {
       "max_zones": 2,
-      "valvePins": [1,2],
-      "pumpPins": [3,4],
-      "lightPin": 5,
-      "tempHumidityPin": 6,
-      "tempHumidityInterval": 20000
+      "valve_pins": [1,2],
+      "pump_pins": [3,4],
+      "light_pin": 14,
+      "temp_humidity_pin": 12,
+      "temp_hum_interval_ms": 60000
     }
   }
 }
 ###
-POST   {{host}}/gardens/68f78c18a8e9bee0fe517546/action
+POST   {{host}}/gardens/{{gardenId}}/action
 Content-Type: application/json
 
 {

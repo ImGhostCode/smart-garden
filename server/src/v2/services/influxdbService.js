@@ -310,7 +310,7 @@ class InfluxDBService {
                 zone_id: row.zone_id,
                 status: row.status,
                 source: row.source,
-                duration: `${row._value}ms`,
+                duration_ms: row._value,
                 sent_at: row.sent_at,
                 started_at: row.started_at,
                 completed_at: row.completed_at,

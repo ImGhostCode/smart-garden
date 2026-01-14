@@ -84,34 +84,86 @@ const db = {
     },
 
     plants: {
-        async getAll(filters = {}) {
-            return await Plant.find(filters).sort({ created_at: -1 });
+        async getAll({ filters = {}, garden = false, zone = false }) {
+            let query = Plant.find(filters).sort({ created_at: -1 });
+            if (zone) {
+                query = query.populate({
+                    path: 'zone_id',
+                    select: '_id name',
+                });
+            }
+            if (garden) {
+                query = query.populate({
+                    path: 'garden_id',
+                    select: '_id name',
+                });
+            }
+            return await query;
         },
 
-        async getById(id) {
-            return await Plant.findOne({ _id: id, end_date: null });
+        async getById({ id, garden = false, zone = false }) {
+            let query = Plant.findOne({ _id: id, end_date: null });
+            if (zone) {
+                query = query.populate({
+                    path: 'zone_id',
+                    select: '_id name',
+                });
+            }
+            if (garden) {
+                query = query.populate({
+                    path: 'garden_id',
+                    select: '_id name',
+                });
+            }
+            return await query;
         },
 
         async getByGardenId(garden_id) {
             return await Plant.find({ garden_id, end_date: null }).sort({ created_at: -1 });
         },
 
-        async create(data) {
+        async create({ data, garden = false, zone = false }) {
+            const populateOptions = [];
+            if (zone) {
+                populateOptions.push({
+                    path: 'zone_id',
+                    select: '_id name',
+                });
+            }
+            if (garden) {
+                populateOptions.push({
+                    path: 'garden_id',
+                    select: '_id name',
+                });
+            }
             const plant = new Plant(data);
-            return await plant.save();
+            return await (await plant.save()).populate(populateOptions);
         },
 
-        async updateById(id, data) {
+        async updateById({ id, data, garden = false, zone = false }) {
+            let populateOptions = [];
+            if (zone) {
+                populateOptions.push({
+                    path: 'zone_id',
+                    select: '_id name',
+                });
+            }
+            if (garden) {
+                populateOptions.push({
+                    path: 'garden_id',
+                    select: '_id name',
+                });
+            }
             return await Plant.findOneAndUpdate(
                 { _id: id, end_date: null },
                 { ...data, updated_at: new Date() },
-                { new: true }
+                { new: true, populate: populateOptions }
             );
         },
 
         async deleteById(id) {
             return await Plant.findOneAndUpdate(
-                { _id: id },
+                { _id: id, end_date: null },
                 { end_date: new Date() },
                 { new: true }
             );
@@ -138,34 +190,86 @@ const db = {
     },
 
     zones: {
-        async getAll(filters = {}) {
-            return await Zone.find(filters).sort({ position: 1 });
+        async getAll({ filters, garden = false, waterSchedules = false }) {
+            let query = Zone.find(filters).sort({ position: 1 });
+            if (garden) {
+                query = query.populate({
+                    path: 'garden_id',
+                    select: '_id name',
+                });
+            }
+            if (waterSchedules) {
+                query = query.populate({
+                    path: 'water_schedule_ids',
+                    select: '_id name description duration_ms interval start_time active_period',
+                });
+            }
+            return await query;
         },
 
-        async getById(id) {
-            return await Zone.findOne({ _id: id, end_date: null });
+        async getById({ id, garden = false, waterSchedules = false }) {
+            let query = Zone.findOne({ _id: id, end_date: null });
+            if (garden) {
+                query = query.populate({
+                    path: 'garden_id',
+                    select: '_id name',
+                });
+            }
+            if (waterSchedules) {
+                query = query.populate({
+                    path: 'water_schedule_ids',
+                    select: '_id name description duration_ms interval start_time active_period',
+                });
+            }
+            return await query;
         },
 
         async getByGardenId(garden_id) {
             return await Zone.find({ garden_id, end_date: null }).sort({ position: 1 });
         },
 
-        async create(data) {
+        async create({ data, garden = false, waterSchedules = false }) {
+            const populateOptions = [];
+            if (garden) {
+                populateOptions.push({
+                    path: 'garden_id',
+                    select: '_id name',
+                });
+            }
+            if (waterSchedules) {
+                populateOptions.push({
+                    path: 'water_schedule_ids',
+                    select: '_id name description duration_ms interval start_time active_period',
+                });
+            }
             const zone = new Zone(data);
-            return await zone.save();
+            return await (await zone.save()).populate(populateOptions);
         },
 
-        async updateById(id, data) {
+        async updateById({ id, data, garden = false, waterSchedules = false }) {
+            let populateOptions = [];
+            if (garden) {
+                populateOptions.push({
+                    path: 'garden_id',
+                    select: '_id name',
+                });
+            }
+            if (waterSchedules) {
+                populateOptions.push({
+                    path: 'water_schedule_ids',
+                    select: '_id name description duration_ms interval start_time active_period',
+                });
+            }
             return await Zone.findOneAndUpdate(
                 { _id: id, end_date: null },
                 { ...data, updated_at: new Date() },
-                { new: true }
+                { new: true, populate: populateOptions }
             );
         },
 
         async deleteById(id) {
             return await Zone.findOneAndUpdate(
-                { _id: id },
+                { _id: id, end_date: null },
                 { end_date: new Date() },
                 { new: true }
             );
@@ -279,30 +383,58 @@ const db = {
         },
     },
     waterRoutines: {
-        async getAll(filters = {}) {
-            return await WaterRoutine.find(filters).sort({ created_at: -1 });
+        async getAll({ filters, zone = false }) {
+            let query = WaterRoutine.find(filters).sort({ created_at: -1 });
+            if (zone) {
+                query = query.populate({
+                    path: 'steps.zone_id',
+                    select: '_id name',
+                });
+            }
+            return await query;
         },
 
-        async getById(id) {
-            return await WaterRoutine.findOne({ _id: id, end_date: null });
+        async getById({ id, zone = false }) {
+            let query = WaterRoutine.findOne({ _id: id, end_date: null });
+            if (zone) {
+                query = query.populate({
+                    path: 'steps.zone_id',
+                    select: '_id name',
+                });
+            }
+            return await query;
         },
 
-        async create(data) {
-            const plant = new WaterRoutine(data);
-            return await plant.save();
+        async create({ data, zone = false }) {
+            const populateOptions = [];
+            if (zone) {
+                populateOptions.push({
+                    path: 'steps.zone_id',
+                    select: '_id name',
+                });
+            }
+            const waterRoutine = new WaterRoutine(data);
+            return await (await waterRoutine.save()).populate(populateOptions);
         },
 
-        async updateById(id, data) {
+        async updateById({ id, data, zone = false }) {
+            let populateOptions = [];
+            if (zone) {
+                populateOptions.push({
+                    path: 'steps.zone_id',
+                    select: '_id name',
+                });
+            }
             return await WaterRoutine.findOneAndUpdate(
                 { _id: id, end_date: null },
                 { ...data, updated_at: new Date() },
-                { new: true }
+                { new: true, populate: populateOptions }
             );
         },
 
         async deleteById(id) {
             return await WaterRoutine.findOneAndUpdate(
-                { _id: id },
+                { _id: id, end_date: null },
                 { end_date: new Date() },
                 { new: true }
             );

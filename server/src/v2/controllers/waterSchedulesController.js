@@ -5,7 +5,6 @@ const { ApiSuccess, ApiError } = require('../utils/apiResponse');
 const {
     createLink,
     millisToDuration,
-    durationToMillis,
     validMonthToNumber
 } = require('../utils/helpers');
 const {
@@ -54,10 +53,10 @@ const WaterSchedulesController = {
 
     addWaterSchedule: async (req, res, next) => {
         const { exclude_weather_data } = req.query;
-        const { duration, interval, start_time, weather_control, active_period, name, description } = req.body;
+        const { duration_ms, interval, start_time, weather_control, active_period, name, description } = req.body;
 
         const schedule = {
-            duration,
+            duration_ms,
             interval,
             start_time,
             weather_control,
@@ -149,7 +148,7 @@ const WaterSchedulesController = {
     updateWaterSchedule: async (req, res, next) => {
         const { waterScheduleID } = req.params;
         const { exclude_weather_data } = req.query;
-        const { duration, interval, start_time, weather_control, active_period, name, description } = req.body;
+        const { duration_ms, interval, start_time, weather_control, active_period, name, description } = req.body;
 
         try {
             const schedule = await db.waterSchedules.getById(waterScheduleID);
@@ -159,7 +158,7 @@ const WaterSchedulesController = {
 
             const update = {};
 
-            if (duration !== undefined) update.duration = duration;
+            if (duration_ms !== undefined) update.duration_ms = duration_ms;
             if (interval !== undefined) update.interval = interval;
             if (start_time !== undefined) update.start_time = start_time;
             if (weather_control !== undefined) update.weather_control = weather_control;
@@ -261,18 +260,18 @@ const WaterSchedulesController = {
             // Determine execution logic
             let shouldWater = false;
             let executionReason = effectiveWatering.reason;
-            let finalDuration = effectiveWatering.duration;
+            let finalDuration = effectiveWatering.duration_ms;
             let scaleFactor = effectiveWatering.scaleFactor;
 
             if (force_execution) {
                 shouldWater = true;
                 executionReason = 'forced_execution';
-                if (effectiveWatering.duration === 0) {
-                    finalDuration = durationToMillis(schedule.duration);
+                if (effectiveWatering.duration_ms <= 0) {
+                    finalDuration = schedule.duration_ms;
                     scaleFactor = 1.0;
                 }
             } else {
-                shouldWater = effectiveWatering.duration > 0;
+                shouldWater = effectiveWatering.duration_ms > 0;
             }
 
             // Prepare response
@@ -283,8 +282,8 @@ const WaterSchedulesController = {
                     reason: executionReason,
                     duration_ms: finalDuration,
                     duration_formatted: millisToDuration(finalDuration),
-                    original_duration_ms: durationToMillis(schedule.duration),
-                    original_duration_formatted: schedule.duration,
+                    original_duration_ms: schedule.duration_ms,
+                    original_duration_formatted: millisToDuration(schedule.duration_ms),
                     scale_factor: scaleFactor,
                     weather_adjustments: effectiveWatering.adjustments || [],
                     is_simulation: simulate,
@@ -358,12 +357,12 @@ const WaterSchedulesController = {
 
             // Prepare preview response
             const preview = {
-                will_execute: effectiveWatering.duration > 0,
+                will_execute: effectiveWatering.duration_ms > 0,
                 reason: effectiveWatering.reason,
-                duration_ms: effectiveWatering.duration,
-                duration_formatted: millisToDuration(effectiveWatering.duration),
-                original_duration_ms: durationToMillis(schedule.duration),
-                original_duration_formatted: schedule.duration,
+                duration_ms: effectiveWatering.duration_ms,
+                duration_formatted: millisToDuration(effectiveWatering.duration_ms),
+                original_duration_ms: schedule.duration_ms,
+                original_duration_formatted: millisToDuration(schedule.duration_ms),
                 scale_factor: effectiveWatering.scaleFactor,
                 weather_adjustments: effectiveWatering.adjustments || [],
                 is_active_period: isInActivePeriod,

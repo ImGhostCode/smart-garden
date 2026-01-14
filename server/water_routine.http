@@ -12,16 +12,16 @@ Content-Type: application/json
   "name": "Morning Routine",
   "steps": [
     {
-      "zone_id": "68de862ab78657a4ab281c2a",
-      "duration": "10m"
+      "zone_id": "69664bf5ee5435db753db8d8",
+      "duration_ms": 600000
     },
     {
-      "zone_id": "68de8783b78657a4ab281c2e",
-      "duration": "5m"
+      "zone_id": "69664c0dee5435db753db8e0",
+      "duration_ms": 300000
     },
     {
-      "zone_id": "68de8996b78657a4ab281c37",
-      "duration": "15m"
+      "zone_id": "69664ce8db724a7afe52654c",
+      "duration_ms": 900000
     }
   ]
 }
@@ -35,39 +35,39 @@ Content-Type: application/json
   "name": "Evening Routine",
   "steps": [
     {
-      "zone_id": "68de862ab78657a4ab281c2a",
-      "duration": "15m"
+      "zone_id": "69664bf5ee5435db753db8d8",
+      "duration_ms": 60000
     },
     {
-      "zone_id": "68de8783b78657a4ab281c2e",
-      "duration": "10m"
+      "zone_id": "69664ce8db724a7afe52654c",
+      "duration_ms": 90000
     }
   ]
 }
 
 ### Update Morning Water Routine
-PUT   {{host}}/water_routines/691f1b2385d5734d35cd7669
+PUT   {{host}}/water_routines/696658225e95714983808e81
 Content-Type: application/json
 
 {
   "name": "Updated Morning Routine",
   "steps": [
     {
-      "zone_id": "68de862ab78657a4ab281c2a",
-      "duration": "12m"
+      "zone_id": "69664bf5ee5435db753db8d8",
+      "duration_ms": 120000
     },
     {
-      "zone_id": "68de8996b78657a4ab281c37",
-      "duration": "18m"
+      "zone_id": "69664c0dee5435db753db8e0",
+      "duration_ms": 240000
     }
   ]
 }
 
 ### Get Morning Water Routine by ID
-GET    {{host}}/water_routines/691f1b2385d5734d35cd7669
+GET    {{host}}/water_routines/696658225e95714983808e81
 
 ### Delete Evening Water Routine by ID
-DELETE    {{host}}/water_routines/691f1ca86457257971bc05de
+DELETE    {{host}}/water_routines/696658225e95714983808e81
 
 ### Run a Water Routine by ID
-POST   {{host}}/water_routines/691f1b2385d5734d35cd7669/run
+POST   {{host}}/water_routines/696658225e95714983808e81/run

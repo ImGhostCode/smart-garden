@@ -2,7 +2,8 @@ const { Router } = require('express');
 const router = Router();
 const SchedulerController = require('../controllers/schedulerController');
 const Joi = require('joi');
-const { schemas, validateParams, validateBody } = require('../utils/validation');
+const { validateBody, validateParams, validateQuery } = require('../middlewares/validationMiddleware');
+const { schemas } = require('../utils/validation');
 
 // GET /scheduler - Get scheduler status and active jobs
 router.get('/', SchedulerController.getSchedulerStatus);

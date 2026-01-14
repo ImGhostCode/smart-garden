@@ -1,17 +1,13 @@
 const cron = require('node-cron');
 const db = require('../models/database');
 const {
-    millisToDuration,
     durationToMillis
 } = require('../utils/helpers');
 const {
-    calEffectiveWateringDuration,
     isActiveTime,
-    calculateNextWaterTime,
     scaleWateringDuration
 } = require('../utils/waterScheduleHelpers');
 const mqttService = require('./mqttService');
-const { getWeatherData } = require('../utils/weatherHelper');
 const { ApiError } = require('../utils/apiResponse');
 
 class CronScheduler {
@@ -37,7 +33,7 @@ class CronScheduler {
             }
 
             const [, hours, minutes] = timeMatch;
-            const intervalHours = this.parseIntervalToHours(waterSchedule.interval);
+            const intervalHours = waterSchedule.interval * 24; // Convert days to hours
 
             // Create cron pattern based on interval
             let cronPattern;
@@ -56,7 +52,7 @@ class CronScheduler {
                 cronPattern = '* * * * *'; // Every minute, will check if it's time
             }
 
-            this.logger.log(`Scheduling with cron pattern: ${cronPattern} for interval: ${waterSchedule.interval}`);
+            this.logger.log(`Scheduling with cron pattern: ${cronPattern} for interval: ${waterSchedule.interval} day(s)`);
 
             // Create the cron job
             const task = cron.schedule(cronPattern, async () => {
@@ -71,7 +67,7 @@ class CronScheduler {
                 }
             }, {
                 scheduled: true,
-                timezone: "Asia/Ho_Chi_Minh" // Set to match +07:00 timezone from your start_time
+                timezone: 'UTC'
             });
 
             // Store the job reference
@@ -101,7 +97,7 @@ class CronScheduler {
         try {
             if (zone.skip_count !== undefined && zone.skip_count > 0) {
                 jobLogger.log(`Skipping watering for zone ${zone.name} due to skip_count (${zone.skip_count})`);
-                await db.zones.updateById(zone._id.toString(), { skip_count: zone.skip_count - 1 });
+                await db.zones.updateById({ id: zone._id.toString(), data: { skip_count: zone.skip_count - 1 } });
                 return;
             }
 
@@ -119,15 +115,15 @@ class CronScheduler {
             }
 
             // Check if it's actually time to water (for all intervals)
-            const shouldExecuteNow = this.shouldExecuteNow(waterSchedule);
-            if (!shouldExecuteNow) {
-                jobLogger.log(`Skipping water schedule ${waterScheduleId} - not time yet based on interval`);
-                return; // Not time yet
-            }
+            // const shouldExecuteNow = this.shouldExecuteNow(waterSchedule);
+            // if (!shouldExecuteNow) {
+            //     jobLogger.log(`Skipping water schedule ${waterScheduleId} - not time yet based on interval`);
+            //     return; // Not time yet
+            // }
 
             let duration;
             if (!waterSchedule.hasWeatherControl()) {
-                duration = waterSchedule.duration;
+                duration = waterSchedule.duration_ms;
             } else {
                 duration = await scaleWateringDuration(waterSchedule);
             }
@@ -184,19 +180,22 @@ class CronScheduler {
     /**
      * Check if it's time to execute for complex intervals
      */
-    shouldExecuteNow(waterSchedule) {
-        try {
-            const nextWaterTime = calculateNextWaterTime(waterSchedule);
-            const now = new Date();
-            now.setMilliseconds(0);
-            // Allow execution within 1 minute window
-            const timeDiff = nextWaterTime.getTime() - now.getTime();
-            return timeDiff >= 0 && timeDiff < 60000; // Within 1 minute
-        } catch (error) {
-            this.logger.error('Error checking execution time:', error);
-            return false;
-        }
-    }
+    // shouldExecuteNow(waterSchedule) {
+    //     try {
+    //         const nextWaterTime = calculateNextWaterTime(waterSchedule.start_time, waterSchedule.interval);
+    //         console.log('Next water time calculated as: %s', nextWaterTime.toUTCString());
+    //         const now = new Date();
+    //         now.setMilliseconds(0);
+    //         console.log('Current time is: %s', now.toUTCString());
+    //         // Allow execution within 1 minute window
+    //         const timeDiff = nextWaterTime.getTime() - now.getTime();
+    //         console.log('Time difference (ms): %d', timeDiff);
+    //         return timeDiff >= 0 && timeDiff < 60000; // Within 1 minute
+    //     } catch (error) {
+    //         this.logger.error('Error checking execution time:', error);
+    //         return false;
+    //     }
+    // }
 
     /**
      * Parse interval string to hours
@@ -299,7 +298,7 @@ class CronScheduler {
      * Schedule light actions for a garden (ON and OFF)
      */
     async scheduleLightActions(garden) {
-        if (!garden.light_schedule || !garden.light_schedule.start_time || !garden.light_schedule.duration) {
+        if (!garden.light_schedule || !garden.light_schedule.start_time || !garden.light_schedule.duration_ms) {
             throw new ApiError(400, 'Garden must have complete light_schedule configuration');
         }
 
@@ -315,7 +314,7 @@ class CronScheduler {
         const [, hours, minutes] = timeMatch;
 
         // Parse duration
-        const durationMs = durationToMillis(garden.light_schedule.duration);
+        const durationMs = garden.light_schedule.duration_ms;
         const durationHours = Math.floor(durationMs / (1000 * 60 * 60));
         const durationMinutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
 
@@ -332,7 +331,7 @@ class CronScheduler {
             await this.executeLightAction(garden, 'ON');
         }, {
             scheduled: true,
-            timezone: "Asia/Ho_Chi_Minh"
+            timezone: 'UTC'
         });
 
         // Schedule OFF action
@@ -340,7 +339,7 @@ class CronScheduler {
             await this.executeLightAction(garden, 'OFF');
         }, {
             scheduled: true,
-            timezone: "Asia/Ho_Chi_Minh"
+            timezone: 'UTC'
         });
 
         // Store the jobs
@@ -458,7 +457,7 @@ class CronScheduler {
             await executeLightAction();
         }, {
             scheduled: true,
-            timezone: "Asia/Ho_Chi_Minh"
+            timezone: 'UTC'
         });
 
         this.scheduledJobs.set(adhocJobId, {
@@ -508,7 +507,7 @@ class CronScheduler {
 
         // Parse delay duration
         const delayMs = durationToMillis(delayDuration);
-        const lightDurationMs = durationToMillis(garden.light_schedule.duration);
+        const lightDurationMs = garden.light_schedule.duration_ms;
 
         if (delayMs > lightDurationMs) {
             throw new ApiError(400, 'Unable to execute delay that lasts longer than the light duration');
@@ -613,7 +612,7 @@ class CronScheduler {
                 await this.executeLightAction(garden, state);
             }, {
                 scheduled: true,
-                timezone: "Asia/Ho_Chi_Minh"
+                timezone: 'UTC'
             });
 
             // Store the regular job
@@ -628,7 +627,6 @@ class CronScheduler {
 
         }, {
             scheduled: true,
-            timezone: "Asia/Ho_Chi_Minh"
         });
 
         // Store the delayed job temporarily
@@ -742,7 +740,7 @@ class CronScheduler {
             let scheduledLightCount = 0;
 
             for (const garden of gardens) {
-                if (garden.light_schedule && garden.light_schedule.start_time && garden.light_schedule.duration) {
+                if (garden.light_schedule && garden.light_schedule.start_time && garden.light_schedule.duration_ms) {
                     try {
                         await this.scheduleLightActions(garden);
                         scheduledLightCount++;

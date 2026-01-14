@@ -1,7 +1,8 @@
 const { Router } = require('express');
 const router = Router();
 const Joi = require('joi');
-const { schemas, validateBody, validateParams, validateQuery } = require('../utils/validation');
+const { validateBody, validateParams, validateQuery } = require('../middlewares/validationMiddleware');
+const { schemas } = require('../utils/validation');
 const WeatherClientsController = require('../controllers/weatherClientsController');
 
 // Weather Clients routes
