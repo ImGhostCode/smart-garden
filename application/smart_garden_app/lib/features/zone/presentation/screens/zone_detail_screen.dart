@@ -12,6 +12,7 @@ import '../../../water_schedule/domain/entities/water_schedule_entity.dart';
 import '../../domain/entities/water_history_entity.dart';
 import '../../domain/entities/zone_entity.dart';
 import '../../domain/usecases/get_water_history.dart';
+import '../../domain/usecases/get_zone_by_id.dart';
 import '../../domain/usecases/send_zone_action.dart';
 import '../providers/zone_provider.dart';
 
@@ -33,14 +34,22 @@ class _ZoneDetailScreenState extends ConsumerState<ZoneDetailScreen> {
   @override
   void initState() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(zoneProvider.notifier).getZoneById(id: widget.zoneId);
+      ref
+          .read(zoneProvider.notifier)
+          .getZoneById(
+            GetZoneParams(
+              id: widget.zoneId,
+              gardenId: widget.gardenId,
+              excludeWeather: false,
+            ),
+          );
       ref
           .read(zoneProvider.notifier)
           .getWaterHistory(
             GetWaterHistoryParams(
               gardenId: widget.gardenId,
               zoneId: widget.zoneId,
-              range: 7,
+              range: '24h',
               limit: 10,
             ),
           );
@@ -60,8 +69,8 @@ class _ZoneDetailScreenState extends ConsumerState<ZoneDetailScreen> {
             icon: const Icon(Icons.edit_outlined, color: Colors.blue, size: 28),
             onPressed: () {
               context.goEditZone(
-                '68de7e98ae6796d18a268a40',
-                '68de7e98ae6796d18a268a40',
+                widget.gardenId,
+                widget.zoneId,
                 zoneState.zone!,
               );
             },
@@ -70,8 +79,8 @@ class _ZoneDetailScreenState extends ConsumerState<ZoneDetailScreen> {
       ),
       body: zoneState.isLoadingZone
           ? const Center(child: CircularProgressIndicator())
-          : zoneState.errLoadingZone != null
-          ? Center(child: Text(zoneState.errLoadingZone!))
+          : zoneState.errLoadingZone.isNotEmpty
+          ? Center(child: Text(zoneState.errLoadingZone))
           : zoneState.zone != null
           ? SingleChildScrollView(
               padding: const EdgeInsets.all(AppConstants.paddingMd),
@@ -182,9 +191,9 @@ class _ZoneDetailScreenState extends ConsumerState<ZoneDetailScreen> {
                       icon: Icons.hot_tub_rounded,
                       label: "Temperature",
                       value:
-                          "${zoneState.zone!.weatherData?.temperature?.celsius}°C",
+                          "${zoneState.zone!.weatherData?.temperature?.celsius?.toStringAsFixed(2)}°C",
                       subValue:
-                          "Scale factor: ${zoneState.zone!.weatherData?.temperature?.scaleFactor}",
+                          "Scale factor: ${zoneState.zone!.weatherData?.temperature?.scaleFactor?.toStringAsFixed(1)}",
                       color: Colors.orange,
                       progress:
                           (zoneState.zone!.weatherData?.temperature?.celsius ??
@@ -195,9 +204,10 @@ class _ZoneDetailScreenState extends ConsumerState<ZoneDetailScreen> {
                     _buildWeatherRow(
                       icon: Icons.water_drop,
                       label: "Humidity",
-                      value: "${zoneState.zone!.weatherData?.rain?.mm}mm",
+                      value:
+                          "${zoneState.zone!.weatherData?.rain?.mm?.toStringAsFixed(2)}mm",
                       subValue:
-                          "Scale factor: ${zoneState.zone!.weatherData?.rain?.scaleFactor}",
+                          "Scale factor: ${zoneState.zone!.weatherData?.rain?.scaleFactor?.toStringAsFixed(1)}",
                       color: Colors.blue,
                       progress:
                           (zoneState.zone!.weatherData?.rain?.mm ?? 0) / 2000,
@@ -213,24 +223,32 @@ class _ZoneDetailScreenState extends ConsumerState<ZoneDetailScreen> {
                       count: zoneState.zone!.waterSchedules?.length,
                     ),
                     const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 110,
-                      child: ListView.separated(
-                        padding: EdgeInsets.zero,
-                        scrollDirection: Axis.horizontal,
-                        shrinkWrap: true,
-                        itemBuilder: (context, index) {
-                          final schedule =
-                              zoneState.zone!.waterSchedules![index];
-                          return buildScheduleItem(schedule);
-                        },
-                        separatorBuilder: (context, index) {
-                          return const SizedBox(width: 8);
-                        },
-                        itemCount: zoneState.zone!.waterSchedules!.length,
+                    if (zoneState.zone!.waterSchedules!.isNotEmpty)
+                      SizedBox(
+                        width: double.infinity,
+                        height: 110,
+                        child: ListView.separated(
+                          padding: EdgeInsets.zero,
+                          scrollDirection: Axis.horizontal,
+                          shrinkWrap: true,
+                          itemBuilder: (context, index) {
+                            final schedule =
+                                zoneState.zone!.waterSchedules![index];
+                            return buildScheduleItem(schedule);
+                          },
+                          separatorBuilder: (context, index) {
+                            return const SizedBox(width: 8);
+                          },
+                          itemCount: zoneState.zone!.waterSchedules!.length,
+                        ),
                       ),
-                    ),
+                    if (zoneState.zone!.waterSchedules!.isEmpty)
+                      Center(
+                        child: Text(
+                          'No water schedules found',
+                          style: TextStyle(color: Colors.grey.shade600),
+                        ),
+                      ),
                     const SizedBox(height: 8),
                   ],
                   // --- Water History Section ---
@@ -238,9 +256,16 @@ class _ZoneDetailScreenState extends ConsumerState<ZoneDetailScreen> {
                   const SizedBox(height: 8),
                   zoneState.isLoadingWHistory
                       ? const Center(child: CircularProgressIndicator())
-                      : zoneState.errLoadingWHistory != null
-                      ? Center(child: Text(zoneState.errLoadingWHistory!))
-                      : _buildHistoryTable(zoneState.waterHistory),
+                      : zoneState.errLoadingWHistory.isNotEmpty
+                      ? Center(child: Text(zoneState.errLoadingWHistory))
+                      : zoneState.waterHistory.isNotEmpty
+                      ? _buildHistoryTable(zoneState.waterHistory)
+                      : Center(
+                          child: Text(
+                            'No water history found',
+                            style: TextStyle(color: Colors.grey.shade600),
+                          ),
+                        ),
                   const SizedBox(height: 150),
                 ],
               ),
@@ -264,6 +289,7 @@ class _ZoneDetailScreenState extends ConsumerState<ZoneDetailScreen> {
                               .read(zoneProvider.notifier)
                               .sendZoneAction(
                                 ZoneActionParams(
+                                  gardenId: widget.gardenId,
                                   zoneId: zoneState.zone!.id!,
                                   water: WaterAction(durationMs: durationMs),
                                 ),
@@ -307,16 +333,22 @@ class _ZoneDetailScreenState extends ConsumerState<ZoneDetailScreen> {
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      zone.name ?? '',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: Text(
+                        zone.name ?? '',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        maxLines: 2,
                       ),
                     ),
+                    const SizedBox(width: 6),
                     Text(
-                      "Position: ${zone.position ?? ''}",
+                      "Position: ${zone.position != null ? (zone.position! + 1).toString() : 'N/A'}",
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ],
@@ -364,20 +396,25 @@ class _ZoneDetailScreenState extends ConsumerState<ZoneDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Next Water - ${nextWater.waterSchedule?.name ?? ''}",
+                  nextWater.waterSchedule != null
+                      ? "Next Water - ${nextWater.waterSchedule?.name ?? ''}"
+                      : "Next Water",
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
                 ),
-                Text(
-                  "Duration: $duration - Start: $startTime",
-                  style: const TextStyle(color: Colors.black87),
-                ),
+                if (nextWater.waterSchedule != null)
+                  Text(
+                    "Duration: $duration - Start: $startTime",
+                    style: const TextStyle(color: Colors.black87),
+                  ),
                 Text(
                   nextWater.message ?? '',
-                  style: const TextStyle(
-                    color: Colors.green,
+                  style: TextStyle(
+                    color: nextWater.waterSchedule != null
+                        ? Colors.green
+                        : Colors.black54,
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                   ),
@@ -512,7 +549,7 @@ class _ZoneDetailScreenState extends ConsumerState<ZoneDetailScreen> {
       case 'sent':
         statusColor = Colors.black87;
         break;
-      case 'start':
+      case 'started':
         statusColor = Colors.blue;
         break;
       case 'completed':

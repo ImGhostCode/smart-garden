@@ -9,7 +9,12 @@ import '../../../../core/utils/extensions/build_context_extentions.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../../garden/presentation/screens/garden_detail_screen.dart'
     show showZoneActions;
+import '../../../plant/domain/usecases/get_all_plants.dart';
+import '../../../plant/presentation/providers/plant_provider.dart';
+import '../../../water_routine/domain/usecases/get_all_water_routines.dart';
+import '../../../water_routine/presentation/providers/water_routine_provider.dart';
 import '../../domain/entities/zone_entity.dart';
+import '../../domain/usecases/delete_zone.dart';
 import '../../domain/usecases/get_all_zones.dart';
 import '../../domain/usecases/send_zone_action.dart';
 import '../providers/zone_provider.dart';
@@ -54,11 +59,22 @@ class _ZoneListScreenState extends ConsumerState<ZoneListScreen> {
 
     ref.listen(zoneProvider, (previous, next) async {
       if (previous?.isDeletingZone == true && next.isDeletingZone == false) {
-        if (next.errDeletingZone != null) {
-          EasyLoading.showError(next.errDeletingZone ?? 'Error');
+        if (next.errDeletingZone.isNotEmpty) {
+          EasyLoading.showError(next.errDeletingZone);
         } else {
           EasyLoading.showSuccess(next.responseMsg ?? 'Zone deleted');
-          // refresh list
+          // refresh zone list
+          ref
+              .read(zoneProvider.notifier)
+              .getAllZone(GetAllZoneParams(gardenId: widget.gardenId));
+          // refresh plant list
+          ref
+              .read(plantProvider.notifier)
+              .getAllPlant(GetAllPlantParams(gardenId: widget.gardenId));
+          // refresh water routine list
+          ref
+              .read(waterRoutineProvider.notifier)
+              .getAllWaterRoutine(GetAllWRParams());
         }
       }
     });
@@ -69,41 +85,57 @@ class _ZoneListScreenState extends ConsumerState<ZoneListScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              context.goAddZone('gardenId');
+              context.goAddZone(widget.gardenId);
             },
             child: const Text("Add zone"),
           ),
         ],
       ),
-      body: zoneState.isLoadingZones
-          ? const Center(child: CircularProgressIndicator())
-          : zoneState.errLoadingZones != null
-          ? Center(child: Text(zoneState.errLoadingZones!))
-          : ListView.separated(
-              padding: const EdgeInsets.all(AppConstants.paddingMd),
-              itemCount: zoneState.zones.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                return ZoneListItem(
-                  data: zoneState.zones[index],
-                  onWater: (durationMs) {
-                    ref
-                        .read(zoneProvider.notifier)
-                        .sendZoneAction(
-                          ZoneActionParams(
-                            zoneId: zoneState.zones[index].id!,
-                            water: WaterAction(durationMs: durationMs),
-                          ),
-                        );
-                  },
-                  onDelete: () {
-                    ref
-                        .read(zoneProvider.notifier)
-                        .deleteZone(zoneState.zones[index].id!);
-                  },
-                );
-              },
-            ),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref
+              .read(zoneProvider.notifier)
+              .getAllZone(GetAllZoneParams(gardenId: widget.gardenId));
+        },
+        child: zoneState.isLoadingZones
+            ? const Center(child: CircularProgressIndicator())
+            : zoneState.errLoadingZones.isNotEmpty
+            ? Center(child: Text(zoneState.errLoadingZones))
+            : zoneState.zones.isEmpty
+            ? const Center(child: Text('No zones found'))
+            : ListView.separated(
+                padding: const EdgeInsets.all(AppConstants.paddingMd),
+                itemCount: zoneState.zones.length,
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  return ZoneListItem(
+                    data: zoneState.zones[index],
+                    onWater: (durationMs) {
+                      ref
+                          .read(zoneProvider.notifier)
+                          .sendZoneAction(
+                            ZoneActionParams(
+                              gardenId: widget.gardenId,
+                              zoneId: zoneState.zones[index].id,
+                              water: WaterAction(durationMs: durationMs),
+                            ),
+                          );
+                    },
+                    onDelete: () {
+                      ref
+                          .read(zoneProvider.notifier)
+                          .deleteZone(
+                            DeleteZoneParams(
+                              gardenId: widget.gardenId,
+                              id: zoneState.zones[index].id,
+                            ),
+                          );
+                    },
+                  );
+                },
+              ),
+      ),
     );
   }
 }
@@ -124,10 +156,7 @@ class ZoneListItem extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return InkWell(
       onTap: () {
-        context.goZoneDetail(
-          '68de7e98ae6796d18a268a34',
-          '68de7e98ae6796d18a268a34',
-        );
+        context.goZoneDetail(data.garden!.id!, data.id!);
       },
       child: Ink(
         decoration: BoxDecoration(
@@ -198,7 +227,6 @@ class ZoneListItem extends ConsumerWidget {
                       style: const TextStyle(color: Colors.black87),
                     ),
                     const SizedBox(height: 4),
-
                     // Action
                     SizedBox(
                       height: AppConstants.buttonSm,
@@ -219,11 +247,7 @@ class ZoneListItem extends ConsumerWidget {
                 onSelected: (ZoneAction item) {
                   switch (item) {
                     case ZoneAction.edit:
-                      context.goEditZone(
-                        '68de7e98ae6796d18a268a40',
-                        '68de7e98ae6796d18a268a40',
-                        data,
-                      );
+                      context.goEditZone(data.garden!.id!, data.id!, data);
                       break;
                     case ZoneAction.delete:
                       context.showConfirmDialog(

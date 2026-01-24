@@ -9,6 +9,7 @@ import '../../../../core/utils/app_utils.dart';
 import '../../../../core/utils/app_validators.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../domain/entities/weather_client_entity.dart';
+import '../../domain/usecases/get_all_weather_clients.dart';
 import '../providers/weather_client_provider.dart';
 import 'new_weather_client_screen.dart' show clientTypes;
 
@@ -116,7 +117,7 @@ class _EditWeatherClientScreenState
         .read(weatherClientProvider.notifier)
         .editWeatherClient(
           WeatherClientEntity(
-            id: widget.wc.id,
+            id: widget.clientId,
             name: _name.text,
             type: _type!,
             // Netatmo fields
@@ -125,9 +126,9 @@ class _EditWeatherClientScreenState
                     stationId: _stationId.text,
                     stationName: _stationName.text,
                     rainModuleId: _rainModuleId.text,
-                    rainModuleType: '',
+                    rainModuleType: 'NAModule3',
                     outdoorModuleId: _outdoorModuleId.text,
-                    outdoorModuleType: '',
+                    outdoorModuleType: 'NAModule1',
                     clientId: _clientId.text,
                     clientSecret: _clientSecret.text,
                     authentication: _refreshToken.text.isNotEmpty
@@ -151,8 +152,6 @@ class _EditWeatherClientScreenState
 
   @override
   Widget build(BuildContext context) {
-    final waterClientState = ref.watch(weatherClientProvider);
-    print(waterClientState.isEditingWC);
     ref.listen(weatherClientProvider.select((state) => state.isEditingWC), (
       previousLoading,
       nextLoading,
@@ -170,6 +169,9 @@ class _EditWeatherClientScreenState
           EasyLoading.showError(next.errEditingWC);
         } else {
           EasyLoading.showSuccess(next.responseMsg ?? 'Weather Client edited');
+          ref
+              .read(weatherClientProvider.notifier)
+              .getAllWeatherClients(GetAllWeatherClientsParams());
           context.goBack();
         }
       }
@@ -187,7 +189,14 @@ class _EditWeatherClientScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildTextField('Client Name', controller: _name),
+              LabeledInput(
+                label: 'Client Name',
+                child: TextFormField(
+                  controller: _name,
+                  validator: AppValidators.required,
+                  textInputAction: TextInputAction.next,
+                ),
+              ),
               const SizedBox(height: 12),
               LabeledInput(
                 label: 'Type',
@@ -219,20 +228,42 @@ class _EditWeatherClientScreenState
                       ),
                     ),
                     const SizedBox(height: 8),
-                    _buildTextField('Station ID', controller: _stationId),
+                    LabeledInput(
+                      label: 'Station ID',
+                      child: TextFormField(
+                        controller: _stationId,
+                        validator: AppValidators.required,
+                        textInputAction: TextInputAction.next,
+                      ),
+                    ),
                     const SizedBox(height: 12),
-                    _buildTextField('Station name', controller: _stationName),
+                    LabeledInput(
+                      label: 'Station name',
+                      child: TextFormField(
+                        controller: _stationName,
+                        validator: AppValidators.required,
+                        textInputAction: TextInputAction.next,
+                      ),
+                    ),
                     const SizedBox(height: 12),
-                    _buildTextField(
-                      'Rain module ID',
-                      controller: _rainModuleId,
+                    LabeledInput(
+                      label: 'Rain module ID',
+                      child: TextFormField(
+                        controller: _rainModuleId,
+                        validator: AppValidators.required,
+                        textInputAction: TextInputAction.next,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     // _buildTextField('Rain module type'),
                     // const SizedBox(height: 12),
-                    _buildTextField(
-                      'Outdoor module ID',
-                      controller: _outdoorModuleId,
+                    LabeledInput(
+                      label: 'Outdoor module ID',
+                      child: TextFormField(
+                        controller: _outdoorModuleId,
+                        validator: AppValidators.required,
+                        textInputAction: TextInputAction.next,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     // _buildTextField('Outdoor module type'),
@@ -245,11 +276,32 @@ class _EditWeatherClientScreenState
                       ),
                     ),
                     const SizedBox(height: 8),
-                    _buildTextField('Client ID', controller: _clientId),
+                    LabeledInput(
+                      label: 'Client ID',
+                      child: TextFormField(
+                        controller: _clientId,
+                        validator: AppValidators.required,
+                        textInputAction: TextInputAction.next,
+                      ),
+                    ),
                     const SizedBox(height: 12),
-                    _buildTextField('Client secret', controller: _clientSecret),
+                    LabeledInput(
+                      label: 'Client secret',
+                      child: TextFormField(
+                        controller: _clientSecret,
+                        validator: AppValidators.required,
+                        textInputAction: TextInputAction.next,
+                      ),
+                    ),
                     const SizedBox(height: 12),
-                    _buildTextField('Refresh token', controller: _refreshToken),
+                    LabeledInput(
+                      label: 'Refresh token',
+                      child: TextFormField(
+                        controller: _refreshToken,
+                        validator: AppValidators.required,
+                        textInputAction: TextInputAction.next,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                   ],
                 ),
@@ -266,16 +318,49 @@ class _EditWeatherClientScreenState
                       ),
                     ),
                     const SizedBox(height: 8),
-                    _buildTextField('Rain (mm)', controller: _rainMm),
-                    const SizedBox(height: 12),
-                    _buildTextField('Rain interval', controller: _rainInterval),
-                    const SizedBox(height: 12),
-                    _buildTextField(
-                      'Average high temperature (°C)',
-                      controller: _avgHighTemperature,
+                    LabeledInput(
+                      label: 'Rain (mm)',
+                      child: TextFormField(
+                        controller: _rainMm,
+                        validator: AppValidators.combine([
+                          AppValidators.required,
+                          AppValidators.nonNegativeNum,
+                        ]),
+                        textInputAction: TextInputAction.next,
+                      ),
                     ),
                     const SizedBox(height: 12),
-                    _buildTextField('Error', controller: _error),
+                    LabeledInput(
+                      label: 'Rain interval',
+                      child: TextFormField(
+                        controller: _rainInterval,
+                        validator: AppValidators.combine([
+                          AppValidators.required,
+                          AppValidators.durationFormat,
+                        ]),
+                        textInputAction: TextInputAction.next,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    LabeledInput(
+                      label: 'Average high temperature (°C)',
+                      child: TextFormField(
+                        controller: _avgHighTemperature,
+                        validator: AppValidators.combine([
+                          AppValidators.required,
+                          AppValidators.numberOnly,
+                        ]),
+                        textInputAction: TextInputAction.next,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    LabeledInput(
+                      label: 'Error',
+                      child: TextFormField(
+                        controller: _error,
+                        textInputAction: TextInputAction.next,
+                      ),
+                    ),
                   ],
                 ),
               const SizedBox(height: 150),
@@ -291,17 +376,6 @@ class _EditWeatherClientScreenState
           height: AppConstants.buttonMd,
           child: ElevatedButton(onPressed: _onEdit, child: const Text('Save')),
         ),
-      ),
-    );
-  }
-
-  Widget _buildTextField(String label, {TextEditingController? controller}) {
-    return LabeledInput(
-      label: label,
-      child: TextFormField(
-        controller: controller,
-        validator: AppValidators.required,
-        textInputAction: TextInputAction.next,
       ),
     );
   }

@@ -2,9 +2,14 @@
 // Handles API calls for plant data
 
 import '../../../../core/error/exceptions.dart';
+import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_response.dart';
 import '../../../../core/utils/app_utils.dart';
+import '../../domain/usecases/add_plant.dart';
+import '../../domain/usecases/delete_plant.dart';
+import '../../domain/usecases/edit_plant.dart';
 import '../../domain/usecases/get_all_plants.dart';
+import '../../domain/usecases/get_plant_by_id.dart';
 import '../models/plant_model.dart';
 
 abstract class PlantRemoteDataSource {
@@ -12,17 +17,19 @@ abstract class PlantRemoteDataSource {
   Future<ApiResponse<List<PlantModel>>> getAllPlants(GetAllPlantParams params);
 
   /// Gets a specific plant by ID from the API
-  Future<ApiResponse<PlantModel>> getPlantById(String id);
+  Future<ApiResponse<PlantModel>> getPlantById(GetPlantParams params);
 
-  Future<ApiResponse<PlantModel>> editPlant(PlantModel plant);
+  Future<ApiResponse<PlantModel>> editPlant(EditPlantParams params);
 
-  Future<ApiResponse<PlantModel>> addPlant(PlantModel plant);
+  Future<ApiResponse<PlantModel>> addPlant(AddPlantParams params);
 
-  Future<ApiResponse<String>> deletePlant(String id);
+  Future<ApiResponse<String>> deletePlant(DeletePlantParams params);
 }
 
 class PlantRemoteDataSourceImpl implements PlantRemoteDataSource {
-  // Add HTTP client dependency here
+  final ApiClient _apiClient;
+
+  PlantRemoteDataSourceImpl(this._apiClient);
 
   @override
   Future<ApiResponse<List<PlantModel>>> getAllPlants(
@@ -35,64 +42,10 @@ class PlantRemoteDataSourceImpl implements PlantRemoteDataSource {
         throw NetworkException();
       }
 
-      await Future.delayed(const Duration(seconds: 1));
-      // final response = await _apiClient.post('/auth/login', data: {
-      //   'email': email,
-      //   'password': password,
-      // });
-
-      final response = {
-        "status": "success",
-        "code": 200,
-        "message": "Plants retrieved successfully",
-        "data": [
-          {
-            "name": "lettuce",
-            "zone": {"id": "68de862ab78657a4ab281c2a", "name": "Front Garden"},
-            "details": {
-              "description": "nutritious leafy green",
-              "notes": "grown from seed and planted about 6 inches apart",
-              "time_to_harvest": "70 days",
-              "count": 6,
-            },
-            "id": "9m4e2mr0ui3e8a215n4g",
-            "created_at": "2025-12-06T12:01:07.236Z",
-            "end_date": "2025-12-06T12:01:07.236Z",
-            "next_water_time": "2025-12-06T12:01:07.236Z",
-          },
-          {
-            "name": "carrot",
-            "zone": {"id": "68de8996b78657a4ab281c37", "name": "Backyard"},
-            "details": {
-              "description": "carrot nutritious leafy green",
-              "notes": "grown from seed and planted about 6 inches apart",
-              "time_to_harvest": "30 days",
-              "count": 6,
-            },
-            "id": "9m4e2mr0ui3e8a215n4g",
-            "created_at": "2025-12-06T12:01:07.236Z",
-            "end_date": "2025-12-06T12:01:07.236Z",
-            "next_water_time": "2025-12-06T12:01:07.236Z",
-          },
-          {
-            "name": "onion",
-            "zone": {
-              "id": "68de8a2eb78657a4ab281c3b",
-              "name": "Vegetable Patch",
-            },
-            "details": {
-              "description": "onion nutritious leafy green",
-              "notes": "grown from seed and planted about 6 inches apart",
-              "time_to_harvest": "30 days",
-              "count": 6,
-            },
-            "id": "9m4e2mr0ui3e8a215n4g",
-            "created_at": "2025-12-06T12:01:07.236Z",
-            "end_date": "2025-12-06T12:01:07.236Z",
-            "next_water_time": "2025-12-06T12:01:07.236Z",
-          },
-        ],
-      };
+      final response = await _apiClient.get(
+        '/gardens/${params.gardenId}/plants',
+        queryParameters: {'end_dated': params.endDated},
+      );
 
       return ApiResponse<List<PlantModel>>.fromJson(
         response,
@@ -105,7 +58,7 @@ class PlantRemoteDataSourceImpl implements PlantRemoteDataSource {
   }
 
   @override
-  Future<ApiResponse<PlantModel>> getPlantById(String id) async {
+  Future<ApiResponse<PlantModel>> getPlantById(GetPlantParams params) async {
     try {
       // Check network connection
       final hasNetwork = await AppUtils.hasNetworkConnection();
@@ -113,31 +66,9 @@ class PlantRemoteDataSourceImpl implements PlantRemoteDataSource {
         throw NetworkException();
       }
 
-      await Future.delayed(const Duration(seconds: 2));
-      // final response = await _apiClient.post('/auth/login', data: {
-      //   'email': email,
-      //   'password': password,
-      // });
-
-      final response = {
-        "status": "success",
-        "code": 200,
-        "message": "Plant retrieved successfully",
-        "data": {
-          "name": "lettuce",
-          "zone": {"id": "68de862ab78657a4ab281c2a", "name": "Trees"},
-          "details": {
-            "description": "nutritious leafy green",
-            "notes": "grown from seed and planted about 6 inches apart",
-            "time_to_harvest": "70 days",
-            "count": 6,
-          },
-          "id": "9m4e2mr0ui3e8a215n4g",
-          "created_at": "2025-12-06T12:01:07.236Z",
-          "end_date": "2025-12-06T12:01:07.236Z",
-          "next_water_time": "2025-12-06T12:01:07.236Z",
-        },
-      };
+      final response = await _apiClient.get(
+        '/gardens/${params.gardenId}/plants/${params.plantId}',
+      );
 
       return ApiResponse<PlantModel>.fromJson(
         response,
@@ -160,7 +91,7 @@ class PlantRemoteDataSourceImpl implements PlantRemoteDataSource {
   }
 
   @override
-  Future<ApiResponse<PlantModel>> addPlant(PlantModel plant) async {
+  Future<ApiResponse<PlantModel>> addPlant(AddPlantParams params) async {
     try {
       // Check network connection
       final hasNetwork = await AppUtils.hasNetworkConnection();
@@ -168,18 +99,20 @@ class PlantRemoteDataSourceImpl implements PlantRemoteDataSource {
         throw NetworkException();
       }
 
-      await Future.delayed(const Duration(seconds: 2));
-      // final response = await _apiClient.post('/auth/login', data: {
-      //   'email': email,
-      //   'password': password,
-      // });
-
-      final response = {
-        "status": "success",
-        "code": 200,
-        "message": "Plant created successfully",
-        "data": plant.toJson(),
-      };
+      final response = await _apiClient.post(
+        '/gardens/${params.gardenId}/plants',
+        data: {
+          "name": params.plant.name,
+          "zone_id": params.plant.zone?.id,
+          "details": {
+            "description": params.plant.details?.description,
+            if (params.plant.details?.notes != null)
+              "notes": params.plant.details?.notes,
+            "time_to_harvest": params.plant.details?.timeToHarvest,
+            "count": params.plant.details?.count,
+          },
+        },
+      );
 
       return ApiResponse<PlantModel>.fromJson(
         response,
@@ -191,7 +124,7 @@ class PlantRemoteDataSourceImpl implements PlantRemoteDataSource {
   }
 
   @override
-  Future<ApiResponse<PlantModel>> editPlant(PlantModel plant) async {
+  Future<ApiResponse<PlantModel>> editPlant(EditPlantParams params) async {
     try {
       // Check network connection
       final hasNetwork = await AppUtils.hasNetworkConnection();
@@ -199,18 +132,27 @@ class PlantRemoteDataSourceImpl implements PlantRemoteDataSource {
         throw NetworkException();
       }
 
-      await Future.delayed(const Duration(seconds: 2));
-      // final response = await _apiClient.post('/auth/login', data: {
-      //   'email': email,
-      //   'password': password,
-      // });
+      final response = await _apiClient.patch(
+        '/gardens/${params.gardenId}/plants/${params.plantId}',
+        data: {
+          "name": params.plant.name,
+          "zone_id": params.plant.zone?.id,
+          "details": {
+            "description": params.plant.details?.description,
+            if (params.plant.details?.notes != null)
+              "notes": params.plant.details?.notes,
+            "time_to_harvest": params.plant.details?.timeToHarvest,
+            "count": params.plant.details?.count,
+          },
+        },
+      );
 
-      final response = {
-        "status": "success",
-        "code": 200,
-        "message": "Plant updated successfully",
-        "data": plant.toJson(),
-      };
+      // final response = {
+      //   "status": "success",
+      //   "code": 200,
+      //   "message": "Plant updated successfully",
+      //   "data": plant.toJson(),
+      // };
 
       return ApiResponse<PlantModel>.fromJson(
         response,
@@ -222,7 +164,7 @@ class PlantRemoteDataSourceImpl implements PlantRemoteDataSource {
   }
 
   @override
-  Future<ApiResponse<String>> deletePlant(String id) async {
+  Future<ApiResponse<String>> deletePlant(DeletePlantParams params) async {
     try {
       // Check network connection
       final hasNetwork = await AppUtils.hasNetworkConnection();
@@ -230,18 +172,9 @@ class PlantRemoteDataSourceImpl implements PlantRemoteDataSource {
         throw NetworkException();
       }
 
-      await Future.delayed(const Duration(seconds: 2));
-      // final response = await _apiClient.post('/auth/login', data: {
-      //   'email': email,
-      //   'password': password,
-      // });
-
-      final response = {
-        "status": "success",
-        "code": 200,
-        "message": "Plant deleted successfully",
-        "data": id,
-      };
+      final response = await _apiClient.delete(
+        '/gardens/${params.gardenId}/plants/${params.plantId}',
+      );
 
       return ApiResponse<String>.fromJson(response, (data) => data as String);
     } on Exception catch (e) {

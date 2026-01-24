@@ -25,11 +25,6 @@ class GetWaterScheduleById
 
 class GetWSParams {
   final String? id;
-  final bool? endDated;
   final bool? excludeWeatherData;
-  GetWSParams({
-    this.id,
-    this.endDated = false,
-    this.excludeWeatherData = false,
-  });
+  GetWSParams({this.id, this.excludeWeatherData = true});
 }

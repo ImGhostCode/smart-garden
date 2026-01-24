@@ -166,6 +166,7 @@ class GardenNotifier extends Notifier<GardenState> {
       ),
       (response) => state = state.copyWith(
         isEditingGarden: false,
+        garden: () => response.data,
         responseMsg: response.message,
       ),
     );
@@ -205,6 +206,15 @@ class GardenNotifier extends Notifier<GardenState> {
         responseMsg: response.message,
       ),
     );
+  }
+
+  String? getGardenNameById(String? id) {
+    if (id == null) return null;
+    try {
+      return state.gardens.firstWhere((garden) => garden.id == id).name;
+    } catch (e) {
+      return null;
+    }
   }
 }
 

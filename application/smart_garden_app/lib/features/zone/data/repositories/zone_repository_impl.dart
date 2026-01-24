@@ -4,16 +4,20 @@
 import 'package:dartz/dartz.dart';
 
 import '../../../../core/error/failures.dart';
+import '../../../../core/network/api_response.dart';
 import '../../../../core/network/network_info.dart';
 import '../../domain/entities/water_history_entity.dart';
 import '../../domain/entities/zone_entity.dart';
 import '../../domain/repositories/zone_repository.dart';
+import '../../domain/usecases/delete_zone.dart';
+import '../../domain/usecases/edit_zone.dart';
 import '../../domain/usecases/get_all_zones.dart';
 import '../../domain/usecases/get_water_history.dart';
+import '../../domain/usecases/get_zone_by_id.dart';
+import '../../domain/usecases/new_zone.dart';
 import '../../domain/usecases/send_zone_action.dart';
 import '../datasources/zone_local_datasource.dart';
 import '../datasources/zone_remote_datasource.dart';
-import '../models/zone_model.dart';
 
 class ZoneRepositoryImpl implements ZoneRepository {
   final ZoneRemoteDataSource remoteDataSource;
@@ -27,21 +31,38 @@ class ZoneRepositoryImpl implements ZoneRepository {
   });
 
   @override
-  Future<Either<Failure, List<ZoneEntity>>> getAllZones(
+  Future<Either<Failure, ApiResponse<List<ZoneEntity>>>> getAllZones(
     GetAllZoneParams params,
   ) async {
     if (await networkInfo.isConnected) {
       try {
-        final remoteZones = await remoteDataSource.getAllZones(params);
-        localDataSource.cacheZones(remoteZones);
-        return Right(remoteZones.map((e) => e.toEntity()).toList());
+        final response = await remoteDataSource.getAllZones(params);
+        if (response.status != "success") {
+          return Left(ServerFailure(message: response.message));
+        }
+        localDataSource.cacheZones(response.data ?? []);
+        return Right(
+          ApiResponse<List<ZoneEntity>>(
+            status: response.status,
+            code: response.code,
+            message: response.message,
+            data: response.data!.map((e) => e.toEntity()).toList(),
+          ),
+        );
       } catch (e) {
         return const Left(ServerFailure());
       }
     } else {
       try {
         final localZones = await localDataSource.getCachedZones();
-        return Right(localZones.map((e) => e.toEntity()).toList());
+        return Right(
+          ApiResponse<List<ZoneEntity>>(
+            status: "success",
+            code: 200,
+            message: "Cached zones retrieved successfully",
+            data: localZones.map((e) => e.toEntity()).toList(),
+          ),
+        );
       } catch (e) {
         return const Left(CacheFailure());
       }
@@ -49,11 +70,23 @@ class ZoneRepositoryImpl implements ZoneRepository {
   }
 
   @override
-  Future<Either<Failure, ZoneEntity>> getZoneById(String id) async {
+  Future<Either<Failure, ApiResponse<ZoneEntity>>> getZoneById(
+    GetZoneParams params,
+  ) async {
     if (await networkInfo.isConnected) {
       try {
-        final zone = await remoteDataSource.getZoneById(id);
-        return Right(zone.toEntity());
+        final response = await remoteDataSource.getZoneById(params);
+        if (response.status != "success") {
+          return Left(ServerFailure(message: response.message));
+        }
+        return Right(
+          ApiResponse<ZoneEntity>(
+            status: response.status,
+            code: response.code,
+            message: response.message,
+            data: response.data!.toEntity(),
+          ),
+        );
       } catch (e) {
         return const Left(ServerFailure());
       }
@@ -63,14 +96,23 @@ class ZoneRepositoryImpl implements ZoneRepository {
   }
 
   @override
-  Future<Either<Failure, List<WaterHistoryEntity>>> getWaterHistory(
-    GetWaterHistoryParams params,
-  ) async {
+  Future<Either<Failure, ApiResponse<List<WaterHistoryEntity>>>>
+  getWaterHistory(GetWaterHistoryParams params) async {
     // if (await networkInfo.isConnected) {
     try {
-      final remoteWaterHistory = await remoteDataSource.getWaterHistory(params);
+      final response = await remoteDataSource.getWaterHistory(params);
       // localDataSource.cacheWaterHistory(remoteWaterHistory);
-      return Right(remoteWaterHistory.map((e) => e.toEntity()).toList());
+      if (response.status != "success") {
+        return Left(ServerFailure(message: response.message));
+      }
+      return Right(
+        ApiResponse<List<WaterHistoryEntity>>(
+          status: response.status,
+          code: response.code,
+          message: response.message,
+          data: response.data!.map((e) => e.toEntity()).toList(),
+        ),
+      );
     } catch (e) {
       return const Left(ServerFailure());
     }
@@ -85,13 +127,23 @@ class ZoneRepositoryImpl implements ZoneRepository {
   }
 
   @override
-  Future<Either<Failure, ZoneEntity>> addZone(ZoneEntity zone) async {
+  Future<Either<Failure, ApiResponse<ZoneEntity>>> addZone(
+    NewZoneParams params,
+  ) async {
     if (await networkInfo.isConnected) {
       try {
-        final updatedZone = await remoteDataSource.addZone(
-          ZoneModel.fromEntity(zone),
+        final response = await remoteDataSource.addZone(params);
+        if (response.status != "success") {
+          return Left(ServerFailure(message: response.message));
+        }
+        return Right(
+          ApiResponse<ZoneEntity>(
+            status: response.status,
+            code: response.code,
+            message: response.message,
+            data: response.data!.toEntity(),
+          ),
         );
-        return Right(updatedZone.toEntity());
       } catch (e) {
         return const Left(ServerFailure());
       }
@@ -101,13 +153,23 @@ class ZoneRepositoryImpl implements ZoneRepository {
   }
 
   @override
-  Future<Either<Failure, ZoneEntity>> editZone(ZoneEntity zone) async {
+  Future<Either<Failure, ApiResponse<ZoneEntity>>> editZone(
+    EditZoneParams params,
+  ) async {
     if (await networkInfo.isConnected) {
       try {
-        final updatedZone = await remoteDataSource.editZone(
-          ZoneModel.fromEntity(zone),
+        final response = await remoteDataSource.editZone(params);
+        if (response.status != "success") {
+          return Left(ServerFailure(message: response.message));
+        }
+        return Right(
+          ApiResponse<ZoneEntity>(
+            status: response.status,
+            code: response.code,
+            message: response.message,
+            data: response.data!.toEntity(),
+          ),
         );
-        return Right(updatedZone.toEntity());
       } catch (e) {
         return const Left(ServerFailure());
       }
@@ -117,11 +179,23 @@ class ZoneRepositoryImpl implements ZoneRepository {
   }
 
   @override
-  Future<Either<Failure, String>> deleteZone(String id) async {
+  Future<Either<Failure, ApiResponse<String>>> deleteZone(
+    DeleteZoneParams params,
+  ) async {
     if (await networkInfo.isConnected) {
       try {
-        final response = await remoteDataSource.deleteZone(id);
-        return Right(response);
+        final response = await remoteDataSource.deleteZone(params);
+        if (response.status != "success") {
+          return Left(ServerFailure(message: response.message));
+        }
+        return Right(
+          ApiResponse<String>(
+            status: response.status,
+            code: response.code,
+            message: response.message,
+            data: response.data!,
+          ),
+        );
       } catch (e) {
         return const Left(ServerFailure());
       }
@@ -131,11 +205,23 @@ class ZoneRepositoryImpl implements ZoneRepository {
   }
 
   @override
-  Future<Either<Failure, void>> sendAction(ZoneActionParams params) async {
+  Future<Either<Failure, ApiResponse<void>>> sendAction(
+    ZoneActionParams params,
+  ) async {
     if (await networkInfo.isConnected) {
       try {
-        await remoteDataSource.sendAction(params);
-        return const Right(null);
+        final response = await remoteDataSource.sendAction(params);
+        if (response.status != "success") {
+          return Left(ServerFailure(message: response.message));
+        }
+        return Right(
+          ApiResponse<void>(
+            status: response.status,
+            code: response.code,
+            message: response.message,
+            data: null,
+          ),
+        );
       } catch (e) {
         return const Left(ServerFailure());
       }

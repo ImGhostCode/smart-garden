@@ -7,12 +7,18 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/ui/inputs/app_labeled_input.dart';
 import '../../../../core/utils/app_validators.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
+import '../../../garden/presentation/providers/garden_provider.dart';
 import '../../../zone/domain/entities/zone_entity.dart';
+import '../../../zone/domain/usecases/get_all_zones.dart';
+import '../../../zone/presentation/providers/zone_provider.dart';
 import '../../domain/entities/plant_entity.dart';
+import '../../domain/usecases/add_plant.dart';
+import '../../domain/usecases/get_all_plants.dart';
 import '../providers/plant_provider.dart';
 
 class AddPlantScreen extends ConsumerStatefulWidget {
-  const AddPlantScreen({super.key});
+  final String gardenId;
+  const AddPlantScreen({super.key, required this.gardenId});
 
   @override
   ConsumerState<ConsumerStatefulWidget> createState() => _AddPlantScreenState();
@@ -25,6 +31,7 @@ class _AddPlantScreenState extends ConsumerState<AddPlantScreen> {
   late final TextEditingController _description;
   late final TextEditingController _notes;
   late final TextEditingController _quantity;
+  ZoneEntity? _selectedZone;
 
   @override
   void initState() {
@@ -33,6 +40,11 @@ class _AddPlantScreenState extends ConsumerState<AddPlantScreen> {
     _description = TextEditingController();
     _notes = TextEditingController();
     _quantity = TextEditingController();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      ref
+          .read(zoneProvider.notifier)
+          .getAllZone(GetAllZoneParams(gardenId: widget.gardenId));
+    });
     super.initState();
   }
 
@@ -52,14 +64,17 @@ class _AddPlantScreenState extends ConsumerState<AddPlantScreen> {
     ref
         .read(plantProvider.notifier)
         .addPlant(
-          PlantEntity(
-            name: _name.text,
-            zone: const ZoneEntity(id: 'zone-id-placeholder'),
-            details: PlantDetailEntity(
-              timeToHarvest: _timeToHarvest.text,
-              description: _description.text,
-              notes: _notes.text,
-              count: int.tryParse(_quantity.text),
+          AddPlantParams(
+            gardenId: widget.gardenId,
+            plant: PlantEntity(
+              name: _name.text,
+              zone: ZoneEntity(id: _selectedZone?.id),
+              details: PlantDetailEntity(
+                timeToHarvest: _timeToHarvest.text,
+                description: _description.text,
+                notes: _notes.text.isEmpty ? null : _notes.text,
+                count: int.tryParse(_quantity.text),
+              ),
             ),
           ),
         );
@@ -84,6 +99,9 @@ class _AddPlantScreenState extends ConsumerState<AddPlantScreen> {
           EasyLoading.showError(next.errCreatingPlant);
         } else {
           EasyLoading.showSuccess(next.responseMsg ?? 'Plant added');
+          ref
+              .read(plantProvider.notifier)
+              .getAllPlant(GetAllPlantParams(gardenId: widget.gardenId));
           context.goBack();
         }
       }
@@ -98,43 +116,96 @@ class _AddPlantScreenState extends ConsumerState<AddPlantScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildTextField('Plant name', controller: _name),
+              LabeledInput(
+                label: 'Plant name',
+                child: TextFormField(
+                  controller: _name,
+                  validator: AppValidators.required,
+                  textInputAction: TextInputAction.next,
+                ),
+              ),
               const SizedBox(height: 12),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Expanded(
-                    child: _buildTextField(
-                      'Garden',
-                      controller: TextEditingController(text: 'Front Yard'),
-                      readOnly: true,
+                    child: LabeledInput(
+                      label: 'Garden',
+                      child: TextFormField(
+                        controller: TextEditingController(
+                          text:
+                              ref
+                                  .read(gardenProvider.notifier)
+                                  .getGardenNameById(widget.gardenId) ??
+                              'Unknown Garden',
+                        ),
+                        readOnly: true,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _buildTextField(
-                      'Zone',
-                      controller: TextEditingController(text: 'Shrubs'),
-                      readOnly: true,
+                    child: LabeledInput(
+                      label: 'Zone',
+                      child: DropdownButtonFormField<ZoneEntity>(
+                        isExpanded: true,
+                        validator: AppValidators.required,
+                        items: ref.read(zoneProvider).zones.map((zone) {
+                          return DropdownMenuItem<ZoneEntity>(
+                            value: zone,
+                            child: Text(zone.name ?? ''),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedZone = value;
+                          });
+                        },
+                      ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              _buildTextField(
-                'Description',
-                controller: _description,
-                maxLines: 3,
+              LabeledInput(
+                label: 'Description',
+                child: TextFormField(
+                  controller: _description,
+                  validator: AppValidators.required,
+                  textInputAction: TextInputAction.next,
+                  maxLines: 3,
+                ),
               ),
               const SizedBox(height: 12),
-              _buildTextField('Time to harvest', controller: _timeToHarvest),
+              LabeledInput(
+                label: 'Time to harvest',
+                child: TextFormField(
+                  controller: _timeToHarvest,
+                  validator: AppValidators.required,
+                  textInputAction: TextInputAction.next,
+                ),
+              ),
               const SizedBox(height: 12),
-              _buildTextField('Quantity', controller: _quantity),
+              LabeledInput(
+                label: 'Quantity',
+                child: TextFormField(
+                  controller: _quantity,
+                  validator: AppValidators.combine([
+                    AppValidators.required,
+                    AppValidators.positiveInt,
+                  ]),
+                  keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.next,
+                ),
+              ),
               const SizedBox(height: 12),
-              _buildTextField(
-                'Notes',
-                controller: _notes,
-                maxLines: 3,
-                required: false,
+              LabeledInput(
+                label: 'Notes',
+                child: TextFormField(
+                  controller: _notes,
+                  textInputAction: TextInputAction.done,
+                  maxLines: 3,
+                ),
               ),
               const SizedBox(height: 150),
             ],
@@ -149,26 +220,6 @@ class _AddPlantScreenState extends ConsumerState<AddPlantScreen> {
           height: AppConstants.buttonMd,
           child: ElevatedButton(onPressed: _onAdd, child: const Text('Save')),
         ),
-      ),
-    );
-  }
-
-  // Widget tạo Label và TextField
-  Widget _buildTextField(
-    String label, {
-    bool? required = true,
-    TextEditingController? controller,
-    int? maxLines,
-    bool? readOnly = false,
-  }) {
-    return LabeledInput(
-      label: label,
-      child: TextFormField(
-        controller: controller,
-        validator: required! ? AppValidators.required : null,
-        textInputAction: TextInputAction.next,
-        maxLines: maxLines,
-        readOnly: readOnly!,
       ),
     );
   }

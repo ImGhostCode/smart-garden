@@ -241,14 +241,15 @@ class AppUtils {
     return DateFormat('yyyy-MM-dd hh:mm a').format(localDateTime);
   }
 
-  // Convert 24h to 12h format
+  // Convert 24h UTC to 12h Local format
   // e.g., "14:30" to "2:30 PM"
   static String to12HourFormat(String? time24Utc) {
     if (time24Utc == null) return '';
     try {
       // Handle time only format
-      final dateTime = DateFormat.Hm().parseUTC(time24Utc).toLocal();
-      return DateFormat.jm().format(dateTime);
+      final dateTime = DateTime.parse('2026-01-22T$time24Utc.000Z');
+      final localDateTime = dateTime.toLocal();
+      return DateFormat.jm().format(localDateTime);
     } catch (e) {
       return time24Utc; // Return original if parsing fails
     }
@@ -258,10 +259,44 @@ class AppUtils {
   static String to24HourFormat(String? time12) {
     try {
       if (time12 == null) return '';
-      final dateTime = DateFormat.jm().parse(time12);
-      return DateFormat.Hm().format(dateTime);
+      final dateTime = DateTime.parse('2026-01-22T$time12.000Z');
+      final localDateTime = dateTime.toLocal();
+      return DateFormat.Hms().format(localDateTime);
     } catch (e) {
       return time12!; // Return original if parsing fails
+    }
+  }
+
+  // Parse local "HH:MM:SS" to UTC "HH:MM:SS"
+  static String? toUtcTime(String? localTime) {
+    if (localTime == null) return null;
+    try {
+      final now = DateTime.now();
+      final localDateTime = DateFormat.Hms().parse(localTime);
+      final combinedLocal = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        localDateTime.hour,
+        localDateTime.minute,
+        localDateTime.second,
+      );
+      final utcDateTime = combinedLocal.toUtc();
+      return DateFormat.Hms().format(utcDateTime);
+    } catch (e) {
+      return localTime; // Return original if parsing fails
+    }
+  }
+
+  // Parse UTC "HH:MM:SS" to local "HH:MM:SS"
+  static String? toLocalTime(String? utcTime) {
+    if (utcTime == null) return null;
+    try {
+      final dateTime = DateTime.parse('2026-01-22T$utcTime.000Z');
+      final localDateTime = dateTime.toLocal();
+      return DateFormat.Hms().format(localDateTime);
+    } catch (e) {
+      return utcTime; // Return original if parsing fails
     }
   }
 }

@@ -1,6 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/plant_entity.dart';
+import '../../domain/usecases/add_plant.dart';
+import '../../domain/usecases/delete_plant.dart';
+import '../../domain/usecases/edit_plant.dart';
 import '../../domain/usecases/get_all_plants.dart';
 import '../../domain/usecases/get_plant_by_id.dart';
 import '../../providers/plant_providers.dart';
@@ -101,7 +104,7 @@ class PlantNotifier extends Notifier<PlantState> {
     );
   }
 
-  Future<void> getPlantById({required String id}) async {
+  Future<void> getPlantById(GetPlantParams params) async {
     state = state.copyWith(
       isLoadingPlant: true,
       errLoadingPlant: '',
@@ -109,7 +112,7 @@ class PlantNotifier extends Notifier<PlantState> {
     );
 
     final getPlantById = ref.read(getPlantByIdUCProvider);
-    final result = await getPlantById.call(PlantParams(id: id));
+    final result = await getPlantById.call(params);
 
     result.fold(
       (failure) => state = state.copyWith(
@@ -123,11 +126,11 @@ class PlantNotifier extends Notifier<PlantState> {
     );
   }
 
-  Future<void> addPlant(PlantEntity plant) async {
+  Future<void> addPlant(AddPlantParams params) async {
     state = state.copyWith(isCreatingPlant: true, errCreatingPlant: '');
 
-    final newPlant = ref.read(newPlantUCProvider);
-    final result = await newPlant.call(plant);
+    final addPlant = ref.read(newPlantUCProvider);
+    final result = await addPlant.call(params);
 
     result.fold(
       (failure) => state = state.copyWith(
@@ -136,17 +139,16 @@ class PlantNotifier extends Notifier<PlantState> {
       ),
       (response) => state = state.copyWith(
         isCreatingPlant: false,
-        responseMsg: 'Plant created successfully',
+        responseMsg: response.message,
       ),
     );
   }
 
-  Future<void> editPlant(PlantEntity plant) async {
+  Future<void> editPlant(EditPlantParams params) async {
     state = state.copyWith(isEditingPlant: true, errEditingPlant: '');
 
     final editPlant = ref.read(editPlantUCProvider);
-    final result = await editPlant.call(plant);
-
+    final result = await editPlant.call(params);
     result.fold(
       (failure) => state = state.copyWith(
         isEditingPlant: false,
@@ -154,17 +156,17 @@ class PlantNotifier extends Notifier<PlantState> {
       ),
       (response) => state = state.copyWith(
         isEditingPlant: false,
-        responseMsg: 'Plant edited successfully',
+        plant: () => response.data,
+        responseMsg: response.message,
       ),
     );
   }
 
-  Future<void> deletePlant(String id) async {
+  Future<void> deletePlant(DeletePlantParams params) async {
     state = state.copyWith(isDeletingPlant: true, errDeletingPlant: '');
 
     final deletePlant = ref.read(deletePlantUCProvider);
-    final result = await deletePlant.call(id);
-
+    final result = await deletePlant.call(params);
     result.fold(
       (failure) => state = state.copyWith(
         isDeletingPlant: false,
@@ -172,7 +174,7 @@ class PlantNotifier extends Notifier<PlantState> {
       ),
       (response) => state = state.copyWith(
         isDeletingPlant: false,
-        responseMsg: 'Plant deleted successfully',
+        responseMsg: response.message,
       ),
     );
   }

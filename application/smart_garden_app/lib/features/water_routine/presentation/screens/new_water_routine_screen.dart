@@ -11,6 +11,7 @@ import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../../garden/domain/usecases/get_all_gardens.dart';
 import '../../../garden/presentation/providers/garden_provider.dart';
 import '../../domain/entities/water_routine_entity.dart';
+import '../../domain/usecases/get_all_water_routines.dart';
 import '../providers/water_routine_provider.dart';
 import '../providers/water_routine_ui_providers.dart';
 import '../widgets/step_selection.dart';
@@ -77,6 +78,9 @@ class _NewWaterRoutineScreenState extends ConsumerState<NewWaterRoutineScreen> {
           EasyLoading.showError(next.errCreatingWR);
         } else {
           EasyLoading.showSuccess(next.responseMsg ?? 'Water Routine created');
+          ref
+              .read(waterRoutineProvider.notifier)
+              .getAllWaterRoutine(GetAllWRParams());
           context.goBack();
         }
       }

@@ -29,5 +29,5 @@ class GetAllWeatherClients
 
 class GetAllWeatherClientsParams {
   final bool? endDated;
-  GetAllWeatherClientsParams({this.endDated});
+  GetAllWeatherClientsParams({this.endDated = false});
 }

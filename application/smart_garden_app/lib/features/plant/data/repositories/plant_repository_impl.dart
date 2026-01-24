@@ -8,10 +8,13 @@ import '../../../../core/network/api_response.dart';
 import '../../../../core/network/network_info.dart';
 import '../../domain/entities/plant_entity.dart';
 import '../../domain/repositories/plant_repository.dart';
+import '../../domain/usecases/add_plant.dart';
+import '../../domain/usecases/delete_plant.dart';
+import '../../domain/usecases/edit_plant.dart';
 import '../../domain/usecases/get_all_plants.dart';
+import '../../domain/usecases/get_plant_by_id.dart';
 import '../datasources/plant_local_datasource.dart';
 import '../datasources/plant_remote_datasource.dart';
-import '../models/plant_model.dart';
 
 class PlantRepositoryImpl implements PlantRepository {
   final PlantRemoteDataSource remoteDataSource;
@@ -69,11 +72,11 @@ class PlantRepositoryImpl implements PlantRepository {
 
   @override
   Future<Either<Failure, ApiResponse<PlantEntity>>> getPlantById(
-    String id,
+    GetPlantParams params,
   ) async {
     if (await networkInfo.isConnected) {
       try {
-        final response = await remoteDataSource.getPlantById(id);
+        final response = await remoteDataSource.getPlantById(params);
         if (response.status != "success") {
           return Left(ServerFailure(message: response.message));
         }
@@ -95,13 +98,11 @@ class PlantRepositoryImpl implements PlantRepository {
 
   @override
   Future<Either<Failure, ApiResponse<PlantEntity>>> addPlant(
-    PlantEntity plant,
+    AddPlantParams params,
   ) async {
     if (await networkInfo.isConnected) {
       try {
-        final response = await remoteDataSource.addPlant(
-          PlantModel.fromEntity(plant),
-        );
+        final response = await remoteDataSource.addPlant(params);
         if (response.status != "success") {
           return Left(ServerFailure(message: response.message));
         }
@@ -123,13 +124,11 @@ class PlantRepositoryImpl implements PlantRepository {
 
   @override
   Future<Either<Failure, ApiResponse<PlantEntity>>> editPlant(
-    PlantEntity plant,
+    EditPlantParams params,
   ) async {
     if (await networkInfo.isConnected) {
       try {
-        final response = await remoteDataSource.editPlant(
-          PlantModel.fromEntity(plant),
-        );
+        final response = await remoteDataSource.editPlant(params);
         if (response.status != "success") {
           return Left(ServerFailure(message: response.message));
         }
@@ -150,10 +149,12 @@ class PlantRepositoryImpl implements PlantRepository {
   }
 
   @override
-  Future<Either<Failure, ApiResponse<String>>> deletePlant(String id) async {
+  Future<Either<Failure, ApiResponse<String>>> deletePlant(
+    DeletePlantParams params,
+  ) async {
     if (await networkInfo.isConnected) {
       try {
-        final response = await remoteDataSource.deletePlant(id);
+        final response = await remoteDataSource.deletePlant(params);
         if (response.status != "success") {
           return Left(ServerFailure(message: response.message));
         }

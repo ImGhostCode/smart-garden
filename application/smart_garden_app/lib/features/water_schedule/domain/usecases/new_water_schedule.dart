@@ -23,3 +23,9 @@ class NewWaterSchedule
     return repository.newWaterSchedule(params);
   }
 }
+
+class NewWSParams {
+  final WaterScheduleEntity waterSchedule;
+  final bool? excludeWeatherData;
+  NewWSParams({required this.waterSchedule, this.excludeWeatherData = true});
+}

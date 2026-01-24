@@ -5,17 +5,21 @@
 import 'package:dartz/dartz.dart';
 
 import '../../../../core/error/failures.dart';
+import '../../../../core/network/api_response.dart';
 import '../../../../core/usecases/usecase.dart';
 import '../entities/zone_entity.dart';
 import '../repositories/zone_repository.dart';
 
-class GetAllZones implements UseCase<List<ZoneEntity>, GetAllZoneParams> {
+class GetAllZones
+    implements UseCase<ApiResponse<List<ZoneEntity>>, GetAllZoneParams> {
   final ZoneRepository repository;
 
   GetAllZones(this.repository);
 
   @override
-  Future<Either<Failure, List<ZoneEntity>>> call(GetAllZoneParams params) {
+  Future<Either<Failure, ApiResponse<List<ZoneEntity>>>> call(
+    GetAllZoneParams params,
+  ) {
     return repository.getAllZones(params);
   }
 }
@@ -27,6 +31,6 @@ class GetAllZoneParams {
   GetAllZoneParams({
     this.gardenId,
     this.endDated = false,
-    this.excludeWeather = false,
+    this.excludeWeather = true,
   });
 }

@@ -2,6 +2,7 @@
 // Handles API calls for water_routine data
 
 import '../../../../core/error/exceptions.dart';
+import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_response.dart';
 import '../../../../core/utils/app_utils.dart';
 import '../../domain/usecases/get_all_water_routines.dart';
@@ -30,7 +31,9 @@ abstract class WaterRoutineRemoteDataSource {
 }
 
 class WaterRoutineRemoteDataSourceImpl implements WaterRoutineRemoteDataSource {
-  // Add HTTP client dependency here
+  final ApiClient _apiClient;
+
+  WaterRoutineRemoteDataSourceImpl(this._apiClient);
 
   @override
   Future<ApiResponse<List<WaterRoutineModel>>> getAllWaterRoutines(
@@ -43,53 +46,10 @@ class WaterRoutineRemoteDataSourceImpl implements WaterRoutineRemoteDataSource {
         throw NetworkException();
       }
 
-      await Future.delayed(const Duration(seconds: 3));
-      // final response = await _apiClient.post('/auth/login', data: {
-      //   'email': email,
-      //   'password': password,
-      // });
-
-      final response = {
-        "status": "success",
-        "code": 200,
-        "message": "Water routines retrieved successfully",
-        "data": [
-          {
-            "id": "691f1b2385d5734d35cd7669",
-            "name": "Morning Routine",
-            "steps": [
-              {
-                "zone": {"id": "68de8783b68657a7ab28132e", "name": "Flowers"},
-                "duration_ms": 60000,
-              },
-              {
-                "zone": {"id": "68de8783b38657a4ab28132e", "name": "Bushes"},
-                "duration_ms": 1080000,
-              },
-            ],
-            "end_date": null,
-            "createdAt": "2025-11-20T13:44:03.011Z",
-            "updatedAt": "2025-11-21T04:02:00.058Z",
-          },
-          {
-            "id": "6920c3d485d5734d35cd7670",
-            "name": "Evening Routine",
-            "steps": [
-              {
-                "zone": {"id": "68de8783b68657a7ab28132e", "name": "Flowers"},
-                "duration_ms": 60000,
-              },
-              {
-                "zone": {"id": "68de8783b38657a4ab28132e", "name": "Bushes"},
-                "duration_ms": 1080000,
-              },
-            ],
-            "end_date": null,
-            "createdAt": "2025-11-20T15:30:45.123Z",
-            "updatedAt": "2025-11-21T05:10:15.456Z",
-          },
-        ],
-      };
+      final response = await _apiClient.get(
+        '/water_routines',
+        queryParameters: {'end_dated': params.endDated},
+      );
 
       return ApiResponse<List<WaterRoutineModel>>.fromJson(response, (data) {
         return (data as List)
@@ -110,37 +70,7 @@ class WaterRoutineRemoteDataSourceImpl implements WaterRoutineRemoteDataSource {
         throw NetworkException();
       }
 
-      await Future.delayed(const Duration(seconds: 2));
-      // final response = await _apiClient.post('/auth/login', data: {
-      //   'email': email,
-      //   'password': password,
-      // });
-
-      final response = {
-        "status": "success",
-        "code": 200,
-        "message": "Water routine retrieved successfully",
-        "data": {
-          "id": "691f1b2385d5734d35cd7669",
-          "name": "Morning Routine",
-          "steps": [
-            {
-              "zone": {
-                "id": "68de862ab78657a4ab281c2a",
-                "name": "Front Garden",
-              },
-              "duration_ms": 80000,
-            },
-            {
-              "zone": {"id": "68de8996b78657a4ab281c37", "name": "Backyard"},
-              "duration_ms": 1080000,
-            },
-          ],
-          "end_date": null,
-          "createdAt": "2025-11-20T13:44:03.011Z",
-          "updatedAt": "2025-11-21T04:02:00.058Z",
-        },
-      };
+      final response = await _apiClient.get('/water_routines/$id');
 
       return ApiResponse<WaterRoutineModel>.fromJson(
         response,
@@ -173,18 +103,20 @@ class WaterRoutineRemoteDataSourceImpl implements WaterRoutineRemoteDataSource {
         throw NetworkException();
       }
 
-      await Future.delayed(const Duration(seconds: 2));
-      // final response = await _apiClient.post('/auth/login', data: {
-      //   'email': email,
-      //   'password': password,
-      // });
-
-      final response = {
-        "status": "success",
-        "code": 200,
-        "message": "Water routine updated successfully",
-        "data": waterRoutine.toJson(),
-      };
+      final response = await _apiClient.patch(
+        '/water_routines/${waterRoutine.id}',
+        data: {
+          'name': waterRoutine.name,
+          'steps': waterRoutine.steps!
+              .map(
+                (step) => {
+                  'zone_id': step.zone?.id,
+                  'duration_ms': step.durationMs,
+                },
+              )
+              .toList(),
+        },
+      );
 
       return ApiResponse<WaterRoutineModel>.fromJson(
         response,
@@ -206,18 +138,20 @@ class WaterRoutineRemoteDataSourceImpl implements WaterRoutineRemoteDataSource {
         throw NetworkException();
       }
 
-      await Future.delayed(const Duration(seconds: 2));
-      // final response = await _apiClient.post('/auth/login', data: {
-      //   'email': email,
-      //   'password': password,
-      // });
-
-      final response = {
-        "status": "success",
-        "code": 201,
-        "message": "Water routine created successfully",
-        "data": waterRoutine.toJson(),
-      };
+      final response = await _apiClient.post(
+        '/water_routines',
+        data: {
+          'name': waterRoutine.name,
+          'steps': waterRoutine.steps!
+              .map(
+                (step) => {
+                  'zone_id': step.zone?.id,
+                  'duration_ms': step.durationMs,
+                },
+              )
+              .toList(),
+        },
+      );
 
       return ApiResponse<WaterRoutineModel>.fromJson(
         response,
@@ -237,17 +171,8 @@ class WaterRoutineRemoteDataSourceImpl implements WaterRoutineRemoteDataSource {
         throw NetworkException();
       }
 
-      await Future.delayed(const Duration(seconds: 2));
-      // final response = await _apiClient.post('/auth/login', data: {
-      //   'email': email,
-      //   'password': password,
-      // });
-      final response = {
-        "status": "success",
-        "code": 200,
-        "message": "Water routine deleted successfully",
-        "data": id,
-      };
+      final response = await _apiClient.delete('/water_routines/$id');
+
       return ApiResponse<String>.fromJson(response, (data) => data as String);
     } on Exception catch (e) {
       throw _handleException(e);
@@ -263,18 +188,7 @@ class WaterRoutineRemoteDataSourceImpl implements WaterRoutineRemoteDataSource {
         throw NetworkException();
       }
 
-      await Future.delayed(const Duration(seconds: 2));
-      // final response = await _apiClient.post('/auth/login', data: {
-      //   'email': email,
-      //   'password': password,
-      // });
-
-      final response = {
-        "status": "success",
-        "code": 200,
-        "message": "Water routine started successfully",
-        "data": null,
-      };
+      final response = await _apiClient.post('/water_routines/$id/run');
 
       return ApiResponse<void>.fromJson(response, (data) {});
     } on Exception catch (e) {

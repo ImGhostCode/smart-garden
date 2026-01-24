@@ -20,9 +20,10 @@ final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 
 // Data sources
 final waterScheduleRemoteDataSourceProvider =
-    Provider<WaterScheduleRemoteDataSource>(
-      (ref) => WaterScheduleRemoteDataSourceImpl(),
-    );
+    Provider<WaterScheduleRemoteDataSource>((ref) {
+      final apiClient = ref.watch(apiClientProvider);
+      return WaterScheduleRemoteDataSourceImpl(apiClient);
+    });
 
 final waterScheduleLocalDataSourceProvider =
     Provider<WaterScheduleLocalDataSource>(

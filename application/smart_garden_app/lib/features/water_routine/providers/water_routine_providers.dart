@@ -22,7 +22,7 @@ final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 // Data sources
 final waterRoutineRemoteDataSourceProvider =
     Provider<WaterRoutineRemoteDataSource>(
-      (ref) => WaterRoutineRemoteDataSourceImpl(),
+      (ref) => WaterRoutineRemoteDataSourceImpl(ref.watch(apiClientProvider)),
     );
 
 final waterRoutineLocalDataSourceProvider =

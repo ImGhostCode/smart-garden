@@ -25,5 +25,5 @@ class GetAllWaterRoutines
 
 class GetAllWRParams {
   final bool? endDated;
-  GetAllWRParams({this.endDated});
+  GetAllWRParams({this.endDated = false});
 }

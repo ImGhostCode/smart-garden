@@ -5,18 +5,20 @@ import 'package:dartz/dartz.dart';
 import 'package:equatable/equatable.dart';
 
 import '../../../../core/error/failures.dart';
+import '../../../../core/network/api_response.dart';
 import '../../../../core/usecases/usecase.dart';
 import '../entities/water_history_entity.dart';
 import '../repositories/zone_repository.dart';
 
 class GetWaterHistory
-    implements UseCase<List<WaterHistoryEntity>, GetWaterHistoryParams> {
+    implements
+        UseCase<ApiResponse<List<WaterHistoryEntity>>, GetWaterHistoryParams> {
   final ZoneRepository repository;
 
   GetWaterHistory(this.repository);
 
   @override
-  Future<Either<Failure, List<WaterHistoryEntity>>> call(
+  Future<Either<Failure, ApiResponse<List<WaterHistoryEntity>>>> call(
     GetWaterHistoryParams params,
   ) {
     return repository.getWaterHistory(params);
@@ -26,7 +28,7 @@ class GetWaterHistory
 class GetWaterHistoryParams extends Equatable {
   final String? gardenId;
   final String? zoneId;
-  final int range;
+  final String range;
   final int limit;
 
   const GetWaterHistoryParams({

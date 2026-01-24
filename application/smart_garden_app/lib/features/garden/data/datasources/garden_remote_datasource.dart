@@ -43,147 +43,10 @@ class GardenRemoteDataSourceImpl implements GardenRemoteDataSource {
         throw NetworkException();
       }
 
-      // In a real app, you would make an API call here
-      // For this template, we'll simulate a successful login
-
-      // Simulating a backend call with delay
-      await Future.delayed(const Duration(seconds: 1));
-
-      // Create a mock user for demonstration
-      // return UserModel(
-      //   id: 'user-123',
-      //   name: 'John Doe',
-      //   email: email,
-      //   createdAt: DateTime.now(),
-      //   updatedAt: DateTime.now(),
-      // );
-
-      // In real implementation:
-      // final response = await _apiClient.post('/auth/login', data: {
-      //   'email': email,
-      //   'password': password,
-      // });
-      final response = {
-        "status": "success",
-        "code": 200,
-        "message": "Gardens retrieved successfully",
-        "data": [
-          {
-            "id": "1",
-            "name": "Front Yard",
-            "topic_prefix": "front-yard",
-            "max_zones": 2,
-            "light_schedule": {"duration": "12h", "start_time": "21:35"},
-            "end_date": null,
-            "controller_config": {
-              "valvePins": [32, 33],
-              "pumpPins": [26, 27],
-              "lightPin": 14,
-              "tempHumidityPin": 12,
-              "tempHumidityInterval": 60000,
-            },
-            "next_light_action": {
-              "action": "ON",
-              "time": "2025-12-04T14:35:00.000Z",
-            },
-            "health": {
-              "status": "DOWN",
-              "details": "no last contact time available",
-              "last_contact": "2025-12-04T14:35:00.000Z",
-            },
-            "temperature_humidity_data": {
-              "temperature_celsius": 33.5,
-              "humidity_percentage": 46.4,
-            },
-            "num_plants": 5,
-            "num_zones": 2,
-            "plants": {
-              "rel": "collection",
-              "href": "/gardens/68de7e98ae6796d18a268a34/plants",
-            },
-            "zones": {
-              "rel": "collection",
-              "href": "/gardens/68de7e98ae6796d18a268a34/zones",
-            },
-          },
-          {
-            "id": "2",
-            "name": "Indoor Seed Starting",
-            "topic_prefix": "indoor-seed-starting",
-            "max_zones": 3,
-            "light_schedule": {"duration_ms": 3600000, "start_time": "21:35"},
-            "end_date": null,
-            "controller_config": {
-              "valve_pins": [32, 33],
-              "pump_pins": [26, 27],
-              "light_pin": 14,
-              "temp_humidity_pin": 12,
-              "temp_hum_interval_ms": 60000,
-            },
-            "next_light_action": {
-              "action": "OFF",
-              "time": "2025-12-04T14:35:00.000Z",
-            },
-            "health": {
-              "status": "UP",
-              "details": "contact time available",
-              "last_contact": "2025-12-04T14:35:00.000Z",
-            },
-            "temperature_humidity_data": {
-              "temperature_celsius": 33.5,
-              "humidity_percentage": 46.4,
-            },
-            "num_plants": 4,
-            "num_zones": 5,
-            "plants": {
-              "rel": "collection",
-              "href": "/gardens/68de7e98ae6796d18a268a34/plants",
-            },
-            "zones": {
-              "rel": "collection",
-              "href": "/gardens/68de7e98ae6796d18a268a34/zones",
-            },
-          },
-          {
-            "id": "2",
-            "name": "Indoor Seed Starting",
-            "topic_prefix": "indoor-seed-starting",
-            "max_zones": 3,
-            "light_schedule": {"duration_ms": 3600000, "start_time": "21:35"},
-            "end_date": null,
-            "controller_config": {
-              "valve_pins": [32, 33],
-              "pump_pins": [26, 27],
-              "light_pin": 14,
-              "temp_humidity_pin": 12,
-              "temp_hum_interval_ms": 60000,
-            },
-            "next_light_action": {
-              "action": "OFF",
-              "time": "2025-12-04T14:35:00.000Z",
-            },
-            "health": {
-              "status": "UP",
-              "details": "contact time available",
-              "last_contact": "2025-12-04T14:35:00.000Z",
-            },
-            "temperature_humidity_data": {
-              "temperature_celsius": 33.5,
-              "humidity_percentage": 46.4,
-            },
-            "num_plants": 4,
-            "num_zones": 5,
-            "plants": {
-              "rel": "collection",
-              "href": "/gardens/68de7e98ae6796d18a268a34/plants",
-            },
-            "zones": {
-              "rel": "collection",
-              "href": "/gardens/68de7e98ae6796d18a268a34/zones",
-            },
-          },
-        ],
-      };
+      final response = await _apiClient.get(
+        '/gardens',
+        queryParameters: {'end_dated': params.endDated},
+      );
 
       return ApiResponse<List<GardenModel>>.fromJson(
         response,
@@ -204,69 +67,7 @@ class GardenRemoteDataSourceImpl implements GardenRemoteDataSource {
         throw NetworkException();
       }
 
-      // In a real app, you would make an API call here
-      // For this template, we'll simulate a successful login
-
-      // Simulating a backend call with delay
-      await Future.delayed(const Duration(seconds: 1));
-
-      // Create a mock user for demonstration
-      // return UserModel(
-      //   id: 'user-123',
-      //   name: 'John Doe',
-      //   email: email,
-      //   createdAt: DateTime.now(),
-      //   updatedAt: DateTime.now(),
-      // );
-
-      // In real implementation:
-      // final response = await _apiClient.post('/auth/login', data: {
-      //   'email': email,
-      //   'password': password,
-      // });
-      final response = {
-        "status": "success",
-        "code": 200,
-        "message": "Garden retrieved successfully",
-        "data": {
-          "id": "68de7e98ae6796d18a268a34",
-          "name": "Front Yard",
-          "topic_prefix": "front-yard",
-          "max_zones": 2,
-          "light_schedule": {"duration_ms": 3600000, "start_time": "21:35"},
-          "end_date": null,
-          "controller_config": {
-            "valve_pins": [32, 33],
-            "pump_pins": [26, 27],
-            "light_pin": 14,
-            "temp_humidity_pin": 12,
-            "temp_hum_interval_ms": 60000,
-          },
-          "next_light_action": {
-            "action": "ON",
-            "time": "2025-12-04T14:35:00.000Z",
-          },
-          "health": {
-            "status": "DOWN",
-            "details": "no last contact time available",
-            "last_contact": "2025-12-04T14:35:00.000Z",
-          },
-          "temperature_humidity_data": {
-            "temperature_celsius": 33.5,
-            "humidity_percentage": 46.4,
-          },
-          "num_plants": 5,
-          "num_zones": 2,
-          "plants": {
-            "rel": "collection",
-            "href": "/gardens/68de7e98ae6796d18a268a34/plants",
-          },
-          "zones": {
-            "rel": "collection",
-            "href": "/gardens/68de7e98ae6796d18a268a34/zones",
-          },
-        },
-      };
+      final response = await _apiClient.get('/gardens/$id');
 
       return ApiResponse<GardenModel>.fromJson(
         response,
@@ -296,20 +97,19 @@ class GardenRemoteDataSourceImpl implements GardenRemoteDataSource {
       if (!hasNetwork) {
         throw NetworkException();
       }
-
-      // Simulating a backend call with delay
-      print(garden.toJson());
-      await Future.delayed(const Duration(seconds: 1));
-
-      // In real implementation, you would make an API call here to create the garden
-      // For this template, we'll just return the same garden object back
-
-      final response = {
-        "status": "success",
-        "code": 201,
-        "message": "Garden created successfully",
-        "data": garden.toJson(),
-      };
+      final response = await _apiClient.post(
+        '/gardens',
+        data: {
+          'name': garden.name,
+          'topic_prefix': garden.topicPrefix,
+          'max_zones': garden.maxZones,
+          if (garden.lightSchedule != null)
+            'light_schedule': {
+              'duration_ms': garden.lightSchedule!.durationMs,
+              'start_time': garden.lightSchedule!.startTime,
+            },
+        },
+      );
 
       return ApiResponse<GardenModel>.fromJson(
         response,
@@ -329,19 +129,36 @@ class GardenRemoteDataSourceImpl implements GardenRemoteDataSource {
         throw NetworkException();
       }
 
-      // Simulating a backend call with delay
-      print(garden.toJson());
-      await Future.delayed(const Duration(seconds: 1));
+      final response = await _apiClient.patch(
+        '/gardens/${garden.id}',
+        data: {
+          'name': garden.name,
+          'topic_prefix': garden.topicPrefix,
+          'max_zones': garden.maxZones,
+          if (garden.lightSchedule != null)
+            'light_schedule': {
+              'duration_ms': garden.lightSchedule!.durationMs,
+              'start_time': garden.lightSchedule!.startTime,
+            },
+          if (garden.controllerConfig != null)
+            'controller_config': {
+              if (garden.controllerConfig!.valvePins != null &&
+                  garden.controllerConfig!.valvePins!.isNotEmpty)
+                'valve_pins': garden.controllerConfig!.valvePins,
+              if (garden.controllerConfig!.pumpPins != null &&
+                  garden.controllerConfig!.pumpPins!.isNotEmpty)
+                'pump_pins': garden.controllerConfig!.pumpPins,
+              if (garden.controllerConfig!.lightPin != null)
+                'light_pin': garden.controllerConfig!.lightPin!,
+              if (garden.controllerConfig!.tempHumidityPin != null)
+                'temp_humidity_pin': garden.controllerConfig!.tempHumidityPin!,
+              if (garden.controllerConfig!.tempHumidityPin != null)
+                'temp_hum_interval_ms':
+                    garden.controllerConfig!.tempHumIntervalMs,
+            },
+        },
+      );
 
-      // In real implementation, you would make an API call here to edit the garden
-      // For this template, we'll just return the same garden object back
-
-      final response = {
-        "status": "success",
-        "code": 200,
-        "message": "Garden edited successfully",
-        "data": garden.toJson(),
-      };
       return ApiResponse<GardenModel>.fromJson(
         response,
         (data) => GardenModel.fromJson(data as Map<String, dynamic>),
@@ -360,19 +177,7 @@ class GardenRemoteDataSourceImpl implements GardenRemoteDataSource {
         throw NetworkException();
       }
 
-      // Simulating a backend call with delay
-      print('Deleting garden with id: $id');
-      await Future.delayed(const Duration(seconds: 1));
-
-      // In real implementation, you would make an API call here to delete the garden
-      // For this template, we'll just return the id back
-
-      final response = {
-        "status": "success",
-        "code": 200,
-        "message": "Garden deleted successfully",
-        "data": id,
-      };
+      final response = await _apiClient.delete('/gardens/$id');
 
       return ApiResponse<String>.fromJson(response, (data) => data as String);
     } on Exception catch (e) {
@@ -389,19 +194,18 @@ class GardenRemoteDataSourceImpl implements GardenRemoteDataSource {
         throw NetworkException();
       }
 
-      // Simulating a backend call with delay
-      print('Sending garden action: ${params.toString()}');
-      await Future.delayed(const Duration(seconds: 1));
-
-      // In real implementation, you would make an API call here to send the action
-      // For this template, we'll just complete the future
-
-      final response = {
-        "status": "success",
-        "code": 200,
-        "message": "Garden action sent successfully",
-        "data": null,
-      };
+      final response = await _apiClient.post(
+        '/gardens/${params.gardenId}/action',
+        data: {
+          if (params.light != null)
+            'light': {
+              'state': params.light!.state,
+              if (params.light!.forDuration != null)
+                'for_duration_ms': params.light!.forDuration,
+            },
+          if (params.stop != null) 'stop': {'all': params.stop!.all},
+        },
+      );
       return ApiResponse<void>.fromJson(response, (data) {});
     } on Exception catch (e) {
       throw _handleException(e);

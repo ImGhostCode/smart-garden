@@ -8,8 +8,11 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/extensions/build_context_extentions.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../../garden/domain/entities/garden_entity.dart';
+import '../../../garden/domain/usecases/get_all_gardens.dart';
 import '../../../garden/domain/usecases/send_garden_action.dart';
 import '../../../garden/presentation/providers/garden_provider.dart';
+import '../../../water_routine/domain/usecases/get_all_water_routines.dart';
+import '../../../water_routine/presentation/providers/water_routine_provider.dart';
 import '../../../zone/presentation/providers/zone_provider.dart';
 
 enum GardenAction { edit, delete }
@@ -24,13 +27,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    // if (ref.read(gardenProvider).gardens.isEmpty) {
-    //   ref
-    //       .read(gardenProvider.notifier)
-    //       .getAllGarden(GetAllGardenParams(endDated: false));
-    // }
-    // });
     super.initState();
   }
 
@@ -84,6 +80,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         } else {
           EasyLoading.showSuccess(next.responseMsg ?? 'Garden deleted');
           // refresh garden list
+          ref.read(gardenProvider.notifier).getAllGarden(GetAllGardenParams());
+          // refresh water routine list
+          ref
+              .read(waterRoutineProvider.notifier)
+              .getAllWaterRoutine(GetAllWRParams());
         }
       }
     });
@@ -101,8 +102,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     ref.listen(zoneProvider, (previous, next) async {
       if (previous?.isSendingAction == true && next.isSendingAction == false) {
-        if (next.errSendingAction != null) {
-          EasyLoading.showError(next.errSendingAction ?? 'Error');
+        if (next.errSendingAction.isNotEmpty) {
+          EasyLoading.showError(next.errSendingAction);
         } else {
           EasyLoading.showSuccess(next.responseMsg ?? 'Zone action sent');
           // context.goBack();
@@ -110,76 +111,84 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
     });
 
-    return SafeArea(
-      child: Scaffold(
-        body: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              scrolledUnderElevation: 0,
-              floating: true,
-              pinned: false,
-              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-              leadingWidth: 120,
-              leading: Padding(
-                padding: const EdgeInsets.only(left: AppConstants.paddingSm),
-                child: Image.asset(Assets.logo),
-              ),
-              actions: [
-                IconButton.filled(
-                  onPressed: () {},
-                  icon: const Icon(Icons.notifications_rounded),
-                  color: AppColors.primary,
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.primary100,
-                  ),
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.read(gardenProvider.notifier).getAllGarden(GetAllGardenParams());
+      },
+      child: SafeArea(
+        child: Scaffold(
+          body: CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                scrolledUnderElevation: 0,
+                floating: true,
+                pinned: false,
+                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                leadingWidth: 120,
+                leading: Padding(
+                  padding: const EdgeInsets.only(left: AppConstants.paddingSm),
+                  child: Image.asset(Assets.logo),
                 ),
-                IconButton.filled(
-                  onPressed: () => context.goSettings(),
-                  icon: const Icon(Icons.settings_rounded),
-                  color: AppColors.primary,
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.primary100,
-                  ),
-                ),
-                const SizedBox(width: AppConstants.paddingSm),
-              ],
-            ),
-
-            SliverAppBar(
-              pinned: true,
-              primary: false,
-              toolbarHeight: 70,
-              automaticallyImplyLeading: false,
-              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-              surfaceTintColor: Colors.transparent,
-              titleSpacing: 0,
-              title: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppConstants.paddingMd,
-                ),
-                child: SearchBar(
-                  leading: const Icon(Icons.search_rounded, color: Colors.grey),
-                  hintText: 'Search',
-                  trailing: [
-                    IconButton(
-                      onPressed: () {},
-                      icon: const Icon(
-                        Icons.clear_rounded,
-                        size: AppConstants.iconMd,
-                      ),
+                actions: [
+                  IconButton.filled(
+                    onPressed: () {},
+                    icon: const Icon(Icons.notifications_rounded),
+                    color: AppColors.primary,
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppColors.primary100,
                     ),
-                  ],
+                  ),
+                  IconButton.filled(
+                    onPressed: () => context.goSettings(),
+                    icon: const Icon(Icons.settings_rounded),
+                    color: AppColors.primary,
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppColors.primary100,
+                    ),
+                  ),
+                  const SizedBox(width: AppConstants.paddingSm),
+                ],
+              ),
+
+              SliverAppBar(
+                pinned: true,
+                primary: false,
+                toolbarHeight: 70,
+                automaticallyImplyLeading: false,
+                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                surfaceTintColor: Colors.transparent,
+                titleSpacing: 0,
+                title: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppConstants.paddingMd,
+                  ),
+                  child: SearchBar(
+                    leading: const Icon(
+                      Icons.search_rounded,
+                      color: Colors.grey,
+                    ),
+                    hintText: 'Search',
+                    trailing: [
+                      IconButton(
+                        onPressed: () {},
+                        icon: const Icon(
+                          Icons.clear_rounded,
+                          size: AppConstants.iconMd,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            SliverPadding(
-              padding: const EdgeInsets.all(AppConstants.paddingMd),
-              sliver: _buildSliverContent(gardenState),
-            ),
+              SliverPadding(
+                padding: const EdgeInsets.all(AppConstants.paddingMd),
+                sliver: _buildSliverContent(gardenState),
+              ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 150)),
-          ],
+              const SliverToBoxAdapter(child: SizedBox(height: 150)),
+            ],
+          ),
         ),
       ),
     );
@@ -302,9 +311,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               Expanded(
                 child: _buildStatCard(
                   context,
-                  'Humidity',
-                  '${garden.tempHumData?.humidityPercentage ?? '- '}%',
-                  Icons.air,
+                  'Temperature',
+                  '${garden.tempHumData?.temperatureCelsius?.toStringAsFixed(1) ?? '- '}°C',
+                  Icons.thermostat,
                   Colors.teal,
                 ),
               ),
@@ -312,9 +321,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               Expanded(
                 child: _buildStatCard(
                   context,
-                  'Temperature',
-                  '${garden.tempHumData?.temperatureCelsius ?? '- '}°C',
-                  Icons.thermostat,
+                  'Humidity',
+                  '${garden.tempHumData?.humidityPercentage?.toStringAsFixed(1) ?? '- '}%',
+                  Icons.air,
                   Colors.teal,
                 ),
               ),
@@ -335,13 +344,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(flex: 2, child: _buildStatusCard(context, garden)),
+              Expanded(child: _buildStatusCard(context, garden)),
               const SizedBox(width: 8),
               Expanded(
-                flex: 1,
                 child: _buildStatCard(
                   context,
-                  'Light Status',
+                  'Next Light Action',
                   garden.nextLightAction?.action == "OFF" ? "ON" : "OFF",
                   Icons.lightbulb_outline,
                   Colors.teal,
@@ -418,7 +426,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           _buildStatusItem(
             context,
             Icons.local_florist_outlined,
-            '${garden.numPlants} plants growing',
+            '${garden.numPlants} Plants',
           ),
           const SizedBox(height: 8),
           _buildStatusItem(
@@ -442,9 +450,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             fontWeight: FontWeight.bold,
             color: Colors.green[900],
           ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
       ],
     );
+    // return RichText(
+    //   overflow: TextOverflow.ellipsis,
+    //   text: TextSpan(
+    //     children: [
+    //       WidgetSpan(
+    //         alignment: PlaceholderAlignment.middle,
+    //         child: Icon(icon, color: Colors.teal[300], size: 24),
+    //       ),
+    //       const WidgetSpan(child: SizedBox(width: 6)),
+    //       TextSpan(
+    //         text: text,
+    //         style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+    //           fontWeight: FontWeight.bold,
+    //           color: Colors.green[900],
+    //         ),
+    //       ),
+    //     ],
+    //   ),
+    // );
   }
 
   // Phần chân trang với nút Actions
@@ -475,10 +504,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         .read(gardenProvider.notifier)
                         .sendGardenAction(
                           GardenActionParams(
-                            gardenId: garden.id!,
+                            gardenId: garden.id,
                             light: LightAction(
                               state: isOn ? 'ON' : 'OFF',
-                              forDuration: '30m',
+                              forDuration: null,
                             ),
                           ),
                         );
@@ -488,7 +517,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         .read(gardenProvider.notifier)
                         .sendGardenAction(
                           GardenActionParams(
-                            gardenId: garden.id!,
+                            gardenId: garden.id,
                             stop: StopAction(all: true),
                           ),
                         );
@@ -552,14 +581,52 @@ void showGardenActions({
                 fontWeight: FontWeight.bold,
               ),
             ),
-            subtitle: Text(
-              "Status: ${garden.nextLightAction?.action == 'OFF' ? 'ON' : 'OFF'}",
-            ),
-            trailing: Switch(
-              value: garden.nextLightAction?.action == 'OFF' ? true : false,
-              onChanged: onToggleLight,
-              activeColor: Colors.white,
-              activeTrackColor: AppColors.primary,
+            // subtitle: Text(
+            //   "Status: ${garden.nextLightAction?.action == 'OFF' ? 'ON' : 'OFF'}",
+            // ),
+            // trailing: Switch(
+            //   value: garden.nextLightAction?.action == 'OFF' ? true : false,
+            //   onChanged: onToggleLight,
+            //   activeColor: Colors.white,
+            //   activeTrackColor: AppColors.primary,
+            // ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () {
+                    onToggleLight(true);
+                  },
+                  icon: const Icon(
+                    Icons.lightbulb,
+                    size: AppConstants.iconMd,
+                    color: Colors.white,
+                  ),
+                  label: const Text(
+                    'Turn ON',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    onToggleLight(false);
+                  },
+                  icon: const Icon(
+                    Icons.lightbulb_outline,
+                    size: AppConstants.iconMd,
+                    color: Colors.white,
+                  ),
+                  label: const Text(
+                    'Turn OFF',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
+                ),
+              ],
             ),
           ),
           const Divider(),
