@@ -22,7 +22,7 @@ final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 // Data sources
 final weatherClientRemoteDataSourceProvider =
     Provider<WeatherClientRemoteDataSource>(
-      (ref) => WeatherClientRemoteDataSourceImpl(),
+      (ref) => WeatherClientRemoteDataSourceImpl(ref.watch(apiClientProvider)),
     );
 
 final weatherClientLocalDataSourceProvider =

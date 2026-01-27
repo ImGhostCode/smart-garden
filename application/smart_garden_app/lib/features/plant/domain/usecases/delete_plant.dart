@@ -8,13 +8,20 @@ import '../../../../core/network/api_response.dart';
 import '../../../../core/usecases/usecase.dart';
 import '../repositories/plant_repository.dart';
 
-class DeletePlant implements UseCase<ApiResponse<String>, String> {
+class DeletePlant implements UseCase<ApiResponse<String>, DeletePlantParams> {
   final PlantRepository repository;
 
   DeletePlant(this.repository);
 
   @override
-  Future<Either<Failure, ApiResponse<String>>> call(String id) {
-    return repository.deletePlant(id);
+  Future<Either<Failure, ApiResponse<String>>> call(DeletePlantParams params) {
+    return repository.deletePlant(params);
   }
+}
+
+class DeletePlantParams {
+  final String? gardenId;
+  final String? plantId;
+
+  DeletePlantParams({required this.gardenId, required this.plantId});
 }

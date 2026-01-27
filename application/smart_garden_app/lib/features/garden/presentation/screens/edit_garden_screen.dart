@@ -9,6 +9,7 @@ import '../../../../core/utils/app_utils.dart';
 import '../../../../core/utils/app_validators.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../domain/entities/garden_entity.dart';
+import '../../domain/usecases/get_all_gardens.dart';
 import '../providers/garden_provider.dart';
 
 class EditGardenScreen extends ConsumerStatefulWidget {
@@ -37,7 +38,7 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
   final List<TextEditingController> _pumpControllers = [];
 
   // Local State
-  String? _lsDuration;
+  int? _lsDuration;
   bool isSensorEnabled = true;
 
   // Data Sources
@@ -72,11 +73,14 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
           final ls = garden.lightSchedule!;
           _lsDuration = Duration(
             milliseconds: garden.lightSchedule?.durationMs ?? 0,
-          ).inHours.toString();
-          final timeParts = ls.startTime?.split(':') ?? [];
-          if (timeParts.length >= 2) {
-            _hourController.text = timeParts[0];
-            _minuteController.text = timeParts[1];
+          ).inHours;
+          final utcStartTime = AppUtils.toLocalTime(ls.startTime);
+          if (utcStartTime != null && utcStartTime.isNotEmpty) {
+            final timeParts = utcStartTime.split(':');
+            if (timeParts.length >= 2) {
+              _hourController.text = timeParts[0];
+              _minuteController.text = timeParts[1];
+            }
           }
           _lightPinController.text =
               garden.controllerConfig?.lightPin?.toString() ?? '';
@@ -143,6 +147,10 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
 
   void _onSave() {
     if (!_formKey.currentState!.validate()) return;
+    String? startTime = _lsDuration == null
+        ? null
+        : '${_hourController.text.padLeft(2, '0')}:${_minuteController.text.padLeft(2, '0')}:00';
+    startTime = AppUtils.toUtcTime(startTime);
     ref
         .read(gardenProvider.notifier)
         .editGarden(
@@ -151,7 +159,35 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
             name: _nameController.text,
             topicPrefix: _topicPrefixController.text,
             maxZones: int.parse(_maxZonesController.text),
-            // Add other fields as necessary
+            lightSchedule: _lsDuration != null
+                ? LightScheduleEntity(
+                    durationMs: _lsDuration! * 60 * 60 * 1000,
+                    startTime: startTime,
+                  )
+                : null,
+            controllerConfig:
+                _lightPinController.text.trim().isNotEmpty ||
+                    isSensorEnabled ||
+                    _valveControllers.isNotEmpty ||
+                    _pumpControllers.isNotEmpty
+                ? ControllerConfigEntity(
+                    lightPin: _lightPinController.text.trim().isNotEmpty
+                        ? int.parse(_lightPinController.text)
+                        : null,
+                    tempHumidityPin: isSensorEnabled
+                        ? int.parse(_sensorPinController.text)
+                        : null,
+                    tempHumIntervalMs: isSensorEnabled
+                        ? AppUtils.durationToMs(_intervalController.text)
+                        : null,
+                    valvePins: _valveControllers
+                        .map((controller) => int.parse(controller.text))
+                        .toList(),
+                    pumpPins: _pumpControllers
+                        .map((controller) => int.parse(controller.text))
+                        .toList(),
+                  )
+                : null,
           ),
         );
   }
@@ -176,6 +212,7 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
           EasyLoading.showError(next.errEditingGarden);
         } else {
           EasyLoading.showSuccess(next.responseMsg ?? 'Garden edited');
+          ref.read(gardenProvider.notifier).getAllGarden(GetAllGardenParams());
           context.goBack();
         }
       }
@@ -209,7 +246,10 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
                       label: 'Topic prefix',
                       child: TextFormField(
                         controller: _topicPrefixController,
-                        validator: AppValidators.required,
+                        validator: AppValidators.combine([
+                          AppValidators.required,
+                          AppValidators.validTopic,
+                        ]),
                         textInputAction: TextInputAction.next,
                       ),
                     ),
@@ -219,7 +259,10 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
                       child: TextFormField(
                         controller: _maxZonesController,
                         keyboardType: TextInputType.number,
-                        validator: AppValidators.required,
+                        validator: AppValidators.combine([
+                          AppValidators.required,
+                          AppValidators.positiveInt,
+                        ]),
                         textInputAction: TextInputAction.next,
                       ),
                     ),
@@ -247,6 +290,10 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
                               onChanged: (value) {
                                 setState(() {});
                               },
+                              validator:
+                                  _lightPinController.text.trim().isNotEmpty
+                                  ? AppValidators.pin
+                                  : null,
                             ),
                           ),
                         ),
@@ -254,14 +301,14 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
                         Expanded(
                           child: LabeledInput(
                             label: 'Duration',
-                            child: DropdownButtonFormField<String>(
+                            child: DropdownButtonFormField<int>(
                               menuMaxHeight:
                                   MediaQuery.sizeOf(context).height * 0.5,
                               value: _lsDuration,
                               items: _durationHours
                                   .map(
                                     (i) => DropdownMenuItem(
-                                      value: '$i',
+                                      value: i,
                                       child: Text('$i hours'),
                                     ),
                                   )
@@ -295,7 +342,10 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
                               controller: _hourController,
                               keyboardType: TextInputType.number,
                               validator: _lsDuration != null
-                                  ? AppValidators.required
+                                  ? AppValidators.combine([
+                                      AppValidators.required,
+                                      AppValidators.validHour,
+                                    ])
                                   : null,
                             ),
                           ),
@@ -308,7 +358,10 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
                               controller: _minuteController,
                               keyboardType: TextInputType.number,
                               validator: _lsDuration != null
-                                  ? AppValidators.required
+                                  ? AppValidators.combine([
+                                      AppValidators.required,
+                                      AppValidators.validMinute,
+                                    ])
                                   : null,
                             ),
                           ),
@@ -498,7 +551,10 @@ class PinEntryRow extends StatelessWidget {
           child: TextFormField(
             controller: controller,
             keyboardType: TextInputType.number,
-            validator: AppValidators.required,
+            validator: AppValidators.combine([
+              AppValidators.required,
+              AppValidators.pin,
+            ]),
           ),
         ),
         const SizedBox(width: 6),

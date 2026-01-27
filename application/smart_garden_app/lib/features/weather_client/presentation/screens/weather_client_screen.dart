@@ -78,80 +78,90 @@ class _WeatherClientScreenState extends ConsumerState<WeatherClientScreen> {
         }
       }
     });
-    return SafeArea(
-      child: Scaffold(
-        body: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              scrolledUnderElevation: 0,
-              floating: true,
-              pinned: false,
-              centerTitle: false,
-              title: const Text('Weather Client'),
-              titleTextStyle: Theme.of(
-                context,
-              ).textTheme.titleLarge!.copyWith(fontWeight: FontWeight.w600),
-              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-              // backgroundColor: Colors.white,
-              leadingWidth: 120,
-              actions: [
-                IconButton.filled(
-                  onPressed: () {},
-                  icon: const Icon(Icons.notifications_rounded),
-                  color: AppColors.primary,
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.primary100,
-                  ),
-                ),
-                IconButton.filled(
-                  onPressed: () {
-                    context.goSettings();
-                  },
-                  icon: const Icon(Icons.settings_rounded),
-                  color: AppColors.primary,
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.primary100,
-                  ),
-                ),
-                const SizedBox(width: AppConstants.paddingSm),
-              ],
-            ),
-
-            SliverAppBar(
-              pinned: true,
-              primary: false,
-              toolbarHeight: 70,
-              automaticallyImplyLeading: false,
-              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-              surfaceTintColor: Colors.transparent,
-              titleSpacing: 0,
-              title: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppConstants.paddingMd,
-                ),
-                child: SearchBar(
-                  leading: const Icon(Icons.search_rounded, color: Colors.grey),
-                  hintText: 'Search',
-                  trailing: [
-                    IconButton(
-                      onPressed: () {},
-                      icon: const Icon(
-                        Icons.clear_rounded,
-                        size: AppConstants.iconMd,
-                      ),
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref
+            .read(weatherClientProvider.notifier)
+            .getAllWeatherClients(GetAllWeatherClientsParams());
+      },
+      child: SafeArea(
+        child: Scaffold(
+          body: CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                scrolledUnderElevation: 0,
+                floating: true,
+                pinned: false,
+                centerTitle: false,
+                title: const Text('Weather Client'),
+                titleTextStyle: Theme.of(
+                  context,
+                ).textTheme.titleLarge!.copyWith(fontWeight: FontWeight.w600),
+                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                // backgroundColor: Colors.white,
+                leadingWidth: 120,
+                actions: [
+                  IconButton.filled(
+                    onPressed: () {},
+                    icon: const Icon(Icons.notifications_rounded),
+                    color: AppColors.primary,
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppColors.primary100,
                     ),
-                  ],
+                  ),
+                  IconButton.filled(
+                    onPressed: () {
+                      context.goSettings();
+                    },
+                    icon: const Icon(Icons.settings_rounded),
+                    color: AppColors.primary,
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppColors.primary100,
+                    ),
+                  ),
+                  const SizedBox(width: AppConstants.paddingSm),
+                ],
+              ),
+
+              SliverAppBar(
+                pinned: true,
+                primary: false,
+                toolbarHeight: 70,
+                automaticallyImplyLeading: false,
+                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                surfaceTintColor: Colors.transparent,
+                titleSpacing: 0,
+                title: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppConstants.paddingMd,
+                  ),
+                  child: SearchBar(
+                    leading: const Icon(
+                      Icons.search_rounded,
+                      color: Colors.grey,
+                    ),
+                    hintText: 'Search',
+                    trailing: [
+                      IconButton(
+                        onPressed: () {},
+                        icon: const Icon(
+                          Icons.clear_rounded,
+                          size: AppConstants.iconMd,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            SliverPadding(
-              padding: const EdgeInsets.all(AppConstants.paddingMd),
-              sliver: _buildSliverContent(weatherClientState),
-            ),
+              SliverPadding(
+                padding: const EdgeInsets.all(AppConstants.paddingMd),
+                sliver: _buildSliverContent(weatherClientState),
+              ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 150)),
-          ],
+              const SliverToBoxAdapter(child: SizedBox(height: 150)),
+            ],
+          ),
         ),
       ),
     );
@@ -250,7 +260,7 @@ class WeatherClientItem extends StatelessWidget {
               onSelected: (WeatherClientAction item) {
                 switch (item) {
                   case WeatherClientAction.edit:
-                    context.goEditWeatherClient('68de7e98ae6796d18a268a40', wc);
+                    context.goEditWeatherClient(wc.id!, wc);
                     break;
                   case WeatherClientAction.delete:
                     context.showConfirmDialog(
@@ -309,7 +319,7 @@ class WeatherClientItem extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '${wc.latestWeatherData?.temperature?.celsius?.toString() ?? '-'}°C',
+                            '${wc.latestWeatherData?.temperature?.celsius?.toStringAsFixed(1) ?? '-'}°C',
                           ),
                         ],
                       ),
@@ -323,7 +333,7 @@ class WeatherClientItem extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '${wc.latestWeatherData?.rain?.mm?.toString() ?? '-'} mm',
+                            '${wc.latestWeatherData?.rain?.mm?.toStringAsFixed(1) ?? '-'} mm',
                           ),
                         ],
                       ),

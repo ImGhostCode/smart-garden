@@ -5,18 +5,18 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/assets.dart';
 import '../../../garden/presentation/providers/garden_provider.dart';
 import '../../../water_routine/presentation/providers/water_routine_ui_providers.dart';
-import '../../../zone/domain/usecases/get_all_zones.dart';
-import '../../../zone/presentation/providers/zone_provider.dart';
+import '../../domain/usecases/get_all_zones.dart';
+import '../providers/zone_provider.dart';
 
-class StepSelection extends ConsumerStatefulWidget {
+class ZoneSelection extends ConsumerStatefulWidget {
   final ScrollController scrollController;
-  const StepSelection({super.key, required this.scrollController});
+  const ZoneSelection({super.key, required this.scrollController});
 
   @override
-  ConsumerState<ConsumerStatefulWidget> createState() => _StepSelectionState();
+  ConsumerState<ConsumerStatefulWidget> createState() => _ZoneSelectionState();
 }
 
-class _StepSelectionState extends ConsumerState<StepSelection> {
+class _ZoneSelectionState extends ConsumerState<ZoneSelection> {
   @override
   void initState() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -132,7 +132,7 @@ class _ZoneContent extends ConsumerWidget {
       return Center(child: Text(zoneState.errLoadingZones));
     }
 
-    final selectedSteps = ref.watch(selectedWRStepsProvider);
+    final selectedZones = ref.watch(selectedZonesProvider);
 
     return ListView.separated(
       controller: scrollController,
@@ -146,7 +146,7 @@ class _ZoneContent extends ConsumerWidget {
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final zone = zoneState.zones[index];
-        final isSelected = selectedSteps.any((s) => s.zone?.id == zone.id);
+        final isSelected = selectedZones.any((z) => z.id == zone.id);
 
         return ListTile(
           shape: RoundedRectangleBorder(
@@ -160,12 +160,12 @@ class _ZoneContent extends ConsumerWidget {
           ),
           subtitle: Text(zone.details?.description ?? ''),
           onTap: () {
-            ref.read(selectedWRStepsProvider.notifier).toggleZone(zone);
+            ref.read(selectedZonesProvider.notifier).toggle(zone);
           },
           trailing: Checkbox.adaptive(
             value: isSelected,
             onChanged: (_) {
-              ref.read(selectedWRStepsProvider.notifier).toggleZone(zone);
+              ref.read(selectedZonesProvider.notifier).toggle(zone);
             },
           ),
         );
@@ -177,7 +177,7 @@ class _ZoneContent extends ConsumerWidget {
 class _FooterSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selectedSteps = ref.watch(selectedWRStepsProvider);
+    final selectedZones = ref.watch(selectedZonesProvider);
 
     return Container(
       decoration: BoxDecoration(
@@ -194,17 +194,15 @@ class _FooterSection extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (selectedSteps.isNotEmpty)
+          if (selectedZones.isNotEmpty)
             Wrap(
               spacing: 8,
-              children: selectedSteps
+              children: selectedZones
                   .map(
-                    (s) => Chip(
-                      label: Text(s.zone?.name ?? ''),
+                    (z) => Chip(
+                      label: Text(z.name ?? ''),
                       onDeleted: () {
-                        ref
-                            .read(selectedWRStepsProvider.notifier)
-                            .toggleZone(s.zone!);
+                        ref.read(selectedZonesProvider.notifier).toggle(z);
                       },
                     ),
                   )
@@ -224,7 +222,7 @@ class _FooterSection extends ConsumerWidget {
   }
 }
 
-Future<dynamic> showStepSelection(BuildContext context) {
+Future<dynamic> showZoneSelection(BuildContext context) {
   return showModalBottomSheet(
     context: context,
     showDragHandle: true,
@@ -237,7 +235,7 @@ Future<dynamic> showStepSelection(BuildContext context) {
         minChildSize: 0.4,
         maxChildSize: 0.9,
         builder: (context, scrollController) {
-          return StepSelection(scrollController: scrollController);
+          return ZoneSelection(scrollController: scrollController);
         },
       );
     },

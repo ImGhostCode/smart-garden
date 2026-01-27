@@ -9,6 +9,7 @@ import '../../../../core/utils/app_utils.dart';
 import '../../../../core/utils/app_validators.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../domain/entities/garden_entity.dart';
+import '../../domain/usecases/get_all_gardens.dart';
 import '../providers/garden_provider.dart';
 
 class CreateGardenScreen extends ConsumerStatefulWidget {
@@ -60,6 +61,10 @@ class _CreateGardenScreenState extends ConsumerState<CreateGardenScreen> {
 
   void _onSave() {
     if (!_formKey.currentState!.validate()) return;
+    String? startTime = _lsDuration == null
+        ? null
+        : '${_hourController.text.padLeft(2, '0')}:${_minuteController.text.padLeft(2, '0')}:00';
+    startTime = AppUtils.toUtcTime(startTime);
     ref
         .read(gardenProvider.notifier)
         .createGarden(
@@ -70,10 +75,9 @@ class _CreateGardenScreenState extends ConsumerState<CreateGardenScreen> {
             lightSchedule: _lsDuration != null
                 ? LightScheduleEntity(
                     durationMs: AppUtils.durationToMs(_lsDuration!),
-                    startTime:
-                        '${_hourController.text.padLeft(2, '0')}:${_minuteController.text.padLeft(2, '0')}',
+                    startTime: startTime,
                   )
-                : null, // lightScheduleTimezone: _timezone,
+                : null,
           ),
         );
   }
@@ -98,6 +102,7 @@ class _CreateGardenScreenState extends ConsumerState<CreateGardenScreen> {
           EasyLoading.showError(next.errCreatingGarden);
         } else {
           EasyLoading.showSuccess(next.responseMsg ?? 'Garden created');
+          ref.read(gardenProvider.notifier).getAllGarden(GetAllGardenParams());
           context.goBack();
         }
       }
@@ -127,7 +132,10 @@ class _CreateGardenScreenState extends ConsumerState<CreateGardenScreen> {
                   label: 'Topic prefix',
                   child: TextFormField(
                     controller: _topicPrefixController,
-                    validator: AppValidators.required,
+                    validator: AppValidators.combine([
+                      AppValidators.required,
+                      AppValidators.validTopic,
+                    ]),
                     textInputAction: TextInputAction.next,
                   ),
                 ),
@@ -137,7 +145,10 @@ class _CreateGardenScreenState extends ConsumerState<CreateGardenScreen> {
                   child: TextFormField(
                     controller: _maxZonesController,
                     keyboardType: TextInputType.number,
-                    validator: AppValidators.required,
+                    validator: AppValidators.combine([
+                      AppValidators.required,
+                      AppValidators.positiveInt,
+                    ]),
                     textInputAction: TextInputAction.next,
                   ),
                 ),
@@ -180,7 +191,10 @@ class _CreateGardenScreenState extends ConsumerState<CreateGardenScreen> {
                           controller: _hourController,
                           keyboardType: TextInputType.number,
                           validator: _lsDuration != null
-                              ? AppValidators.required
+                              ? AppValidators.combine([
+                                  AppValidators.required,
+                                  AppValidators.validHour,
+                                ])
                               : null,
                         ),
                       ),
@@ -193,7 +207,10 @@ class _CreateGardenScreenState extends ConsumerState<CreateGardenScreen> {
                           controller: _minuteController,
                           keyboardType: TextInputType.number,
                           validator: _lsDuration != null
-                              ? AppValidators.required
+                              ? AppValidators.combine([
+                                  AppValidators.required,
+                                  AppValidators.validMinute,
+                                ])
                               : null,
                         ),
                       ),

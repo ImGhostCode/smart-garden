@@ -10,17 +10,17 @@ import '../data/datasources/plant_local_datasource.dart';
 import '../data/datasources/plant_remote_datasource.dart';
 import '../data/repositories/plant_repository_impl.dart';
 import '../domain/repositories/plant_repository.dart';
+import '../domain/usecases/add_plant.dart';
 import '../domain/usecases/delete_plant.dart';
 import '../domain/usecases/edit_plant.dart';
 import '../domain/usecases/get_all_plants.dart';
 import '../domain/usecases/get_plant_by_id.dart';
-import '../domain/usecases/new_plant.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 
 // Data sources
 final plantRemoteDataSourceProvider = Provider<PlantRemoteDataSource>(
-  (ref) => PlantRemoteDataSourceImpl(),
+  (ref) => PlantRemoteDataSourceImpl(ref.watch(apiClientProvider)),
 );
 
 final plantLocalDataSourceProvider = Provider<PlantLocalDataSource>(
@@ -49,8 +49,8 @@ final editPlantUCProvider = Provider<EditPlant>(
   (ref) => EditPlant(ref.read(plantRepositoryProvider)),
 );
 
-final newPlantUCProvider = Provider<NewPlant>(
-  (ref) => NewPlant(ref.read(plantRepositoryProvider)),
+final newPlantUCProvider = Provider<AddPlant>(
+  (ref) => AddPlant(ref.read(plantRepositoryProvider)),
 );
 
 final deletePlantUCProvider = Provider<DeletePlant>(

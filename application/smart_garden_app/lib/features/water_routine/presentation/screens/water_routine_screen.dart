@@ -90,6 +90,9 @@ class _WaterRoutineScreenState extends ConsumerState<WaterRoutineScreen> {
           EasyLoading.showSuccess(
             next.responseMsg ?? 'Water Routine deleted successfully',
           );
+          ref
+              .read(waterRoutineProvider.notifier)
+              .getAllWaterRoutine(GetAllWRParams());
           // refresh list
         }
       }
@@ -97,78 +100,88 @@ class _WaterRoutineScreenState extends ConsumerState<WaterRoutineScreen> {
 
     return SafeArea(
       child: Scaffold(
-        body: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              scrolledUnderElevation: 0,
-              floating: true,
-              pinned: false,
-              centerTitle: false,
-              title: const Text('Water Routine'),
-              titleTextStyle: Theme.of(
-                context,
-              ).textTheme.titleLarge!.copyWith(fontWeight: FontWeight.w600),
-              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-              // backgroundColor: Colors.white,
-              leadingWidth: 120,
-              actions: [
-                IconButton.filled(
-                  onPressed: () {},
-                  icon: const Icon(Icons.notifications_rounded),
-                  color: AppColors.primary,
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.primary100,
-                  ),
-                ),
-                IconButton.filled(
-                  onPressed: () {
-                    context.goSettings();
-                  },
-                  icon: const Icon(Icons.settings_rounded),
-                  color: AppColors.primary,
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.primary100,
-                  ),
-                ),
-                const SizedBox(width: AppConstants.paddingSm),
-              ],
-            ),
-
-            SliverAppBar(
-              pinned: true,
-              primary: false,
-              toolbarHeight: 70,
-              automaticallyImplyLeading: false,
-              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-              surfaceTintColor: Colors.transparent,
-              titleSpacing: 0,
-              title: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppConstants.paddingMd,
-                ),
-                child: SearchBar(
-                  leading: const Icon(Icons.search_rounded, color: Colors.grey),
-                  hintText: 'Search',
-                  trailing: [
-                    IconButton(
-                      onPressed: () {},
-                      icon: const Icon(
-                        Icons.clear_rounded,
-                        size: AppConstants.iconMd,
-                      ),
+        body: RefreshIndicator(
+          onRefresh: () async {
+            ref
+                .read(waterRoutineProvider.notifier)
+                .getAllWaterRoutine(GetAllWRParams());
+          },
+          child: CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                scrolledUnderElevation: 0,
+                floating: true,
+                pinned: false,
+                centerTitle: false,
+                title: const Text('Water Routine'),
+                titleTextStyle: Theme.of(
+                  context,
+                ).textTheme.titleLarge!.copyWith(fontWeight: FontWeight.w600),
+                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                // backgroundColor: Colors.white,
+                leadingWidth: 120,
+                actions: [
+                  IconButton.filled(
+                    onPressed: () {},
+                    icon: const Icon(Icons.notifications_rounded),
+                    color: AppColors.primary,
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppColors.primary100,
                     ),
-                  ],
+                  ),
+                  IconButton.filled(
+                    onPressed: () {
+                      context.goSettings();
+                    },
+                    icon: const Icon(Icons.settings_rounded),
+                    color: AppColors.primary,
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppColors.primary100,
+                    ),
+                  ),
+                  const SizedBox(width: AppConstants.paddingSm),
+                ],
+              ),
+
+              SliverAppBar(
+                pinned: true,
+                primary: false,
+                toolbarHeight: 70,
+                automaticallyImplyLeading: false,
+                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                surfaceTintColor: Colors.transparent,
+                titleSpacing: 0,
+                title: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppConstants.paddingMd,
+                  ),
+                  child: SearchBar(
+                    leading: const Icon(
+                      Icons.search_rounded,
+                      color: Colors.grey,
+                    ),
+                    hintText: 'Search',
+                    trailing: [
+                      IconButton(
+                        onPressed: () {},
+                        icon: const Icon(
+                          Icons.clear_rounded,
+                          size: AppConstants.iconMd,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            SliverPadding(
-              padding: const EdgeInsets.all(AppConstants.paddingMd),
-              sliver: _buildSliverContent(waterRoutineState),
-            ),
+              SliverPadding(
+                padding: const EdgeInsets.all(AppConstants.paddingMd),
+                sliver: _buildSliverContent(waterRoutineState),
+              ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 150)),
-          ],
+              const SliverToBoxAdapter(child: SizedBox(height: 150)),
+            ],
+          ),
         ),
       ),
     );
@@ -247,7 +260,7 @@ class WaterRoutineItem extends StatelessWidget {
               onSelected: (WaterRoutineAction item) {
                 switch (item) {
                   case WaterRoutineAction.edit:
-                    context.goEditWaterRoutine('68de7e98ae6796d18a268a40', wr);
+                    context.goEditWaterRoutine(wr.id!, wr);
                     break;
                   case WaterRoutineAction.delete:
                     context.showConfirmDialog(

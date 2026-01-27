@@ -8,6 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/extensions/build_context_extentions.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../domain/entities/plant_entity.dart';
+import '../../domain/usecases/delete_plant.dart';
 import '../../domain/usecases/get_all_plants.dart';
 import '../providers/plant_provider.dart';
 
@@ -39,27 +40,30 @@ class _PlantListScreenState extends ConsumerState<PlantListScreen> {
   Widget build(BuildContext context) {
     final plantState = ref.watch(plantProvider);
 
-    // ref.listen(plantProvider.select((state) => state.isDeletingPlant), (
-    //   previousLoading,
-    //   nextLoading,
-    // ) {
-    //   if (nextLoading == true) {
-    //     EasyLoading.show(status: 'Loading...');
-    //   } else if (nextLoading == false && previousLoading == true) {
-    //     EasyLoading.dismiss();
-    //   }
-    // });
+    ref.listen(plantProvider.select((state) => state.isDeletingPlant), (
+      previousLoading,
+      nextLoading,
+    ) {
+      if (nextLoading == true) {
+        EasyLoading.show(status: 'Loading...');
+      } else if (nextLoading == false && previousLoading == true) {
+        EasyLoading.dismiss();
+      }
+    });
 
-    // ref.listen(plantProvider, (previous, next) async {
-    //   if (previous?.isDeletingPlant == true && next.isDeletingPlant == false) {
-    //     if (next.errDeletingPlant.isNotEmpty) {
-    //       EasyLoading.showError(next.errDeletingPlant);
-    //     } else {
-    //       EasyLoading.showSuccess(next.responseMsg ?? 'Plant deleted');
-    //       // refresh list
-    //     }
-    //   }
-    // });
+    ref.listen(plantProvider, (previous, next) async {
+      if (previous?.isDeletingPlant == true && next.isDeletingPlant == false) {
+        if (next.errDeletingPlant.isNotEmpty) {
+          EasyLoading.showError(next.errDeletingPlant);
+        } else {
+          EasyLoading.showSuccess(next.responseMsg ?? 'Plant deleted');
+          // refresh list
+          ref
+              .read(plantProvider.notifier)
+              .getAllPlant(GetAllPlantParams(gardenId: widget.gardenId));
+        }
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -67,41 +71,56 @@ class _PlantListScreenState extends ConsumerState<PlantListScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              context.goAddPlant('68de7e98ae6796d18a268a34');
+              context.goAddPlant(widget.gardenId);
             },
             child: const Text("Add plant"),
           ),
         ],
       ),
-      body: plantState.isLoadingPlants
-          ? const Center(child: CircularProgressIndicator())
-          : plantState.errLoadingPlants.isNotEmpty
-          ? Center(child: Text(plantState.errLoadingPlants))
-          : ListView.separated(
-              padding: const EdgeInsets.all(AppConstants.paddingMd),
-              itemCount: plantState.plants.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                return PlantListItem(
-                  data: plantState.plants[index],
-                  onDelete: () async {
-                    EasyLoading.show(status: 'Loading...');
-                    await ref
-                        .read(plantProvider.notifier)
-                        .deletePlant(plantState.plants[index].id!);
-                    EasyLoading.dismiss();
-                    final state = ref.read(plantProvider);
-                    if (state.errDeletingPlant.isNotEmpty) {
-                      EasyLoading.showError(state.errDeletingPlant);
-                    } else {
-                      EasyLoading.showSuccess(
-                        state.responseMsg ?? 'Plant deleted',
-                      );
-                    }
-                  },
-                );
-              },
-            ),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref
+              .read(plantProvider.notifier)
+              .getAllPlant(GetAllPlantParams(gardenId: widget.gardenId));
+        },
+        child: plantState.isLoadingPlants
+            ? const Center(child: CircularProgressIndicator())
+            : plantState.errLoadingPlants.isNotEmpty
+            ? Center(child: Text(plantState.errLoadingPlants))
+            : plantState.plants.isEmpty
+            ? const Center(child: Text('No plants found'))
+            : ListView.separated(
+                padding: const EdgeInsets.all(AppConstants.paddingMd),
+                itemCount: plantState.plants.length,
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  return PlantListItem(
+                    data: plantState.plants[index],
+                    onDelete: () async {
+                      EasyLoading.show(status: 'Loading...');
+                      await ref
+                          .read(plantProvider.notifier)
+                          .deletePlant(
+                            DeletePlantParams(
+                              gardenId: widget.gardenId,
+                              plantId: plantState.plants[index].id,
+                            ),
+                          );
+                      EasyLoading.dismiss();
+                      final state = ref.read(plantProvider);
+                      if (state.errDeletingPlant.isNotEmpty) {
+                        EasyLoading.showError(state.errDeletingPlant);
+                      } else {
+                        EasyLoading.showSuccess(
+                          state.responseMsg ?? 'Plant deleted',
+                        );
+                      }
+                    },
+                  );
+                },
+              ),
+      ),
     );
   }
 }
@@ -115,10 +134,7 @@ class PlantListItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () {
-        context.goPlantDetail(
-          '68de7e98ae6796d18a268a34',
-          '68de7e98ae6796d18a268a32',
-        );
+        context.goPlantDetail(data.garden!.id!, data.id!);
       },
       child: Ink(
         decoration: BoxDecoration(
@@ -194,11 +210,7 @@ class PlantListItem extends StatelessWidget {
                 onSelected: (PlantAction item) {
                   switch (item) {
                     case PlantAction.edit:
-                      context.goEditPlant(
-                        '68de7e98ae6796d18a268a40',
-                        '68de7e98ae6796d18a268a40',
-                        data,
-                      );
+                      context.goEditPlant(data.garden!.id!, data.id!, data);
                       break;
                     case PlantAction.delete:
                       context.showConfirmDialog(

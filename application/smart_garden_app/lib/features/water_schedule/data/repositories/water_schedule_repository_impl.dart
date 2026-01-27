@@ -110,7 +110,7 @@ class WaterScheduleRepositoryImpl implements WaterScheduleRepository {
           ),
         );
       } catch (e) {
-        return const Left(ServerFailure());
+        return Left(ServerFailure(message: e.toString()));
       }
     } else {
       return const Left(NetworkFailure());

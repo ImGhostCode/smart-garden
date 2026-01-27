@@ -1,5 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 
+import '../../../garden/data/models/garden_model.dart';
 import '../../../zone/data/models/zone_model.dart';
 import '../../domain/entities/plant_entity.dart';
 
@@ -9,6 +10,7 @@ part 'plant_model.g.dart';
 class PlantModel {
   final String? name;
   final ZoneModel? zone;
+  final GardenModel? garden;
   final PlantDetailModel? details;
   final String? id;
   final DateTime? createdAt;
@@ -17,6 +19,7 @@ class PlantModel {
 
   PlantModel({
     this.name,
+    this.garden,
     this.zone,
     this.details,
     this.id,
@@ -33,6 +36,7 @@ class PlantModel {
   PlantEntity toEntity() {
     return PlantEntity(
       name: name,
+      garden: garden?.toEntity(),
       zone: zone?.toEntity(),
       details: details,
       id: id,
@@ -45,6 +49,9 @@ class PlantModel {
   static PlantModel fromEntity(PlantEntity entity) {
     return PlantModel(
       name: entity.name,
+      garden: entity.garden != null
+          ? GardenModel.fromEntity(entity.garden!)
+          : null,
       zone: entity.zone != null ? ZoneModel.fromEntity(entity.zone!) : null,
       details: entity.details != null
           ? PlantDetailModel(

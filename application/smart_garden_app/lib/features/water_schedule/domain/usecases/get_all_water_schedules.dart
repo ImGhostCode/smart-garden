@@ -27,5 +27,5 @@ class GetAllWaterSchedules
 class GetAllWSParams {
   final bool? endDated;
   final bool? excludeWeatherData;
-  GetAllWSParams({this.endDated = false, this.excludeWeatherData = false});
+  GetAllWSParams({this.endDated = false, this.excludeWeatherData = true});
 }

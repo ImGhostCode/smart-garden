@@ -2,36 +2,39 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/water_history_entity.dart';
 import '../../domain/entities/zone_entity.dart';
+import '../../domain/usecases/delete_zone.dart';
+import '../../domain/usecases/edit_zone.dart';
 import '../../domain/usecases/get_all_zones.dart';
 import '../../domain/usecases/get_water_history.dart';
 import '../../domain/usecases/get_zone_by_id.dart';
+import '../../domain/usecases/new_zone.dart';
 import '../../domain/usecases/send_zone_action.dart';
 import '../../providers/zone_providers.dart';
 
 class ZoneState {
   final bool isLoadingZones;
   final List<ZoneEntity> zones;
-  final String? errLoadingZones;
+  final String errLoadingZones;
 
   final bool isLoadingZone;
   final ZoneEntity? zone;
-  final String? errLoadingZone;
+  final String errLoadingZone;
 
   final bool isLoadingWHistory;
   final List<WaterHistoryEntity> waterHistory;
-  final String? errLoadingWHistory;
+  final String errLoadingWHistory;
 
   final bool isCreatingZone;
-  final String? errCreatingZone;
+  final String errCreatingZone;
 
   final bool isEditingZone;
-  final String? errEditingZone;
+  final String errEditingZone;
 
   final bool isDeletingZone;
-  final String? errDeletingZone;
+  final String errDeletingZone;
 
   final bool isSendingAction;
-  final String? errSendingAction;
+  final String errSendingAction;
 
   final String? responseMsg;
 
@@ -47,13 +50,13 @@ class ZoneState {
     this.zone,
     this.waterHistory = const [],
     this.responseMsg,
-    this.errLoadingZones,
-    this.errLoadingZone,
-    this.errLoadingWHistory,
-    this.errCreatingZone,
-    this.errEditingZone,
-    this.errDeletingZone,
-    this.errSendingAction,
+    this.errLoadingZones = "",
+    this.errLoadingZone = "",
+    this.errLoadingWHistory = "",
+    this.errCreatingZone = "",
+    this.errEditingZone = "",
+    this.errDeletingZone = "",
+    this.errSendingAction = "",
   });
 
   ZoneState copyWith({
@@ -109,7 +112,7 @@ class ZoneNotifier extends Notifier<ZoneState> {
   Future<void> getAllZone(GetAllZoneParams params) async {
     state = state.copyWith(
       isLoadingZones: true,
-      errLoadingZones: null,
+      errLoadingZones: "",
       zones: [],
     );
 
@@ -121,34 +124,38 @@ class ZoneNotifier extends Notifier<ZoneState> {
         isLoadingZones: false,
         errLoadingZones: failure.message,
       ),
-      (zones) => state = state.copyWith(isLoadingZones: false, zones: zones),
+      (response) =>
+          state = state.copyWith(isLoadingZones: false, zones: response.data),
     );
   }
 
-  Future<void> getZoneById({required String id}) async {
+  Future<void> getZoneById(GetZoneParams params) async {
     state = state.copyWith(
       isLoadingZone: true,
-      errLoadingZone: null,
+      errLoadingZone: "",
       zone: () => null,
     );
 
     final getZoneById = ref.read(getZoneByIdUCProvider);
-    final result = await getZoneById.call(ZoneParams(id: id));
+    final result = await getZoneById.call(params);
 
     result.fold(
       (failure) => state = state.copyWith(
         isLoadingZone: false,
         errLoadingZone: failure.message,
       ),
-      (zone) => state = state.copyWith(isLoadingZone: false, zone: () => zone),
+      (response) => state = state.copyWith(
+        isLoadingZone: false,
+        zone: () => response.data,
+      ),
     );
   }
 
   Future<void> getWaterHistory(GetWaterHistoryParams params) async {
     state = state.copyWith(
       isLoadingWHistory: true,
-      errLoadingWHistory: null,
-      waterHistory: null,
+      errLoadingWHistory: "",
+      waterHistory: [],
     );
 
     final getWaterHistory = ref.read(getWaterHistoryUCProvider);
@@ -159,71 +166,69 @@ class ZoneNotifier extends Notifier<ZoneState> {
         isLoadingWHistory: false,
         errLoadingWHistory: failure.message,
       ),
-      (waterHistory) => state = state.copyWith(
+      (response) => state = state.copyWith(
         isLoadingWHistory: false,
-        waterHistory: waterHistory,
+        waterHistory: response.data,
       ),
     );
   }
 
-  Future<void> addZone(ZoneEntity zone) async {
-    state = state.copyWith(isCreatingZone: true, errCreatingZone: null);
+  Future<void> addZone(NewZoneParams params) async {
+    state = state.copyWith(isCreatingZone: true, errCreatingZone: "");
 
     final newZone = ref.read(newZoneUCProvider);
-    final result = await newZone.call(zone);
-
+    final result = await newZone.call(params);
     result.fold(
       (failure) => state = state.copyWith(
         isCreatingZone: false,
         errCreatingZone: failure.message,
       ),
-      (zone) => state = state.copyWith(
+      (response) => state = state.copyWith(
         isCreatingZone: false,
-        zone: () => zone,
-        responseMsg: "Zone created successfully",
+        zone: () => response.data,
+        responseMsg: response.message,
       ),
     );
   }
 
-  Future<void> editZone(ZoneEntity zone) async {
-    state = state.copyWith(isEditingZone: true, errEditingZone: null);
+  Future<void> editZone(EditZoneParams params) async {
+    state = state.copyWith(isEditingZone: true, errEditingZone: "");
 
     final editZone = ref.read(editZoneUCProvider);
-    final result = await editZone.call(zone);
+    final result = await editZone.call(params);
 
     result.fold(
       (failure) => state = state.copyWith(
         isEditingZone: false,
         errEditingZone: failure.message,
       ),
-      (zone) => state = state.copyWith(
+      (response) => state = state.copyWith(
         isEditingZone: false,
-        zone: () => zone,
-        responseMsg: "Zone updated successfully",
+        zone: () => response.data,
+        responseMsg: response.message,
       ),
     );
   }
 
-  Future<void> deleteZone(String id) async {
-    state = state.copyWith(isDeletingZone: true, errDeletingZone: null);
+  Future<void> deleteZone(DeleteZoneParams params) async {
+    state = state.copyWith(isDeletingZone: true, errDeletingZone: "");
 
     final deleteZone = ref.read(deleteZoneUCProvider);
-    final result = await deleteZone.call(id);
-
+    final result = await deleteZone.call(params);
     result.fold(
       (failure) => state = state.copyWith(
         isDeletingZone: false,
         errDeletingZone: failure.message,
       ),
-      (msg) => state = state.copyWith(
+      (response) => state = state.copyWith(
         isDeletingZone: false,
-        responseMsg: "Zone deleted successfully",
+        responseMsg: response.message,
       ),
     );
   }
 
   Future<void> sendZoneAction(ZoneActionParams params) async {
-    state = state.copyWith(isSendingAction: true, errSendingAction: null);
+    state = state.copyWith(isSendingAction: true, errSendingAction: "");
 
     final sendZoneAction = ref.read(sendZoneActionUCProvider);
     final result = await sendZoneAction.call(params);
@@ -233,15 +238,23 @@ class ZoneNotifier extends Notifier<ZoneState> {
         isSendingAction: false,
         errSendingAction: failure.message,
       ),
-      (_) => state = state.copyWith(
+      (response) => state = state.copyWith(
         isSendingAction: false,
-        responseMsg: "Zone action sent successfully",
+        responseMsg: response.message,
       ),
     );
   }
 
   void clearZones() {
     state = state.copyWith(zones: []);
+  }
+
+  List<int> existedPositions(String? gardenId) {
+    if (gardenId == null) return [];
+    return state.zones
+        .where((zone) => zone.garden?.id == gardenId)
+        .map((zone) => zone.position ?? -1)
+        .toList();
   }
 }
 

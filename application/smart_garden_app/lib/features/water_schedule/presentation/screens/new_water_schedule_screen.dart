@@ -9,6 +9,7 @@ import '../../../../core/utils/app_utils.dart';
 import '../../../../core/utils/app_validators.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../domain/entities/water_schedule_entity.dart';
+import '../../domain/usecases/get_all_water_schedules.dart';
 import '../providers/water_schedule_provider.dart';
 
 class NewWaterScheduleScreen extends ConsumerStatefulWidget {
@@ -75,6 +76,9 @@ class _NewWaterScheduleScreenState
 
   void _onSave() {
     if (!_formKey.currentState!.validate()) return;
+    String? startTime =
+        '${_hour.text.padLeft(2, '0')}:${_minute.text.padLeft(2, '0')}:00';
+    startTime = AppUtils.toUtcTime(startTime);
     ref
         .read(waterScheduleProvider.notifier)
         .createWaterSchedule(
@@ -83,8 +87,7 @@ class _NewWaterScheduleScreenState
             description: _description.text,
             durationMs: AppUtils.durationToMs(_duration.text),
             interval: int.parse(_interval.text),
-            startTime:
-                '${_hour.text.padLeft(2, '0')}:${_minute.text.padLeft(2, '0')}',
+            startTime: startTime,
             activePeriod: _startPeriod != null && _endPeriod != null
                 ? ActivePeriodEntity(
                     startMonth: _startPeriod!,
@@ -114,6 +117,9 @@ class _NewWaterScheduleScreenState
           EasyLoading.showError(next.errCreatingWS);
         } else {
           EasyLoading.showSuccess(next.responseMsg ?? 'Water Schedule created');
+          ref
+              .read(waterScheduleProvider.notifier)
+              .getAllWaterSchedule(GetAllWSParams());
           context.goBack();
         }
       }
@@ -176,7 +182,10 @@ class _NewWaterScheduleScreenState
                       child: TextFormField(
                         decoration: const InputDecoration(hintText: 'Days'),
                         controller: _interval,
-                        validator: AppValidators.required,
+                        validator: AppValidators.combine([
+                          AppValidators.required,
+                          AppValidators.positiveInt,
+                        ]),
                         textInputAction: TextInputAction.next,
                       ),
                     ),
@@ -192,7 +201,10 @@ class _NewWaterScheduleScreenState
                       label: 'Hour',
                       child: TextFormField(
                         controller: _hour,
-                        validator: AppValidators.required,
+                        validator: AppValidators.combine([
+                          AppValidators.required,
+                          AppValidators.validHour,
+                        ]),
                         textInputAction: TextInputAction.next,
                         keyboardType: TextInputType.number,
                       ),
@@ -204,7 +216,10 @@ class _NewWaterScheduleScreenState
                       label: 'Minute',
                       child: TextFormField(
                         controller: _minute,
-                        validator: AppValidators.required,
+                        validator: AppValidators.combine([
+                          AppValidators.required,
+                          AppValidators.validMinute,
+                        ]),
                         textInputAction: TextInputAction.next,
                         keyboardType: TextInputType.number,
                       ),
@@ -232,7 +247,17 @@ class _NewWaterScheduleScreenState
                             )
                             .toList(),
                         validator: _endPeriod != null
-                            ? AppValidators.required
+                            ? AppValidators.combine([
+                                AppValidators.required,
+                                (value) {
+                                  if (value != null &&
+                                      _months.indexOf(value) ==
+                                          _months.indexOf(_endPeriod!)) {
+                                    return 'Start month is invalid';
+                                  }
+                                  return null;
+                                },
+                              ])
                             : null,
                         onChanged: (value) =>
                             setState(() => _startPeriod = value),
@@ -252,7 +277,17 @@ class _NewWaterScheduleScreenState
                             )
                             .toList(),
                         validator: _startPeriod != null
-                            ? AppValidators.required
+                            ? AppValidators.combine([
+                                AppValidators.required,
+                                (value) {
+                                  if (value != null &&
+                                      _months.indexOf(value) ==
+                                          _months.indexOf(_startPeriod!)) {
+                                    return 'End month is invalid';
+                                  }
+                                  return null;
+                                },
+                              ])
                             : null,
                         onChanged: (value) =>
                             setState(() => _endPeriod = value),

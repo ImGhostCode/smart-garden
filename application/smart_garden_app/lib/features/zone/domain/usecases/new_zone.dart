@@ -5,26 +5,28 @@ import 'package:dartz/dartz.dart';
 import 'package:equatable/equatable.dart';
 
 import '../../../../core/error/failures.dart';
+import '../../../../core/network/api_response.dart';
 import '../../../../core/usecases/usecase.dart';
 import '../entities/zone_entity.dart';
 import '../repositories/zone_repository.dart';
 
-class NewZone implements UseCase<ZoneEntity, ZoneEntity> {
+class NewZone implements UseCase<ApiResponse<ZoneEntity>, NewZoneParams> {
   final ZoneRepository repository;
 
   NewZone(this.repository);
 
   @override
-  Future<Either<Failure, ZoneEntity>> call(ZoneEntity zone) {
-    return repository.addZone(zone);
+  Future<Either<Failure, ApiResponse<ZoneEntity>>> call(NewZoneParams params) {
+    return repository.addZone(params);
   }
 }
 
-class ZoneParams extends Equatable {
-  final String id;
+class NewZoneParams extends Equatable {
+  final String? gardenId;
+  final ZoneEntity zone;
 
-  const ZoneParams({required this.id});
+  const NewZoneParams({required this.gardenId, required this.zone});
 
   @override
-  List<Object> get props => [id];
+  List<Object?> get props => [gardenId, zone];
 }

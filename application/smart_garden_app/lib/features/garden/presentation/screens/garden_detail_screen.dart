@@ -37,8 +37,10 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
       ref.read(gardenProvider.notifier).getGardenById(id: widget.gardenId);
       ref
           .read(zoneProvider.notifier)
-          .getAllZone(GetAllZoneParams(gardenId: '1'));
-      ref.read(plantProvider.notifier).getAllPlant(GetAllPlantParams());
+          .getAllZone(GetAllZoneParams(gardenId: widget.gardenId));
+      ref
+          .read(plantProvider.notifier)
+          .getAllPlant(GetAllPlantParams(gardenId: widget.gardenId));
     });
     super.initState();
   }
@@ -112,7 +114,7 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
                     iconColor: Colors.redAccent,
                     title: "Temperature",
                     value:
-                        "${gardenState.garden?.tempHumData?.temperatureCelsius ?? '-'}°C",
+                        "${gardenState.garden?.tempHumData?.temperatureCelsius?.toStringAsFixed(1) ?? '-'}°C",
                     progressColor: Colors.amber,
                     progressValue:
                         (gardenState.garden?.tempHumData?.temperatureCelsius ??
@@ -125,7 +127,7 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
                     iconColor: Colors.blue,
                     title: "Humidity",
                     value:
-                        "${gardenState.garden?.tempHumData?.humidityPercentage ?? '-'}%",
+                        "${gardenState.garden?.tempHumData?.humidityPercentage?.toStringAsFixed(1) ?? '-'}%",
                     progressColor: Colors.blue,
                     progressValue:
                         (gardenState.garden?.tempHumData?.humidityPercentage ??
@@ -144,16 +146,18 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
                   // 3. Zones Section (Horizontal List)
                   _buildSectionHeader(
                     "Zones",
-                    count: gardenState.garden?.numZones,
+                    count: zoneState.zones.length,
                     onTap: () {
-                      context.goZones('68de7e98ae6796d18a268a35');
+                      context.goZones(widget.gardenId);
                     },
                   ),
                   const SizedBox(height: 8),
                   zoneState.isLoadingZones
                       ? const Center(child: CircularProgressIndicator())
-                      : zoneState.errLoadingZones != null
-                      ? Center(child: Text(zoneState.errLoadingZones!))
+                      : zoneState.errLoadingZones.isNotEmpty
+                      ? Center(child: Text(zoneState.errLoadingZones))
+                      : zoneState.zones.isEmpty
+                      ? const Center(child: Text('No zones found'))
                       : SizedBox(
                           height: 250,
                           child: ListView.separated(
@@ -173,14 +177,14 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
                                 : zoneState.zones.length,
                           ),
                         ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 8),
 
                   // 4. Plants Section
                   _buildSectionHeader(
                     "Plants",
-                    count: gardenState.garden?.numPlants,
+                    count: plantState.plants.length,
                     onTap: () {
-                      context.goPlants('68de7e98ae6796d18a268a36');
+                      context.goPlants(widget.gardenId);
                     },
                   ),
                   const SizedBox(height: 8),
@@ -188,6 +192,8 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
                       ? const Center(child: CircularProgressIndicator())
                       : plantState.errLoadingPlants.isNotEmpty
                       ? Center(child: Text(plantState.errLoadingPlants))
+                      : plantState.plants.isEmpty
+                      ? const Center(child: Text('No plants found'))
                       : SizedBox(
                           height: 210,
                           child: ListView.separated(
@@ -234,7 +240,7 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
                                   gardenId: gardenState.garden!.id,
                                   light: LightAction(
                                     state: isOn ? 'ON' : 'OFF',
-                                    forDuration: '30m',
+                                    forDuration: null,
                                   ),
                                 ),
                               );
@@ -394,7 +400,6 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
     LightScheduleEntity lightSchedule,
     NextLightActionEntity? nextLightAction,
   ) {
-    final nextAction = nextLightAction?.action == "OFF" ? "ON" : "OFF";
     final nextActionTime = nextLightAction != null
         ? AppUtils.utcToLocalString(nextLightAction.time)
         : "N/A";
@@ -431,7 +436,7 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
                 const SizedBox(height: 4),
                 if (nextLightAction != null)
                   Text(
-                    "Next action: $nextAction - $nextActionTime",
+                    "Next action: ${nextLightAction.action} - $nextActionTime",
                     style: const TextStyle(
                       fontSize: 13,
                       color: Colors.green,
@@ -441,10 +446,10 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
               ],
             ),
           ),
-          Text(
-            nextAction,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-          ),
+          // Text(
+          //   nextLightAction?.action == "OFF" ? "ON" : "OFF",
+          //   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          // ),
         ],
       ),
     );
@@ -483,10 +488,7 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
   }) {
     return InkWell(
       onTap: () {
-        context.goZoneDetail(
-          '68de7e98ae6796d18a268a34',
-          '68de7e98ae6796d18a268a38',
-        );
+        context.goZoneDetail(widget.gardenId, zone.id!);
       },
       child: Ink(
         width: 170,
@@ -512,6 +514,8 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
             Text(
               zone.name ?? '',
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 2),
             Text(
@@ -520,7 +524,7 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 12),
+            const Spacer(),
             SizedBox(
               width: double.infinity,
               height: AppConstants.buttonSm,
@@ -533,6 +537,7 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
                           .read(zoneProvider.notifier)
                           .sendZoneAction(
                             ZoneActionParams(
+                              gardenId: widget.gardenId,
                               zoneId: zone.id!,
                               water: WaterAction(durationMs: durationMs),
                             ),
@@ -558,10 +563,7 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
   }) {
     return InkWell(
       onTap: () {
-        context.goPlantDetail(
-          '68de7e98ae6796d18a268a34',
-          '68de7e98ae6796d18a268a37',
-        );
+        context.goPlantDetail(widget.gardenId, plant.id!);
       },
       child: Ink(
         width: 170,

@@ -10,22 +10,25 @@ import '../../../../core/usecases/usecase.dart';
 import '../entities/plant_entity.dart';
 import '../repositories/plant_repository.dart';
 
-class NewPlant implements UseCase<ApiResponse<PlantEntity>, PlantEntity> {
+class AddPlant implements UseCase<ApiResponse<PlantEntity>, AddPlantParams> {
   final PlantRepository repository;
 
-  NewPlant(this.repository);
+  AddPlant(this.repository);
 
   @override
-  Future<Either<Failure, ApiResponse<PlantEntity>>> call(PlantEntity plant) {
-    return repository.addPlant(plant);
+  Future<Either<Failure, ApiResponse<PlantEntity>>> call(
+    AddPlantParams params,
+  ) {
+    return repository.addPlant(params);
   }
 }
 
-class PlantParams extends Equatable {
-  final String id;
+class AddPlantParams extends Equatable {
+  final String? gardenId;
+  final PlantEntity plant;
 
-  const PlantParams({required this.id});
+  const AddPlantParams({required this.gardenId, required this.plant});
 
   @override
-  List<Object> get props => [id];
+  List<Object?> get props => [gardenId, plant];
 }

@@ -80,9 +80,7 @@ class _AppSkeletonState extends ConsumerState<AppSkeleton> {
   void initState() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Preload data for all main tabs
-      ref
-          .read(gardenProvider.notifier)
-          .getAllGarden(GetAllGardenParams(endDated: false));
+      ref.read(gardenProvider.notifier).getAllGarden(GetAllGardenParams());
       ref
           .read(waterScheduleProvider.notifier)
           .getAllWaterSchedule(GetAllWSParams());

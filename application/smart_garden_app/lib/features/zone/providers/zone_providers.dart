@@ -22,7 +22,7 @@ final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 
 // Data sources
 final zoneRemoteDataSourceProvider = Provider<ZoneRemoteDataSource>(
-  (ref) => ZoneRemoteDataSourceImpl(),
+  (ref) => ZoneRemoteDataSourceImpl(ref.watch(apiClientProvider)),
 );
 
 final zoneLocalDataSourceProvider = Provider<ZoneLocalDataSource>(

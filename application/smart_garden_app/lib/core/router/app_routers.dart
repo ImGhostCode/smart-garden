@@ -57,7 +57,8 @@ class AppRoutes {
         GoRoute(
           path: 'add',
           name: RouteNames.addZone,
-          builder: (context, state) => const AddZoneScreen(),
+          builder: (context, state) =>
+              AddZoneScreen(gardenId: state.pathParameters['gardenId']!),
         ),
         GoRoute(
           path: ':zoneId',
@@ -71,6 +72,7 @@ class AppRoutes {
               path: 'edit',
               name: RouteNames.editZone,
               builder: (context, state) => EditZoneScreen(
+                gardenId: state.pathParameters['gardenId']!,
                 zoneId: state.pathParameters['zoneId']!,
                 zone: state.extra as ZoneEntity,
               ),
@@ -95,13 +97,16 @@ class AppRoutes {
         GoRoute(
           path: 'add',
           name: RouteNames.addPlant,
-          builder: (context, state) => const AddPlantScreen(),
+          builder: (context, state) =>
+              AddPlantScreen(gardenId: state.pathParameters['gardenId']!),
         ),
         GoRoute(
           path: ':plantId',
           name: RouteNames.plantDetail,
-          builder: (context, state) =>
-              PlantDetailScreen(plantId: state.pathParameters['plantId']!),
+          builder: (context, state) => PlantDetailScreen(
+            gardenId: state.pathParameters['gardenId']!,
+            plantId: state.pathParameters['plantId']!,
+          ),
           routes: [
             GoRoute(
               path: 'edit',

@@ -1,11 +1,13 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'package:equatable/equatable.dart';
 
+import '../../../garden/domain/entities/garden_entity.dart';
 import '../../../zone/domain/entities/zone_entity.dart';
 
 class PlantEntity extends Equatable {
   final String? name;
   final ZoneEntity? zone;
+  final GardenEntity? garden;
   final PlantDetailEntity? details;
   final String? id;
   final DateTime? createdAt;
@@ -15,6 +17,7 @@ class PlantEntity extends Equatable {
   const PlantEntity({
     this.name,
     this.zone,
+    this.garden,
     this.details,
     this.id,
     this.createdAt,
@@ -24,7 +27,7 @@ class PlantEntity extends Equatable {
 
   @override
   List<Object?> get props {
-    return [name, zone, details, id, createdAt, endDate, nextWaterTime];
+    return [name, garden, zone, details, id, createdAt, endDate, nextWaterTime];
   }
 }
 

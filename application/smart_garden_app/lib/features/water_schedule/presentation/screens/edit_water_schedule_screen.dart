@@ -9,6 +9,7 @@ import '../../../../core/utils/app_utils.dart';
 import '../../../../core/utils/app_validators.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../domain/entities/water_schedule_entity.dart';
+import '../../domain/usecases/get_all_water_schedules.dart';
 import '../providers/water_schedule_provider.dart';
 
 class EditWaterScheduleScreen extends ConsumerStatefulWidget {
@@ -67,12 +68,15 @@ class _EditWaterScheduleScreenState
     final ws = widget.ws;
     _name.text = ws.name ?? '';
     _description.text = ws.description ?? '';
-    _duration.text = ws.durationMs?.toString() ?? '';
+    _duration.text = AppUtils.msToDurationString(ws.durationMs ?? 0);
     _interval.text = ws.interval?.toString() ?? '';
-    final startTime = ws.startTime?.split(':');
-    if (startTime != null && startTime.length == 2) {
-      _hour.text = startTime[0];
-      _minute.text = startTime[1];
+    final utcStartTime = AppUtils.toLocalTime(ws.startTime);
+    if (utcStartTime != null && utcStartTime.isNotEmpty) {
+      final timeParts = utcStartTime.split(':');
+      if (timeParts.length >= 2) {
+        _hour.text = timeParts[0];
+        _minute.text = timeParts[1];
+      }
     }
     _startPeriod = ws.activePeriod?.startMonth;
     _endPeriod = ws.activePeriod?.endMonth;
@@ -93,17 +97,19 @@ class _EditWaterScheduleScreenState
 
   void _onSave() {
     if (!_formKey.currentState!.validate()) return;
+    String? startTime =
+        '${_hour.text.padLeft(2, '0')}:${_minute.text.padLeft(2, '0')}:00';
+    startTime = AppUtils.toUtcTime(startTime);
     ref
         .read(waterScheduleProvider.notifier)
         .editWaterSchedule(
           WaterScheduleEntity(
-            id: widget.ws.id,
+            id: widget.scheduleId,
             name: _name.text,
             description: _description.text,
             durationMs: AppUtils.durationToMs(_duration.text),
             interval: int.tryParse(_interval.text),
-            startTime:
-                '${_hour.text.padLeft(2, '0')}:${_minute.text.padLeft(2, '0')}:00',
+            startTime: startTime,
             activePeriod: (_startPeriod != null && _endPeriod != null)
                 ? ActivePeriodEntity(
                     startMonth: _startPeriod!,
@@ -133,6 +139,9 @@ class _EditWaterScheduleScreenState
           EasyLoading.showError(next.errEditingWS);
         } else {
           EasyLoading.showSuccess(next.responseMsg ?? 'Water Schedule edited');
+          ref
+              .read(waterScheduleProvider.notifier)
+              .getAllWaterSchedule(GetAllWSParams());
           context.goBack();
         }
       }
@@ -178,7 +187,10 @@ class _EditWaterScheduleScreenState
                         label: 'Duration',
                         child: TextFormField(
                           controller: _duration,
-                          validator: AppValidators.required,
+                          validator: AppValidators.combine([
+                            AppValidators.required,
+                            AppValidators.durationFormat,
+                          ]),
                           textInputAction: TextInputAction.next,
                         ),
                       ),
@@ -189,7 +201,10 @@ class _EditWaterScheduleScreenState
                         label: 'Interval',
                         child: TextFormField(
                           controller: _interval,
-                          validator: AppValidators.required,
+                          validator: AppValidators.combine([
+                            AppValidators.required,
+                            AppValidators.positiveInt,
+                          ]),
                           textInputAction: TextInputAction.next,
                         ),
                       ),
@@ -205,7 +220,10 @@ class _EditWaterScheduleScreenState
                         label: 'Hour',
                         child: TextFormField(
                           controller: _hour,
-                          validator: AppValidators.required,
+                          validator: AppValidators.combine([
+                            AppValidators.required,
+                            AppValidators.validHour,
+                          ]),
                           textInputAction: TextInputAction.next,
                           keyboardType: TextInputType.number,
                         ),
@@ -217,7 +235,10 @@ class _EditWaterScheduleScreenState
                         label: 'Minute',
                         child: TextFormField(
                           controller: _minute,
-                          validator: AppValidators.required,
+                          validator: AppValidators.combine([
+                            AppValidators.required,
+                            AppValidators.validMinute,
+                          ]),
                           textInputAction: TextInputAction.next,
                           keyboardType: TextInputType.number,
                         ),
@@ -240,9 +261,11 @@ class _EditWaterScheduleScreenState
                         child: DropdownButtonFormField<String>(
                           menuMaxHeight:
                               MediaQuery.sizeOf(context).height * 0.5,
-                          value: _months
-                              .where((m) => m.contains(_startPeriod ?? ''))
-                              .firstOrNull,
+                          value: _startPeriod != null
+                              ? _months
+                                    .where((m) => m.contains(_startPeriod!))
+                                    .firstOrNull
+                              : null,
                           items: _months
                               .map(
                                 (m) =>
@@ -250,7 +273,17 @@ class _EditWaterScheduleScreenState
                               )
                               .toList(),
                           validator: _endPeriod != null
-                              ? AppValidators.required
+                              ? AppValidators.combine([
+                                  AppValidators.required,
+                                  (value) {
+                                    if (value != null &&
+                                        _months.indexOf(value) ==
+                                            _months.indexOf(_endPeriod!)) {
+                                      return 'Start month is invalid';
+                                    }
+                                    return null;
+                                  },
+                                ])
                               : null,
                           onChanged: (value) =>
                               setState(() => _startPeriod = value),
@@ -265,9 +298,11 @@ class _EditWaterScheduleScreenState
                         child: DropdownButtonFormField<String>(
                           menuMaxHeight:
                               MediaQuery.sizeOf(context).height * 0.5,
-                          value: _months
-                              .where((m) => m.contains(_endPeriod ?? ''))
-                              .firstOrNull,
+                          value: _endPeriod != null
+                              ? _months
+                                    .where((m) => m.contains(_endPeriod!))
+                                    .firstOrNull
+                              : null,
                           items: _months
                               .map(
                                 (m) =>
@@ -275,7 +310,17 @@ class _EditWaterScheduleScreenState
                               )
                               .toList(),
                           validator: _startPeriod != null
-                              ? AppValidators.required
+                              ? AppValidators.combine([
+                                  AppValidators.required,
+                                  (value) {
+                                    if (value != null &&
+                                        _months.indexOf(value) ==
+                                            _months.indexOf(_startPeriod!)) {
+                                      return 'End month is invalid';
+                                    }
+                                    return null;
+                                  },
+                                ])
                               : null,
                           onChanged: (value) =>
                               setState(() => _endPeriod = value),
