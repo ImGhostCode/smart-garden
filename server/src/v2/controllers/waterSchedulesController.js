@@ -36,7 +36,9 @@ const WaterSchedulesController = {
                     exclude_weather_data === 'true'
                 );
                 items.push({
+                    id: schedule._id.toString(),
                     ...schedule.toObject(),
+                    _id: undefined,
                     links: [
                         createLink('self', `/water_schedules/${schedule.id}`)
                     ],
@@ -100,7 +102,9 @@ const WaterSchedulesController = {
             }
 
             return res.status(201).json(new ApiSuccess(201, 'Water schedule added successfully', {
+                id: result._id.toString(),
                 ...result.toObject(),
+                _id: undefined,
                 links: [
                     createLink('self', `/water_schedules/${result.id}`)
                 ],
@@ -132,7 +136,9 @@ const WaterSchedulesController = {
             );
 
             return res.json(new ApiSuccess(200, 'Water schedule retrieved successfully', {
+                id: schedule._id.toString(),
                 ...schedule.toObject(),
+                _id: undefined,
                 links: [
                     createLink('self', `/water_schedules/${schedule.id}`)
                 ],
@@ -158,14 +164,14 @@ const WaterSchedulesController = {
 
             const update = {};
 
-            if (duration_ms !== undefined) update.duration_ms = duration_ms;
-            if (interval !== undefined) update.interval = interval;
-            if (start_time !== undefined) update.start_time = start_time;
-            if (weather_control !== undefined) update.weather_control = weather_control;
-            if (name !== undefined) update.name = name;
-            if (description !== undefined) update.description = description;
+            if (duration_ms) update.duration_ms = duration_ms;
+            if (interval) update.interval = interval;
+            if (start_time) update.start_time = start_time;
+            if (weather_control) update.weather_control = weather_control;
+            if (name) update.name = name;
+            if (description) update.description = description;
             // Validate active_period months if provided
-            if (active_period !== undefined) {
+            if (active_period) {
                 const { start_month, end_month } = active_period;
                 const startMonth = validMonthToNumber(start_month);
                 const endMonth = validMonthToNumber(end_month);
@@ -199,7 +205,9 @@ const WaterSchedulesController = {
             }
 
             return res.json(new ApiSuccess(200, 'Water schedule updated successfully', {
+                id: updatedSchedule._id.toString(),
                 ...updatedSchedule.toObject(),
+                _id: undefined,
                 links: [
                     createLink('self', `/water_schedules/${schedule.id}`)
                 ],
@@ -226,13 +234,7 @@ const WaterSchedulesController = {
             // Remove from cron scheduler
             const unscheduled = cronScheduler.removeJobById(waterScheduleID);
 
-            res.json(new ApiSuccess(200, 'Water schedule end date set successfully', {
-                ...deletedWaterSchedule.toObject(),
-                links: [
-                    createLink('self', `/water_schedules/${waterScheduleID}`)
-                ],
-                unscheduled: unscheduled
-            }));
+            res.json(new ApiSuccess(200, 'Water schedule end date set successfully', deletedWaterSchedule.id));
         } catch (error) {
             next(error);
         }

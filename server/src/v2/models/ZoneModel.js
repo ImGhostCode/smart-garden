@@ -1,5 +1,6 @@
 const { Schema, model } = require('mongoose');
 const { xidPattern } = require('../utils/validation');
+const PlantModel = require('./PlantModel');
 
 // Zone Schema
 const zoneSchema = new Schema({
@@ -57,6 +58,21 @@ const zoneSchema = new Schema({
 }, {
     timestamps: true
 });
+
+zoneSchema.pre('findOneAndUpdate', async function (next) {
+    const update = this.getUpdate();
+    if (update.end_date) {
+        await PlantModel.updateMany(
+            {
+                zone_id: this.getQuery()._id,
+                end_date: null
+            },
+            { end_date: new Date() }
+        );
+    }
+    next();
+});
+
 // Add compound indexes for better query performance
 // zoneSchema.index({ garden_id: 1, position: 1, end_date: 1 });
 // zoneSchema.index({ garden_id: 1, end_date: 1 });

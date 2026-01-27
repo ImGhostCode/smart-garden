@@ -19,6 +19,7 @@ TaskHandle_t lightPublisherTaskHandle;
 // command topics (subscribe)
 char waterCommandTopic[50];
 char stopCommandTopic[50];
+char clearCommandTopic[50];
 char stopAllCommandTopic[50];
 char lightCommandTopic[50];
 char updateConfigCommandTopic[50];
@@ -41,6 +42,7 @@ void setupMQTT()
 
     snprintf(waterCommandTopic, sizeof(waterCommandTopic), "%s" MQTT_WATER_TOPIC, mqtt_topic_prefix);
     snprintf(stopCommandTopic, sizeof(stopCommandTopic), "%s" MQTT_STOP_TOPIC, mqtt_topic_prefix);
+    snprintf(clearCommandTopic, sizeof(clearCommandTopic), "%s" MQTT_CLEAR_TOPIC, mqtt_topic_prefix);
     snprintf(stopAllCommandTopic, sizeof(stopAllCommandTopic), "%s" MQTT_STOP_ALL_TOPIC, mqtt_topic_prefix);
     snprintf(lightCommandTopic, sizeof(lightCommandTopic), "%s" MQTT_LIGHT_TOPIC, mqtt_topic_prefix);
     snprintf(updateConfigCommandTopic, sizeof(updateConfigCommandTopic), "%s" MQTT_UPDATE_CONFIG_TOPIC, mqtt_topic_prefix);
@@ -92,7 +94,7 @@ void waterPublisherTask(void *parameters)
         {
             memset(message, '\0', sizeof(message));
             snprintf(message, sizeof(message), "water,status=%s,zone=%d,id=%s,zone_id=%s millis=%lui",
-                     we.done ? "complete" : "start", we.position, we.id, we.zone_id, we.done ? we.duration : 0);
+                     we.done ? "completed" : "started", we.position, we.id, we.zone_id, we.done ? we.duration : 0);
 
             if (client.connected())
             {
@@ -178,6 +180,7 @@ void mqttConnectTask(void *parameters)
                 printf("connected\n");
                 client.subscribe(waterCommandTopic, 1);
                 client.subscribe(stopCommandTopic, 1);
+                client.subscribe(clearCommandTopic, 1);
                 client.subscribe(stopAllCommandTopic, 1);
                 client.subscribe(updateConfigCommandTopic, 1);
 
@@ -249,6 +252,26 @@ void handleLightCommand(char *message)
     changeLight(le);
 }
 
+void handleClearCommand(char *message)
+{
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, message);
+    if (err)
+    {
+        printf("deserialize clear watering command failed: %s\n", err.c_str());
+    }
+
+    uint8_t position =
+        doc["position"] | -1;
+    if (position == -1)
+    {
+        printf("received command to clear watering task with no position specified\n");
+        return;
+    }
+    printf("received command to clear watering task on position: '%d'\n", position);
+    clearWateringTask(position);
+}
+
 void handleConfigCommand(char *message)
 {
     bool result = deserializeConfig((char *)message, config);
@@ -309,6 +332,11 @@ void processIncomingMessage(char *topic, byte *message, unsigned int length)
     {
         printf("received command to stop watering\n");
         stopWatering();
+    }
+    else if (strcmp(topic_c, clearCommandTopic) == 0)
+    {
+        printf("received command to clear watering task\n");
+        handleClearCommand(message_c);
     }
     else if (strcmp(topic_c, stopAllCommandTopic) == 0)
     {

@@ -19,29 +19,40 @@ const PlantsController = {
             const plants = await db.plants.getAll({ filters: filters, zone: true, garden: true });
 
             return res.json(new ApiSuccess(200, 'Plants retrieved successfully', await Promise.all(plants.map(async (plant) => {
-                const zone = await db.zones.getById({ id: plant.zone_id._id.toString() });
-                if (!zone || zone.garden_id._id.toString() !== gardenID) {
-                    throw new ApiError(404, 'Zone not found');
-                }
-
-                const nextSchedule = await getNextActiveWaterSchedule(zone.water_schedule_ids || []);
                 let nextWaterDetails = {
                     time: null,
                 };
-                if (nextSchedule) {
-                    nextWaterDetails = await getNextWaterDetails(nextSchedule, true);
-                    // Apply skip count if present
-                    if (zone.skip_count && zone.skip_count > 0 && nextWaterDetails.time) {
-                        //A adjust the time based on skip count: skip_count * interval
-                        nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + zone.skip_count * intervalToMillis(nextSchedule.interval));
+
+                if (!plant.end_date) {
+                    const zone = await db.zones.getById({ id: plant.zone_id._id.toString() });
+                    if (zone && zone.garden_id._id.toString() === gardenID) {
+                        // throw new ApiError(404, 'Zone not found');
+
+                        const nextSchedule = await getNextActiveWaterSchedule(zone.water_schedule_ids || []);
+                        if (nextSchedule) {
+                            nextWaterDetails = await getNextWaterDetails(nextSchedule, true);
+                            // Apply skip count if present
+                            if (zone.skip_count && zone.skip_count > 0 && nextWaterDetails.time) {
+                                //A adjust the time based on skip count: skip_count * interval
+                                nextWaterDetails.time = new Date(nextWaterDetails.time.getTime() + zone.skip_count * intervalToMillis(nextSchedule.interval));
+                            }
+                        }
                     }
                 }
                 return {
+                    id: plant._id.toString(),
                     ...plant.toObject(),
+                    _id: undefined,
                     garden_id: undefined,
-                    garden: plant.garden_id,
+                    garden: {
+                        id: plant.garden_id._id,
+                        name: plant.garden_id.name,
+                    },
                     zone_id: undefined,
-                    zone: plant.zone_id,
+                    zone: {
+                        id: plant.zone_id._id,
+                        name: plant.zone_id.name,
+                    },
                     links: [
                         createLink('self', `/gardens/${gardenID}/plants/${plant._id}`),
                         createLink('garden', `/gardens/${gardenID}`),
@@ -82,11 +93,19 @@ const PlantsController = {
             const result = await db.plants.create({ data: plant, zone: true, garden: true });
 
             res.status(201).json(new ApiSuccess(201, 'Plant added successfully', {
+                id: result._id.toString(),
                 ...result.toObject(),
+                _id: undefined,
                 garden_id: undefined,
-                garden: result.garden_id,
+                garden: {
+                    id: result.garden_id._id,
+                    name: result.garden_id.name,
+                },
                 zone_id: undefined,
-                zone: result.zone_id,
+                zone: {
+                    id: result.zone_id._id,
+                    name: result.zone_id.name,
+                },
                 links: [
                     createLink('self', `/gardens/${gardenID}/plants/${plant._id}`),
                     createLink('garden', `/gardens/${gardenID}`),
@@ -127,11 +146,19 @@ const PlantsController = {
             }
 
             return res.json(new ApiSuccess(200, 'Plant retrieved successfully', {
+                id: plant._id.toString(),
                 ...plant.toObject(),
+                _id: undefined,
                 garden_id: undefined,
-                garden: plant.garden_id,
+                garden: {
+                    id: plant.garden_id._id,
+                    name: plant.garden_id.name,
+                },
                 zone_id: undefined,
-                zone: plant.zone_id,
+                zone: {
+                    id: plant.zone_id._id,
+                    name: plant.zone_id.name,
+                },
                 links: [
                     createLink('self', `/gardens/${gardenID}/plants/${plant._id}`),
                     createLink('garden', `/gardens/${gardenID}`),
@@ -184,11 +211,19 @@ const PlantsController = {
             }
 
             return res.json(new ApiSuccess(200, 'Plant updated successfully', {
+                id: result._id.toString(),
                 ...result.toObject(),
+                _id: undefined,
                 garden_id: undefined,
-                garden: result.garden_id,
+                garden: {
+                    id: result.garden_id._id,
+                    name: result.garden_id.name,
+                },
                 zone_id: undefined,
-                zone: result.zone_id,
+                zone: {
+                    id: result.zone_id._id,
+                    name: result.zone_id.name,
+                },
                 links: [
                     createLink('self', `/gardens/${gardenID}/plants/${plant._id}`),
                     createLink('garden', `/gardens/${gardenID}`),
@@ -212,12 +247,7 @@ const PlantsController = {
 
             const result = await db.plants.deleteById(plantID);
 
-            res.json(new ApiSuccess(200, 'Plant end date set successfully', {
-                ...result.toObject(),
-                links: [
-                    createLink('self', `/gardens/${gardenID}/plants/${plant.id}`)
-                ]
-            }));
+            res.json(new ApiSuccess(200, 'Plant end date set successfully', result.id));
         } catch (error) {
             next(error);
         }

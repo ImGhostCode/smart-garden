@@ -16,7 +16,9 @@ const WeatherClientsController = {
                 'Weather client configurations retrieved successfully',
                 clients.map(client => {
                     return {
+                        id: client._id.toString(),
                         ...client.toObject(),
+                        _id: undefined,
                         links: [
                             createLink('self', `/weather_clients/${client._id}`),
                         ]
@@ -36,8 +38,10 @@ const WeatherClientsController = {
             if (!client) {
                 return new ApiError(404, 'Weather client configuration not found');
             }
-            const response = new ApiSuccess(200, undefined, {
+            const response = new ApiSuccess(200, 'Weather client configuration retrieved successfully', {
+                id: client._id.toString(),
                 ...client.toObject(),
+                _id: undefined,
                 links: [
                     createLink('self', `/weather_clients/${client._id}`),
                 ]
@@ -55,7 +59,9 @@ const WeatherClientsController = {
 
             const newClient = await db.weatherClientConfigs.create(clientData);
             const response = new ApiSuccess(201, 'Weather client configuration created successfully', {
+                id: newClient._id.toString(),
                 ...newClient.toObject(),
+                _id: undefined,
                 links: [
                     createLink('self', `/weather_clients/${newClient._id}`),
                 ]
@@ -73,27 +79,27 @@ const WeatherClientsController = {
         } = req.body;
 
         const updates = {};
-        if (type !== undefined) updates.type = type;
-        if (name !== undefined) updates.name = name;
-        if (type === "netatmo" && options !== undefined) {
-            if (options.station_id !== undefined) updates['options.station_id'] = options.station_id;
-            if (options.station_name !== undefined) updates['options.station_name'] = options.station_name;
-            if (options.rain_module_id !== undefined) updates['options.rain_module_id'] = options.rain_module_id;
-            if (options.rain_module_type !== undefined) updates['options.rain_module_type'] = options.rain_module_type;
-            if (options.outdoor_module_id !== undefined) updates['options.outdoor_module_id'] = options.outdoor_module_id;
-            if (options.outdoor_module_type !== undefined) updates['options.outdoor_module_type'] = options.outdoor_module_type;
-            if (options.authentication !== undefined) {
-                if (options.authentication.access_token !== undefined) updates['options.authentication.access_token'] = options.authentication.access_token;
-                if (options.authentication.refresh_token !== undefined) updates['options.authentication.refresh_token'] = options.authentication.refresh_token;
-                if (options.authentication.expiration_date !== undefined) updates['options.authentication.expiration_date'] = options.authentication.expiration_date;
+        if (type) updates.type = type;
+        if (name) updates.name = name;
+        if (type === "netatmo" && options) {
+            if (options.station_id) updates['options.station_id'] = options.station_id;
+            if (options.station_name) updates['options.station_name'] = options.station_name;
+            if (options.rain_module_id) updates['options.rain_module_id'] = options.rain_module_id;
+            if (options.rain_module_type) updates['options.rain_module_type'] = options.rain_module_type;
+            if (options.outdoor_module_id) updates['options.outdoor_module_id'] = options.outdoor_module_id;
+            if (options.outdoor_module_type) updates['options.outdoor_module_type'] = options.outdoor_module_type;
+            if (options.authentication) {
+                if (options.authentication.access_token) updates['options.authentication.access_token'] = options.authentication.access_token;
+                if (options.authentication.refresh_token) updates['options.authentication.refresh_token'] = options.authentication.refresh_token;
+                if (options.authentication.expiration_date) updates['options.authentication.expiration_date'] = options.authentication.expiration_date;
             };
-            if (options.client_id !== undefined) updates['options.client_id'] = options.client_id;
-            if (options.client_secret !== undefined) updates['options.client_secret'] = options.client_secret;
-        } else if (type === "fake" && options !== undefined) {
+            if (options.client_id) updates['options.client_id'] = options.client_id;
+            if (options.client_secret) updates['options.client_secret'] = options.client_secret;
+        } else if (type === "fake" && options) {
             if (options.rain_mm !== undefined) updates['options.rain_mm'] = options.rain_mm;
-            if (options.rain_interval !== undefined) updates['options.rain_interval'] = options.rain_interval;
+            if (options.rain_interval) updates['options.rain_interval'] = options.rain_interval;
             if (options.avg_high_temperature !== undefined) updates['options.avg_high_temperature'] = options.avg_high_temperature;
-            if (options.error !== undefined) updates['options.error'] = options.error;
+            updates['options.error'] = options.error;
         }
 
         try {
@@ -101,8 +107,15 @@ const WeatherClientsController = {
             if (!updatedClient) {
                 throw new ApiError(404, 'Weather client configuration not found');
             }
+
+            // Clear cached weather data
+            const weatherClient = new WeatherClient(updatedClient.toObject());
+            weatherClient.clearCacheById(weatherClientID);
+
             return res.json(new ApiSuccess(200, 'Weather client configuration updated successfully', {
+                id: updatedClient._id.toString(),
                 ...updatedClient.toObject(),
+                _id: undefined,
                 links: [
                     createLink('self', `/weather_clients/${updatedClient._id}`),
                 ]
@@ -119,12 +132,7 @@ const WeatherClientsController = {
             if (!deletedClient) {
                 throw new ApiError(404, 'Weather client configuration not found');
             }
-            res.json(new ApiSuccess(200, 'Weather client configuration deleted successfully', {
-                ...deletedClient.toObject(),
-                links: [
-                    createLink('self', `/weather_clients/${deletedClient._id}`),
-                ],
-            }));
+            res.json(new ApiSuccess(200, 'Weather client configuration deleted successfully', deletedClient.id));
         }
         catch (error) {
             next(error);

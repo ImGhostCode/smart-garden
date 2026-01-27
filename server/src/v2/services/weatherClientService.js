@@ -50,6 +50,14 @@ class WeatherClient {
         this.cache.set(key, { value, timestamp: Date.now() });
     }
 
+    clearCacheById(id) {
+        for (const key of this.cache.keys()) {
+            if (key.endsWith(`_${id}`)) {
+                this.cache.delete(key);
+            }
+        }
+    }
+
     async getTotalRain(sinceMs) {
         const cacheKey = `total_rain_${sinceMs}_${this.config._id}`;
         const cached = this._getCache(cacheKey);

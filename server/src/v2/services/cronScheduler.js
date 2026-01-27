@@ -424,7 +424,7 @@ class CronScheduler {
         const adhocJobId = `light_${garden._id}_ADHOC`;
 
         // Create one-time schedule
-        const cronTime = `${adhocTime.getMinutes()} ${adhocTime.getHours()} ${adhocTime.getDate()} ${adhocTime.getMonth() + 1} *`;
+        const cronTime = `${adhocTime.getUTCMinutes()} ${adhocTime.getUTCHours()} ${adhocTime.getUTCDate()} ${adhocTime.getUTCMonth() + 1} *`;
 
         const executeLightAction = async () => {
             try {

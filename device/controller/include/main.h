@@ -24,6 +24,7 @@ void waterZone(WaterEvent we);
 void zoneOff(int id);
 void zoneOn(int id);
 void waterZoneTask(void *parameters);
+void clearWateringTask(int position);
 void stopWatering();
 void stopAllWatering();
 void changeLight(LightEvent le);

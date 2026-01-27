@@ -8,7 +8,7 @@ const { schemas } = require('../utils/validation');
 // Water Routine Routes
 router.get('/',
     validateQuery(Joi.object({
-        end_dated: Joi.string().valid('true', 'false')
+        end_dated: schemas.queryParams.endDated
     })),
     WaterRoutineController.getAllWaterRoutines);
 
@@ -25,7 +25,7 @@ router.get('/:waterRoutineID',
     WaterRoutineController.getWaterRoutine);
 
 // Update a water routine by ID
-router.put('/:waterRoutineID',
+router.patch('/:waterRoutineID',
     validateParams(Joi.object({
         waterRoutineID: schemas.pathParams.id
     })),

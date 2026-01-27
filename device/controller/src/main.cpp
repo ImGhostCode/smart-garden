@@ -19,6 +19,7 @@ TaskHandle_t rebootTaskHandle;
 
 /* state variables */
 int light_state;
+int currentWateringPosition = -1;
 
 void setupConfigVars()
 {
@@ -112,6 +113,7 @@ void zoneOn(int id)
     {
         gpio_set_level(config.valvePins[id], 1);
         gpio_set_level(config.pumpPins[id], 1);
+        currentWateringPosition = id;
     }
 }
 
@@ -125,6 +127,7 @@ void zoneOff(int id)
     {
         gpio_set_level(config.valvePins[id], 0);
         gpio_set_level(config.pumpPins[id], 0);
+        currentWateringPosition = -1;
     }
 }
 
@@ -135,6 +138,55 @@ void zoneOff(int id)
 void stopWatering()
 {
     xTaskNotify(waterZoneTaskHandle, 0, eNoAction);
+}
+
+/*
+  stopWateringZone will interrupt watering of a specific zone if it is currently
+  being watered, and will also remove any pending watering events for that zone
+  from the queue.
+*/
+void clearWateringTask(int position)
+{
+    if (position < 0 || position >= config.numZones)
+    {
+        printf("position %d is out of range, aborting request to clear watering task\n", position);
+        return;
+    }
+    // Interrupt if currently watering this zone
+    if (currentWateringPosition == position)
+    {
+        xTaskNotify(waterZoneTaskHandle, 0, eNoAction);
+    }
+
+    // Remove pending events for this zone from the queue
+    int queueSize = uxQueueMessagesWaiting(waterQueue);
+    if (queueSize == 0)
+        return;
+
+    WaterEvent *tempEvents = (WaterEvent *)malloc(queueSize * sizeof(WaterEvent));
+    int count = 0;
+    for (int i = 0; i < queueSize; i++)
+    {
+        WaterEvent we;
+        if (xQueueReceive(waterQueue, &we, 0))
+        {
+            if (we.position != position)
+            {
+                tempEvents[count++] = we;
+            }
+            else
+            {
+                free(we.zone_id);
+                free(we.id);
+            }
+        }
+    }
+    // Re-add remaining events
+    for (int i = 0; i < count; i++)
+    {
+        xQueueSend(waterQueue, &tempEvents[i], portMAX_DELAY);
+    }
+    free(tempEvents);
 }
 
 /*
@@ -248,4 +300,6 @@ void setup()
     xTaskCreate(rebootTask, "RebootTask", 2048, NULL, 1, &rebootTaskHandle);
 }
 
-void loop() {}
+void loop()
+{
+}

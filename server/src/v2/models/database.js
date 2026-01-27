@@ -169,6 +169,22 @@ const db = {
             );
         },
 
+        // Delete many plants by zone_id
+        async deleteByZoneId(zone_id) {
+            return await Plant.updateMany(
+                { zone_id, end_date: null },
+                { end_date: new Date() }
+            );
+        },
+
+        // Delete many plants by garden_id
+        async deleteByGardenId(garden_id) {
+            return await Plant.updateMany(
+                { garden_id, end_date: null },
+                { end_date: new Date() }
+            );
+        },
+
         // Legacy interface
         async get(id) {
             return await this.getById(id);
@@ -201,7 +217,7 @@ const db = {
             if (waterSchedules) {
                 query = query.populate({
                     path: 'water_schedule_ids',
-                    select: '_id name description duration_ms interval start_time active_period',
+                    select: '_id name description duration_ms interval start_time active_period end_date',
                 });
             }
             return await query;
@@ -218,7 +234,7 @@ const db = {
             if (waterSchedules) {
                 query = query.populate({
                     path: 'water_schedule_ids',
-                    select: '_id name description duration_ms interval start_time active_period',
+                    select: '_id name description duration_ms interval start_time active_period end_date',
                 });
             }
             return await query;
@@ -239,7 +255,7 @@ const db = {
             if (waterSchedules) {
                 populateOptions.push({
                     path: 'water_schedule_ids',
-                    select: '_id name description duration_ms interval start_time active_period',
+                    select: '_id name description duration_ms interval start_time active_period end_date',
                 });
             }
             const zone = new Zone(data);
@@ -257,7 +273,7 @@ const db = {
             if (waterSchedules) {
                 populateOptions.push({
                     path: 'water_schedule_ids',
-                    select: '_id name description duration_ms interval start_time active_period',
+                    select: '_id name description duration_ms interval start_time active_period end_date',
                 });
             }
             return await Zone.findOneAndUpdate(
@@ -272,6 +288,14 @@ const db = {
                 { _id: id, end_date: null },
                 { end_date: new Date() },
                 { new: true }
+            );
+        },
+
+        // Delete many zones by garden_id
+        async deleteByGardenId(garden_id) {
+            return await Zone.updateMany(
+                { garden_id, end_date: null },
+                { end_date: new Date() }
             );
         },
 
@@ -388,7 +412,7 @@ const db = {
             if (zone) {
                 query = query.populate({
                     path: 'steps.zone_id',
-                    select: '_id name',
+                    select: '_id name end_date',
                 });
             }
             return await query;
@@ -399,7 +423,7 @@ const db = {
             if (zone) {
                 query = query.populate({
                     path: 'steps.zone_id',
-                    select: '_id name',
+                    select: '_id name end_date',
                 });
             }
             return await query;
@@ -410,7 +434,7 @@ const db = {
             if (zone) {
                 populateOptions.push({
                     path: 'steps.zone_id',
-                    select: '_id name',
+                    select: '_id name end_date',
                 });
             }
             const waterRoutine = new WaterRoutine(data);
@@ -422,7 +446,7 @@ const db = {
             if (zone) {
                 populateOptions.push({
                     path: 'steps.zone_id',
-                    select: '_id name',
+                    select: '_id name end_date',
                 });
             }
             return await WaterRoutine.findOneAndUpdate(

@@ -17,6 +17,7 @@ class MQTTService extends EventEmitter {
                 WATER: '/command/water',
                 STOP: '/command/stop',
                 STOP_ALL: '/command/stop_all',
+                CLEAR: '/command/clear',
                 LIGHT: '/command/light',
                 UPDATE_CONFIG: '/command/update_config'
             },
@@ -356,6 +357,15 @@ class MQTTService extends EventEmitter {
         await this.publish(topic, "no message");
     }
 
+    // Send clear watering command
+    async sendClearAction(garden, position) {
+        const topic = `${garden.topic_prefix}${this.TOPICS.COMMANDS.CLEAR}`;
+        const command = {
+            "position": position
+        };
+        await this.publish(topic, command);
+    }
+
     // Send light command
     async sendLightAction(garden, state = "", forDuration = 0) {
         const topic = `${garden.topic_prefix}${this.TOPICS.COMMANDS.LIGHT}`;
@@ -371,7 +381,7 @@ class MQTTService extends EventEmitter {
     async sendUpdateAction(garden, config) {
         const topic = `${garden.topic_prefix}${this.TOPICS.COMMANDS.UPDATE_CONFIG}`;
         const command = {
-            "num_zones": config.valve_pins.length,
+            "num_zones": config.valve_pins && config.pump_pins ? config.valve_pins.length : 0,
             "valve_pins": config.valve_pins,
             "pump_pins": config.pump_pins,
             "light": config.light_pin !== undefined,

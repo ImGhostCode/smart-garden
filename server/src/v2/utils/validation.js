@@ -129,8 +129,8 @@ const schemas = {
         }).optional().allow(null),
         // temperature_humidity_sensor: Joi.boolean().optional(),
         controller_config: Joi.object({
-            valve_pins: Joi.array().items(Joi.number().integer().min(0).required()).required(),
-            pump_pins: Joi.array().items(Joi.number().integer().min(0).required()).required(),
+            valve_pins: Joi.array().items(Joi.number().integer().min(0).required()).optional(),
+            pump_pins: Joi.array().items(Joi.number().integer().min(0).required()).optional(),
             light_pin: Joi.number().integer().min(0).optional(),
             temp_humidity_pin: Joi.number().integer().min(0).optional(),
             temp_hum_interval_ms: Joi.number().integer().min(0).optional().default(5000)
@@ -181,7 +181,7 @@ const schemas = {
             'any.required': 'Zone name is required'
         }),
         details: Joi.object({
-            description: Joi.string().optional(),
+            description: Joi.string().required(),
             notes: Joi.string().optional()
         }).optional(),
         position: Joi.number().integer().min(0).required().messages({
@@ -285,7 +285,7 @@ const schemas = {
                 {
                     is: 'fake',
                     then: Joi.object({
-                        rain_mm: Joi.number().required().messages({
+                        rain_mm: Joi.number().min(0).required().messages({
                             'any.required': 'rain_mm is required for fake weather client'
                         }),
                         rain_interval_ms: durationValidator.required(),
@@ -330,7 +330,7 @@ const schemas = {
                 {
                     is: 'fake',
                     then: Joi.object({
-                        rain_mm: Joi.number().optional(),
+                        rain_mm: Joi.number().min(0).optional(),
                         rain_interval_ms: durationValidator.optional(),
                         avg_high_temperature: Joi.number().optional(),
                         error: Joi.string().optional().allow('')
@@ -348,9 +348,9 @@ const schemas = {
                         outdoor_module_id: Joi.string().optional(),
                         outdoor_module_type: Joi.string().optional(),
                         authentication: Joi.object({
-                            access_token: Joi.string().optional(),
+                            // access_token: Joi.string().optional(),
                             refresh_token: Joi.string().optional(),
-                            expiration_date: Joi.string().isoDate().optional()
+                            // expiration_date: Joi.string().isoDate().optional()
                         }).optional(),
                         client_id: Joi.string().optional(),
                         client_secret: Joi.string().optional()

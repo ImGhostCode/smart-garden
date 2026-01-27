@@ -18,12 +18,17 @@ const WaterRoutineController = {
 
             const waterRoutine = await db.waterRoutines.create({ data: newRoutine, zone: true });
             return res.status(201).json(new ApiSuccess(201, 'Water routine created successfully', {
+                id: waterRoutine._id.toString(),
                 ...waterRoutine.toObject(),
+                _id: undefined,
                 steps: waterRoutine.steps.map(step => {
                     return {
                         ...step.toObject(),
                         zone_id: undefined,
-                        zone: step.zone_id,
+                        zone: {
+                            id: step.zone_id._id,
+                            name: step.zone_id.name,
+                        },
                     }
                 },
                 ),
@@ -46,14 +51,21 @@ const WaterRoutineController = {
             const routines = await db.waterRoutines.getAll({ filters: filter, zone: true });
             return res.status(200).json(new ApiSuccess(200, 'Water routines retrieved successfully', routines.map(routine => {
                 return {
+                    id: routine._id.toString(),
                     ...routine.toObject(),
-                    steps: routine.steps.map(step => {
-                        return {
-                            ...step.toObject(),
-                            zone_id: undefined,
-                            zone: step.zone_id,
-                        }
-                    }),
+                    _id: undefined,
+                    steps: routine.steps
+                        .filter(step => !step.zone_id.end_date) // filter out steps with end-dated zones
+                        .map(step => {
+                            return {
+                                ...step.toObject(),
+                                zone_id: undefined,
+                                zone: {
+                                    id: step.zone_id._id,
+                                    name: step.zone_id.name,
+                                },
+                            }
+                        }),
                     links: [
                         createLink('self', `/water-routines/${routine._id}`),
                     ]
@@ -72,14 +84,21 @@ const WaterRoutineController = {
                 throw new ApiError(404, 'Water routine not found');
             }
             return res.status(200).json(new ApiSuccess(200, 'Water routine retrieved successfully', {
+                id: routine._id.toString(),
                 ...routine.toObject(),
-                steps: routine.steps.map(step => {
-                    return {
-                        ...step.toObject(),
-                        zone_id: undefined,
-                        zone: step.zone_id,
-                    }
-                }),
+                _id: undefined,
+                steps: routine.steps
+                    .filter(step => !step.zone_id.end_date) // filter out steps with end-dated zones
+                    .map(step => {
+                        return {
+                            ...step.toObject(),
+                            zone_id: undefined,
+                            zone: {
+                                id: step.zone_id._id,
+                                name: step.zone_id.name,
+                            },
+                        }
+                    }),
                 links: [
                     createLink('self', `/water-routines/${routine._id}`),
                 ]
@@ -111,14 +130,21 @@ const WaterRoutineController = {
                 throw new ApiError(404, 'Water routine not found or could not be updated');
             }
             return res.status(200).json(new ApiSuccess(200, 'Water routine updated successfully', {
+                id: routine._id.toString(),
                 ...routine.toObject(),
-                steps: routine.steps.map(step => {
-                    return {
-                        ...step.toObject(),
-                        zone_id: undefined,
-                        zone: step.zone_id,
-                    }
-                }),
+                _id: undefined,
+                steps: routine.steps
+                    .filter(step => !step.zone_id.end_date) // filter out steps with end-dated zones
+                    .map(step => {
+                        return {
+                            ...step.toObject(),
+                            zone_id: undefined,
+                            zone: {
+                                id: step.zone_id._id,
+                                name: step.zone_id.name,
+                            },
+                        }
+                    }),
                 links: [
                     createLink('self', `/water-routines/${routine._id}`),
                 ]
@@ -135,7 +161,7 @@ const WaterRoutineController = {
             if (!routine) {
                 throw new ApiError(404, 'Water routine not found or could not be deleted');
             }
-            return res.status(200).json(new ApiSuccess(200, 'Water routine deleted successfully', routine));
+            return res.status(200).json(new ApiSuccess(200, 'Water routine deleted successfully', routine.id));
         } catch (error) {
             next(error);
         }

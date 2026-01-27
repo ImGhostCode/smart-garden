@@ -63,7 +63,8 @@ class NetatmoClient {
         });
 
         if (!response.ok) {
-            throw new ApiError(response.status, `Failed to fetch station data: ${response.status}`);
+            console.error(`Failed to fetch station data: ${response.status}`);
+            throw new ApiError(response.status, `Failed to fetch station data`);
         }
 
         return await response.json();
@@ -95,7 +96,8 @@ class NetatmoClient {
 
         const data = await response.json();
         if (!response.ok) {
-            throw new ApiError(response.status, `Token refresh failed: ${response.status} - ${JSON.stringify(data)}`);
+            console.error(`Token refresh failed: ${response.status} - ${JSON.stringify(data)}`);
+            throw new ApiError(response.status, `Token refresh failed`);
         }
 
         const newExpirationDate = new Date(Date.now() + data.expires_in * 1000).toISOString();
@@ -156,7 +158,8 @@ class NetatmoClient {
 
         const data = await response.json();
         if (!response.ok) {
-            throw new ApiError(response.status, `Unexpected status ${response.status} with body: ${JSON.stringify(data)}`);
+            console.error(`Failed to fetch measures: ${response.status} - ${JSON.stringify(data)}`);
+            throw new ApiError(response.status, `Failed to fetch measures`);
         }
         console.log(`Fetched measures: ${JSON.stringify(data)}`);
         const result = {};

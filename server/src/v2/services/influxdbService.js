@@ -292,10 +292,10 @@ class InfluxDBService {
               zone_id: r.zone_id,
               status: if exists r.status then r.status else "sent",
               source: if exists r.source then r.source else accumulator.source,
-              _value: if r.status == "start" then accumulator._value else r._value,
+              _value: if r.status == "started" then accumulator._value else r._value,
               sent_at: if exists r.command then r._time else accumulator.sent_at,
-              started_at: if r.status == "start" then r._time else accumulator.started_at,
-              completed_at: if r.status == "complete" then r._time else accumulator.completed_at,
+              started_at: if r.status == "started" then r._time else accumulator.started_at,
+              completed_at: if r.status == "completed" then r._time else accumulator.completed_at,
             }),
             identity: {event_id: "", zone_id: "", status: "", source: "", sent_at: time(v:0), started_at: time(v:0), completed_at: time(v:0), _value: 0}
           )

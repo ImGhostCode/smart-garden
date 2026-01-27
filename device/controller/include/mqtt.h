@@ -9,6 +9,7 @@
 
 #define MQTT_WATER_TOPIC "/command/water"
 #define MQTT_STOP_TOPIC "/command/stop"
+#define MQTT_CLEAR_TOPIC "/command/clear"
 #define MQTT_STOP_ALL_TOPIC "/command/stop_all"
 #define MQTT_LIGHT_TOPIC "/command/light"
 #define MQTT_UPDATE_CONFIG_TOPIC "/command/update_config"

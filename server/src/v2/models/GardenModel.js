@@ -1,5 +1,7 @@
 const { Schema, model } = require('mongoose');
 const config = require('../config/app.config');
+const ZoneModel = require('./ZoneModel');
+const PlantModel = require('./PlantModel');
 
 const gardenSchema = new Schema({
     name: {
@@ -32,10 +34,11 @@ const gardenSchema = new Schema({
             type: Number,
             validate: {
                 validator: function (v) {
-                    return Number.isInteger(v) && v >= config.minLightDuration && v <= config.maxLightDuration;
+                    return !v || Number.isInteger(v) && v >= config.minLightDuration && v <= config.maxLightDuration;
                 },
                 message: `Duration must be between ${config.minLightDuration}ms and ${config.maxLightDuration}ms`
-            }
+            },
+            default: null
         },
         start_time: {
             type: String,
@@ -72,6 +75,29 @@ const gardenSchema = new Schema({
 }, {
     timestamps: true
 });
+
+gardenSchema.pre('findOneAndUpdate', async function (next) {
+    const update = this.getUpdate();
+    if (update.end_date) {
+        await ZoneModel.updateMany(
+            {
+                garden_id: this.getQuery()._id,
+                end_date: null
+            },
+            { end_date: new Date() }
+        );
+        await PlantModel.updateMany(
+            {
+                garden_id: this.getQuery()._id,
+                end_date: null
+            },
+            { end_date: new Date() }
+        );
+
+    }
+    next();
+});
+
 // Add compound indexes for better query performance
 // gardenSchema.index({ _id: 1, topic_prefix: 1, end_date: 1 });
 module.exports = model('Garden', gardenSchema);
