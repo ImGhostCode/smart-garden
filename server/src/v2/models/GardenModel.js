@@ -71,10 +71,26 @@ const gardenSchema = new Schema({
         light_pin: { type: Number, default: null },
         temp_humidity_pin: { type: Number, default: null },
         temp_hum_interval_ms: { type: Number, default: 5000 }, // in minutes
+    },
+    notification_client_id: {
+        type: Schema.Types.ObjectId,
+        ref: 'NotificationClient',
+        default: null
+    },
+    notification_settings: {
+        controller_startup: { type: Boolean, default: false },
+        light_schedule: { type: Boolean, default: false },
+        downtime_ms: { type: Number, default: null }, // in milliseconds
+        watering_started: { type: Boolean, default: false },
+        watering_completed: { type: Boolean, default: false }
     }
 }, {
     timestamps: true
 });
+
+gardenSchema.methods.getNotificationSettings = function () {
+    return this.notification_settings || {};
+}
 
 gardenSchema.pre('findOneAndUpdate', async function (next) {
     const update = this.getUpdate();

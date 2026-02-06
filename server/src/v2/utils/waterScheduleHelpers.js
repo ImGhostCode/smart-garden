@@ -69,7 +69,7 @@ const getNextActiveWaterSchedule = async (waterScheduleIds) => {
     const waterSchedules = [];
     for (const id of waterScheduleIds) {
         try {
-            const ws = await db.waterSchedules.getById(id);
+            const ws = await db.waterSchedules.getById({ id });
             if (ws && !ws.end_date) {
                 waterSchedules.push(ws);
             }

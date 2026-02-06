@@ -1,0 +1,79 @@
+@hostname = http://localhost
+@port = 3000
+@host = {{hostname}}:{{port}}
+@notificationClientId = 697b3ff5b8cabb00b5210cca
+### Notification Clients API ###:
+GET    {{host}}/notification_clients?end_dated=false
+###
+POST   {{host}}/notification_clients
+Content-Type: application/json
+
+{
+  "type": "fake",
+  "name": "Test Fake Client",
+  "options": {
+    "create_error": "error creation fake notification",
+    "send_message_error": "error sending fake notification"
+  }
+}
+###
+POST   {{host}}/notification_clients
+Content-Type: application/json
+
+{
+  "type": "pushover",
+  "name": "Pushover Client 2",
+  "options": {
+    "user": "uxxwyse433j6m2vf9w1wy69shee31d",
+    "token": "av535a9qfc2nadth94hii39xbvy71a",
+    "device_name": "sm-g770f"
+  }
+}
+
+###
+GET    {{host}}/notification_clients/{{notificationClientId}}
+###
+PATCH  {{host}}/notification_clients/697b3ff5b8cabb00b5210cca
+Content-Type: application/json
+
+{
+  "type": "fake",
+  "name": "Updated Fake Client",
+  "options": {
+    "create_error": "",
+    "send_message_error": ""
+  }
+}
+###
+PATCH  {{host}}/notification_clients/697b42505f0a55328ccdef0f
+Content-Type: application/json
+
+{
+  "type": "pushover",
+  "name": "Pushover Client",
+  "options": {
+    "user": "uxxwyse433j6m2vf9w1wy69shee31d",
+    "token": "av535a9qfc2nadth94hii39xbvy71a",
+    "device_name": "sm-g770f"
+  }
+}
+###
+DELETE {{host}}/notification_clients/{{notificationClientId}}
+
+### Test fake client
+POST {{host}}/notification_clients/697b3ff5b8cabb00b5210cca/test
+Content-Type: application/json
+
+{
+  "title": "Test Notification",
+  "message": "This is a test notification message."
+}
+
+### Test Pushover client
+POST {{host}}/notification_clients/697b42505f0a55328ccdef0f/test
+Content-Type: application/json
+
+{
+  "title": "Smart Garden Alert",
+  "message": "Your plants need watering!"
+}

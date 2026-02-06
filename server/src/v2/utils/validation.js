@@ -78,6 +78,18 @@ const schemas = {
         }).optional()
     }).required(),
 
+
+    testNotificationClientRequest: Joi.object({
+        title: Joi.string().min(1).required().messages({
+            'string.min': 'Title must be at least 1 character',
+            'any.required': 'Title is required'
+        }),
+        message: Joi.string().min(1).required().messages({
+            'string.min': 'Message must be at least 1 character',
+            'any.required': 'Message is required'
+        })
+    }),
+
     // Request Body Schemas
     // Garden requests
     createGardenRequest: Joi.object({
@@ -106,6 +118,16 @@ const schemas = {
             light_pin: Joi.number().integer().min(0).optional(),
             temp_humidity_pin: Joi.number().integer().min(0).optional(),
             temp_hum_interval_ms: Joi.number().integer().min(0).optional().default(5000)
+        }).optional(),
+        notification_client_id: Joi.string().pattern(xidPattern).optional().messages({
+            'string.pattern.base': 'Notification Client ID must be a 24 character XID format'
+        }),
+        notification_settings: Joi.object({
+            controller_startup: Joi.boolean().optional(),
+            light_schedule: Joi.boolean().optional(),
+            downtime_ms: Joi.number().integer().min(70000).max(86400000).optional(),
+            watering_started: Joi.boolean().optional(),
+            watering_completed: Joi.boolean().optional()
         }).optional()
     }),
 
@@ -134,6 +156,16 @@ const schemas = {
             light_pin: Joi.number().integer().min(0).optional(),
             temp_humidity_pin: Joi.number().integer().min(0).optional(),
             temp_hum_interval_ms: Joi.number().integer().min(0).optional().default(5000)
+        }).optional().allow(null),
+        notification_client_id: Joi.string().pattern(xidPattern).optional().messages({
+            'string.pattern.base': 'Notification Client ID must be a 24 character XID format'
+        }),
+        notification_settings: Joi.object({
+            controller_startup: Joi.boolean().optional(),
+            light_schedule: Joi.boolean().optional(),
+            downtime_ms: Joi.number().integer().min(70000).max(86400000).optional(),
+            watering_started: Joi.boolean().optional(),
+            watering_completed: Joi.boolean().optional()
         }).optional().allow(null)
     }).min(1).messages({
         'object.min': 'At least one field must be provided for update'
@@ -243,7 +275,10 @@ const schemas = {
             end_month: Joi.string().valid(...validMonths).required()
         }).optional(),
         name: Joi.string().required(),
-        description: Joi.string().optional()
+        description: Joi.string().optional(),
+        notification_client_id: Joi.string().pattern(xidPattern).optional().messages({
+            'string.pattern.base': 'Notification Client ID must be a 24 character XID format'
+        })
     }),
 
     updateWaterScheduleRequest: Joi.object({
@@ -271,7 +306,10 @@ const schemas = {
             end_month: Joi.string().valid(...validMonths).required()
         }).optional().allow(null),
         name: Joi.string().optional(),
-        description: Joi.string().optional()
+        description: Joi.string().optional(),
+        notification_client_id: Joi.string().pattern(xidPattern).optional().messages({
+            'string.pattern.base': 'Notification Client ID must be a 24 character XID format'
+        })
     }).min(1).messages({
         'object.min': 'At least one field must be provided for update'
     }),
@@ -354,6 +392,61 @@ const schemas = {
                         }).optional(),
                         client_id: Joi.string().optional(),
                         client_secret: Joi.string().optional()
+                    }).min(1).messages({
+                        'object.min': 'At least one field must be provided for netatmo weather client options update'
+                    })
+                }
+            ],
+            otherwise: Joi.object().optional()
+        }).optional()
+    }).min(1).messages({
+        'object.min': 'At least one field must be provided for update'
+    }),
+    // Weather Client Config requests
+    createNotificationClientRequest: Joi.object({
+        type: Joi.string().valid('pushover', 'fake').required(),
+        name: Joi.string().min(1).required(),
+        options: Joi.when('type', {
+            switch: [
+                {
+                    is: 'fake',
+                    then: Joi.object({
+                        create_error: Joi.string().optional().allow(''),
+                        send_message_error: Joi.string().optional().allow('')
+                    }).required()
+                },
+                {
+                    is: 'pushover',
+                    then: Joi.object({
+                        user: Joi.string().required(),
+                        token: Joi.string().required(),
+                        device_name: Joi.string().optional().allow('')
+                    }).required()
+                }
+            ]
+        }).required()
+    }),
+
+    updateNotificationClientRequest: Joi.object({
+        type: Joi.string().valid('pushover', 'fake').required(),
+        name: Joi.string().min(1).optional(),
+        options: Joi.when('type', {
+            switch: [
+                {
+                    is: 'fake',
+                    then: Joi.object({
+                        create_error: Joi.string().optional().allow(''),
+                        send_message_error: Joi.string().optional().allow('')
+                    }).min(1).messages({
+                        'object.min': 'At least one field must be provided for fake notification client options update'
+                    })
+                },
+                {
+                    is: 'pushover',
+                    then: Joi.object({
+                        user: Joi.string().optional(),
+                        token: Joi.string().optional(),
+                        device_name: Joi.string().optional().allow('')
                     }).min(1).messages({
                         'object.min': 'At least one field must be provided for netatmo weather client options update'
                     })

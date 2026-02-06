@@ -4,22 +4,23 @@ const mqttService = require('../services/mqttService');
 const influxdbService = require('../services/influxdbService');
 const cronScheduler = require('../services/cronScheduler');
 const { ApiSuccess, ApiError } = require('../utils/apiResponse');
+const gardenService = require('../services/gardenService');
 
 const GardensController = {
     getAllGardens: async (req, res, next) => {
         try {
             const { end_dated } = req.query;
-            const filter = {};
+            const filters = {};
             if (!end_dated || end_dated === 'false') {
-                filter.end_date = null;
+                filters.end_date = null;
             }
-            const gardens = await db.gardens.getAll(filter);
+            const gardens = await db.gardens.getAll({ filters, notification: true });
 
             // Get plant and zone counts for each garden
             const gardensWithCounts = await Promise.all(
                 gardens.map(async (garden) => {
                     const [plantsCount, zonesCount,
-                        lastContact, temHumData, nextOnTime, nextOffTime
+                        health, temHumData, nextOnTime, nextOffTime
                     ] = await Promise.all([
                         db.plants.getByGardenId(garden.id).then(plants =>
                             plants.filter(p => !p.end_date).length
@@ -27,27 +28,14 @@ const GardensController = {
                         db.zones.getByGardenId(garden.id).then(zones =>
                             zones.filter(z => !z.end_date).length
                         ),
-                        influxdbService.getLastContact(garden.topic_prefix).then(data => data),
+                        gardenService.getGardenHealth(garden),
                         influxdbService.getTemperatureAndHumidity(garden.topic_prefix).then(data => data),
                         cronScheduler.getNextLightTime(garden, 'ON'),
                         cronScheduler.getNextLightTime(garden, 'OFF')
                     ]);
 
                     const formattedGarden = formatGardenResponse(garden, req);
-                    if (lastContact) {
-                        formattedGarden.health = {
-                            // Garden is considered "UP" if it's last contact was less than 5 minutes ago
-                            status: (new Date() - new Date(lastContact)) < 5 * 60 * 1000 ? 'UP' : 'DOWN',
-                            details: 'last contact from Garden was ' + Math.round((new Date() - new Date(lastContact)) / 60000) + ' minutes ago',
-                            last_contact: lastContact
-                        };
-                    } else {
-                        formattedGarden.health = {
-                            status: 'DOWN',
-                            details: 'no last contact time available',
-                            last_contact: null
-                        };
-                    }
+                    formattedGarden.health = health;
                     if (temHumData) {
                         formattedGarden.temperature_humidity_data = {
                             temperature_celsius: temHumData.temperature,
@@ -93,7 +81,7 @@ const GardensController = {
 
     createGarden: async (req, res, next) => {
         try {
-            const { name, topic_prefix, max_zones, light_schedule, controller_config } = req.body;
+            const { name, topic_prefix, max_zones, light_schedule, controller_config, notification_client_id, notification_settings } = req.body;
 
             if (light_schedule != null) {
                 if (light_schedule.duration_ms <= 0 || light_schedule.duration_ms >= (24 * 60 * 60 * 1000)) {
@@ -104,16 +92,26 @@ const GardensController = {
             if (controller_config != null && (controller_config.valve_pins.length !== controller_config.pump_pins.length || controller_config.valve_pins.length > max_zones)) {
                 throw new ApiError(400, 'Controller config valve pins and pump pins length must match and be less than or equal to max zones');
             }
+
+            if (notification_client_id) {
+                const client = await db.notificationClients.getById(notification_client_id);
+                if (!client) {
+                    throw new ApiError(400, 'Notification client does not exist');
+                }
+            }
+
             const newGarden = {
                 name,
                 topic_prefix,
                 max_zones: max_zones,
                 light_schedule: light_schedule || null,
                 controller_config: controller_config || null,
+                notification_client_id: notification_client_id || null,
+                notification_settings: notification_settings || null,
                 end_date: null
             };
 
-            const savedGarden = await db.gardens.create(newGarden);
+            const savedGarden = await db.gardens.create({ data: newGarden, notification: true });
 
             // Sent config to garden controller via MQTT
             if (controller_config) {
@@ -131,6 +129,7 @@ const GardensController = {
                     console.error('Scheduling light error:', scheduleError);
                 }
             }
+
             // Format and return the response
             const formattedGarden = formatGardenResponse(savedGarden, req);
             formattedGarden.num_plants = 0;
@@ -147,13 +146,13 @@ const GardensController = {
         try {
             const { gardenID } = req.params;
 
-            const garden = await db.gardens.getById(gardenID);
+            const garden = await db.gardens.getById({ id: gardenID, notification: true });
             if (!garden) {
                 throw new ApiError(404, 'Garden not found');
             }
 
             // Get plant and zone counts
-            const [plantsCount, zonesCount, lastContact, temHumData, nextOnTime, nextOffTime
+            const [plantsCount, zonesCount, health, temHumData, nextOnTime, nextOffTime
             ] = await Promise.all([
                 db.plants.getByGardenId(gardenID).then(plants =>
                     plants.filter(p => !p.end_date).length
@@ -161,7 +160,7 @@ const GardensController = {
                 db.zones.getByGardenId(gardenID).then(zones =>
                     zones.filter(z => !z.end_date).length
                 ),
-                influxdbService.getLastContact(garden.topic_prefix).then(data => data),
+                gardenService.getGardenHealth(garden),
                 influxdbService.getTemperatureAndHumidity(garden.topic_prefix).then(data => data),
                 cronScheduler.getNextLightTime(garden, 'ON'),
                 cronScheduler.getNextLightTime(garden, 'OFF')
@@ -169,20 +168,7 @@ const GardensController = {
 
             // Format response with HATEOAS links and counts
             const formattedGarden = formatGardenResponse(garden, req);
-            if (lastContact) {
-                formattedGarden.health = {
-                    // Garden is considered "UP" if it's last contact was less than 5 minutes ago
-                    status: (new Date() - new Date(lastContact)) < 5 * 60 * 1000 ? 'UP' : 'DOWN',
-                    details: 'last contact from Garden was ' + Math.round((new Date() - new Date(lastContact)) / 60000) + ' minutes ago',
-                    last_contact: lastContact
-                };
-            } else {
-                formattedGarden.health = {
-                    status: 'DOWN',
-                    details: 'no last contact time available',
-                    last_contact: null
-                };
-            }
+            formattedGarden.health = health;
             if (temHumData) {
                 formattedGarden.temperature_humidity_data = {
                     temperature_celsius: temHumData.temperature,
@@ -225,7 +211,7 @@ const GardensController = {
     updateGarden: async (req, res, next) => {
         try {
             const { gardenID } = req.params;
-            const { name, topic_prefix, max_zones, light_schedule, controller_config } = req.body;
+            const { name, topic_prefix, max_zones, light_schedule, controller_config, notification_client_id, notification_settings } = req.body;
 
             // Validate input fields if provided
             const updates = {};
@@ -239,6 +225,18 @@ const GardensController = {
 
             if (max_zones) {
                 updates.max_zones = max_zones;
+            }
+
+            if (notification_client_id) {
+                const client = await db.notificationClients.getById(notification_client_id);
+                if (!client) {
+                    throw new ApiError(400, 'Notification client does not exist');
+                }
+                updates.notification_client_id = notification_client_id;
+            }
+
+            if (notification_settings) {
+                updates.notification_settings = notification_settings;
             }
 
             if (light_schedule) {
@@ -273,14 +271,14 @@ const GardensController = {
                     throw new ApiError(400, 'Controller config valve_pins and pump_pins length exceed max zones');
                 }
             } else if (max_zones && !controller_config) {
-                const garden = await db.gardens.getById(gardenID);
+                const garden = await db.gardens.getById({ id: gardenID });
                 if (garden.controller_config && garden.controller_config.valve_pins && garden.controller_config.pump_pins) {
                     if (garden.controller_config.valve_pins.length > max_zones || garden.controller_config.pump_pins.length > max_zones) {
                         throw new ApiError(400, 'Existing controller config valve_pins and pump_pins length exceed new max zones');
                     }
                 }
             } else if (!max_zones && controller_config) {
-                const garden = await db.gardens.getById(gardenID);
+                const garden = await db.gardens.getById({ id: gardenID });
                 if (garden) {
                     if (controller_config.valve_pins.length !== controller_config.pump_pins.length) {
                         throw new ApiError(400, 'Controller config valve_pins and pump_pins length must match');
@@ -291,7 +289,7 @@ const GardensController = {
                 }
             }
 
-            const updatedGarden = await db.gardens.updateById(gardenID, updates);
+            const updatedGarden = await db.gardens.updateById({ id: gardenID, data: updates, notification: true });
             if (!updatedGarden) {
                 throw new ApiError(404, 'Garden not found');
             }
@@ -314,7 +312,7 @@ const GardensController = {
             }
 
             // Get plant and zone counts
-            const [plantsCount, zonesCount, lastContact
+            const [plantsCount, zonesCount, health
                 , nextOnTime, nextOffTime
             ] = await Promise.all([
                 db.plants.getByGardenId(gardenID).then(plants =>
@@ -323,27 +321,14 @@ const GardensController = {
                 db.zones.getByGardenId(gardenID).then(zones =>
                     zones.filter(z => !z.end_date).length
                 ),
-                influxdbService.getLastContact(updatedGarden.topic_prefix).then(data => data),
+                gardenService.getGardenHealth(updatedGarden),
                 cronScheduler.getNextLightTime(updatedGarden, 'ON'),
                 cronScheduler.getNextLightTime(updatedGarden, 'OFF')
             ]);
 
             // Format response
             const formattedGarden = formatGardenResponse(updatedGarden, req);
-            if (lastContact) {
-                formattedGarden.health = {
-                    // Garden is considered "UP" if it's last contact was less than 5 minutes ago
-                    status: (new Date() - new Date(lastContact)) < 5 * 60 * 1000 ? 'UP' : 'DOWN',
-                    details: 'last contact from Garden was ' + Math.round((new Date() - new Date(lastContact)) / 60000) + ' minutes ago',
-                    last_contact: lastContact
-                };
-            } else {
-                formattedGarden.health = {
-                    status: 'DOWN',
-                    details: 'no last contact time available',
-                    last_contact: null
-                };
-            }
+            formattedGarden.health = health;
             if (nextOnTime && nextOffTime) {
                 if (nextOnTime < nextOffTime) {
                     formattedGarden.next_light_action = {
@@ -407,25 +392,12 @@ const GardensController = {
             const { light, stop, update } = req.body;
 
             // Verify garden exists
-            const garden = await db.gardens.getById(gardenID);
+            const garden = await db.gardens.getById({ id: gardenID });
             if (!garden) {
                 throw new ApiError(404, 'Garden not found');
             }
 
-            if (light) {
-                await mqttService.sendLightAction(garden, light.state, light.for_duration_ms);
-                if (light.for_duration_ms) {
-                    await cronScheduler.scheduleLightDelay(garden, light.state, light.for_duration_ms);
-                }
-            }
-
-            if (stop) {
-                await mqttService.sendStopAllAction(garden, stop.all);
-            }
-
-            if (update && update.config) {
-                await mqttService.sendUpdateAction(garden, update.controller_config);
-            }
+            await gardenService.executeGardenAction(garden, { light, stop, update });
 
             return res.json(new ApiSuccess(200, 'Garden action executed successfully'));
         } catch (error) {
@@ -439,7 +411,7 @@ const GardensController = {
             const { gardenID } = req.params;
 
             // Verify garden exists and has light_schedule
-            const garden = await db.gardens.getById(gardenID);
+            const garden = await db.gardens.getById({ id: gardenID });
             if (!garden) {
                 throw new ApiError(404, 'Garden not found');
             }
@@ -465,7 +437,7 @@ const GardensController = {
             const { gardenID } = req.params;
 
             // Verify garden exists
-            const garden = await db.gardens.getById(gardenID);
+            const garden = await db.gardens.getById({ id: gardenID });
             if (!garden) {
                 throw new ApiError(404, 'Garden not found');
             }

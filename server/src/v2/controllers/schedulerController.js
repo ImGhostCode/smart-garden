@@ -68,7 +68,7 @@ const SchedulerController = {
         const { waterScheduleId } = req.params;
 
         try {
-            const waterSchedule = await db.waterSchedules.getById(waterScheduleId);
+            const waterSchedule = await db.waterSchedules.getById({ id: waterScheduleId });
             if (!waterSchedule) {
                 throw new ApiError(404, 'Water schedule not found');
             }
@@ -117,7 +117,7 @@ const SchedulerController = {
         const { waterScheduleId } = req.params;
 
         try {
-            const waterSchedule = await db.waterSchedules.getById(waterScheduleId);
+            const waterSchedule = await db.waterSchedules.getById({ id: waterScheduleId });
             if (!waterSchedule) {
                 throw new ApiError(404, 'Water schedule not found');
             }
@@ -147,12 +147,12 @@ const SchedulerController = {
         const { force } = req.body;
 
         try {
-            const waterSchedule = await db.waterSchedules.getById(waterScheduleId);
+            const waterSchedule = await db.waterSchedules.getById({ id: waterScheduleId });
             if (!waterSchedule) {
                 throw new ApiError(404, 'Water schedule not found');
             }
 
-            const gardens = await db.gardens.getAll({ end_date: null });
+            const gardens = await db.gardens.getAll({ filters: { end_date: null } });
             for (const garden of gardens) {
                 const zones = await db.zones.getByGardenId(garden._id.toString());
                 for (const zone of zones) {

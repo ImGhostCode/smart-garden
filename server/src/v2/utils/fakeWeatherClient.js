@@ -1,6 +1,6 @@
 const { ApiError } = require("./apiResponse");
 
-class FakeClient {
+class FakeWeatherClient {
     constructor(options) {
         this.config = {
             rainMM: options.rain_mm || 0,
@@ -28,4 +28,4 @@ class FakeClient {
     }
 }
 
-module.exports = FakeClient;
+module.exports = FakeWeatherClient;

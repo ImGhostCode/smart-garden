@@ -137,6 +137,11 @@ const waterScheduleSchema = new Schema({
     },
     weather_control: weatherControlSchema,
     active_period: activePeriodSchema,
+    notification_client_id: {
+        type: Schema.Types.ObjectId,
+        ref: 'NotificationClient',
+        default: null
+    },
     end_date: {
         type: Date,
         default: null

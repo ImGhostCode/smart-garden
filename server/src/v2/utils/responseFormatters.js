@@ -15,6 +15,12 @@ function formatGardenResponse(garden, req) {
         created_at: garden.created_at,
         end_date: garden.end_date,
         controller_config: garden.controller_config,
+        notification_client: garden.notification_client_id ? {
+            id: garden.notification_client_id._id,
+            name: garden.notification_client_id.name,
+            type: garden.notification_client_id.type
+        } : null,
+        notification_settings: garden.notification_settings,
         next_light_action: garden.next_light_action,
         health: null,
         temperature_humidity_data: null,

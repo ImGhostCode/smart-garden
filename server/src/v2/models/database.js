@@ -5,6 +5,7 @@ const Zone = require('./ZoneModel');
 const WaterSchedule = require('./WaterScheduleModel');
 const WeatherClientConfig = require('./WeatherClientConfigModel.js');
 const WaterRoutine = require('./WaterRoutine.js');
+const NotificationClientModel = require('./NotificationClientModel.js');
 
 // MongoDB database interface
 const db = {
@@ -27,31 +28,57 @@ const db = {
         Plant,
         Zone,
         WaterSchedule,
-        WeatherClientConfig
+        WeatherClientConfig,
     },
 
     // Enhanced helper methods for easier controller usage
     gardens: {
-        async getAll(filters = {}) {
-            return await Garden.find(filters).sort({ created_at: -1 });
+        async getAll({ filters = {}, notification = false }) {
+            let query = Garden.find(filters).sort({ created_at: -1 });
+            if (notification) {
+                query = query.populate({
+                    'path': 'notification_client_id',
+                    'select': '_id name type',
+                });
+            }
+            return await query;
         },
 
-        async getById(id) {
-            return await Garden.findOne({ _id: id, end_date: null });
+        async getById({ id, notification = false }) {
+            let query = Garden.findOne({ _id: id, end_date: null });
+            if (notification) {
+                query = query.populate({
+                    'path': 'notification_client_id',
+                    'select': '_id name type',
+                });
+            }
+            return await query;
         },
 
-        async create(data) {
-            const garden = new Garden(
-                data
-            );
-            return await garden.save({ timestamps: true });
+        async create({ data, notification = false }) {
+            const populateOptions = [];
+            if (notification) {
+                populateOptions.push({
+                    'path': 'notification_client_id',
+                    'select': '_id name type',
+                });
+            }
+            const garden = new Garden(data);
+            return await (await garden.save({ timestamps: true })).populate(populateOptions);
         },
 
-        async updateById(id, data) {
+        async updateById({ id, data, notification = false }) {
+            let populateOptions = [];
+            if (notification) {
+                populateOptions.push({
+                    'path': 'notification_client_id',
+                    'select': '_id name type',
+                });
+            }
             return await Garden.findOneAndUpdate(
                 { _id: id, end_date: null },
                 { ...data, updated_at: new Date() },
-                { new: true }
+                { new: true, populate: populateOptions }
             );
         },
 
@@ -320,28 +347,63 @@ const db = {
     },
 
     waterSchedules: {
-        async getAll(filters = {}) {
-            return await WaterSchedule.find(filters).sort({ created_at: -1 });
+        async getAll({ filters = {}, notification = false }) {
+            let query = WaterSchedule.find(filters).sort({ created_at: -1 });
+            if (notification) {
+                query = query.populate({
+                    'path': 'notification_client_id',
+                    'select': '_id name type',
+                });
+            }
+            return await query;
         },
 
-        async getById(id) {
-            return await WaterSchedule.findOne({ _id: id, end_date: null });
+        async getById({ id, notification = false }) {
+            let query = WaterSchedule.findOne({ _id: id, end_date: null });
+            if (notification) {
+                query = query.populate({
+                    'path': 'notification_client_id',
+                    'select': '_id name type',
+                });
+            }
+            return await query;
         },
 
-        async getByGardenId(garden_id) {
-            return await WaterSchedule.find({ garden_id, end_date: null }).sort({ priority: -1 });
+        async getByGardenId({ garden_id, notification = false }) {
+            let query = WaterSchedule.find({ garden_id, end_date: null }).sort({ priority: -1 });
+            if (notification) {
+                query = query.populate({
+                    'path': 'notification_client_id',
+                    'select': '_id name type',
+                });
+            }
+            return await query;
         },
 
-        async create(data) {
+        async create({ data, notification = false }) {
+            const populateOptions = [];
+            if (notification) {
+                populateOptions.push({
+                    'path': 'notification_client_id',
+                    'select': '_id name type',
+                });
+            }
             const schedule = new WaterSchedule(data);
-            return await schedule.save();
+            return await (await schedule.save({ timestamps: true })).populate(populateOptions);
         },
 
-        async updateById(id, data) {
+        async updateById({ id, data, notification = false }) {
+            let populateOptions = [];
+            if (notification) {
+                populateOptions.push({
+                    'path': 'notification_client_id',
+                    'select': '_id name type',
+                });
+            }
             return await WaterSchedule.findOneAndUpdate(
                 { _id: id, end_date: null },
                 { ...data, updated_at: new Date() },
-                { new: true }
+                { new: true, populate: populateOptions }
             );
         },
 
@@ -400,6 +462,36 @@ const db = {
 
         async deleteById(id) {
             return await WeatherClientConfig.findOneAndUpdate(
+                { _id: id, end_date: null },
+                { end_date: new Date() },
+                { new: true }
+            );
+        },
+    },
+    notificationClients: {
+        async getAll(filters = {}) {
+            return await NotificationClientModel.find(filters);
+        },
+
+        async getById(id) {
+            return await NotificationClientModel.findOne({ _id: id, end_date: null });
+        },
+
+        async create(data) {
+            const notificationClientModel = new NotificationClientModel(data);
+            return await notificationClientModel.save({ timestamps: true });
+        },
+
+        async updateById(id, data) {
+            return await NotificationClientModel.findOneAndUpdate(
+                { _id: id, type: data.type, end_date: null },
+                { ...data, updated_at: new Date() },
+                { new: true }
+            );
+        },
+
+        async deleteById(id) {
+            return await NotificationClientModel.findOneAndUpdate(
                 { _id: id, end_date: null },
                 { end_date: new Date() },
                 { new: true }

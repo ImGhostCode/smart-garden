@@ -90,7 +90,7 @@ const ZonesController = {
 
         try {
             // Check if garden exists
-            const garden = await db.gardens.getById(gardenID);
+            const garden = await db.gardens.getById({ id: gardenID });
             if (!garden) {
                 throw new ApiError(404, 'Garden not found');
             }
@@ -111,7 +111,7 @@ const ZonesController = {
             // Check if water schedule ids exist
             if (water_schedule_ids && water_schedule_ids.length > 0) {
                 for (const wsid of water_schedule_ids) {
-                    const ws = await db.waterSchedules.getById(wsid);
+                    const ws = await db.waterSchedules.getById({ id: wsid });
                     if (!ws) {
                         throw new ApiError(404, `Water schedule ID ${wsid} not found`);
                     }
@@ -237,7 +237,7 @@ const ZonesController = {
                 throw new ApiError(404, 'Zone not found');
             }
 
-            const garden = await db.gardens.getById(gardenID);
+            const garden = await db.gardens.getById({ id: gardenID });
             if (!garden) {
                 throw new ApiError(404, 'Garden not found');
             }
@@ -259,7 +259,7 @@ const ZonesController = {
             // Check if water schedule ids exist
             if (water_schedule_ids && water_schedule_ids.length > 0) {
                 for (const wsid of water_schedule_ids) {
-                    const ws = await db.waterSchedules.getById(wsid);
+                    const ws = await db.waterSchedules.getById({ id: wsid });
                     if (!ws) {
                         throw new ApiError(404, `Water schedule ID ${wsid} not found`);
                     }
@@ -344,7 +344,7 @@ const ZonesController = {
             const deletedZone = await db.zones.deleteById(zoneID);
 
             // TODO: Stop any ongoing watering for this zone
-            const garden = await db.gardens.getById(gardenID);
+            const garden = await db.gardens.getById({ id: gardenID });
             if (garden) {
                 await mqttService.sendClearAction(garden, deletedZone.position);
             }
@@ -364,7 +364,7 @@ const ZonesController = {
                 throw new ApiError(404, 'Zone not found');
             }
 
-            const garden = await db.gardens.getById(gardenID);
+            const garden = await db.gardens.getById({ id: gardenID });
             if (!garden) {
                 throw new ApiError(404, 'Garden not found');
             }
@@ -395,7 +395,7 @@ const ZonesController = {
                 throw new ApiError(404, 'Zone not found');
             }
 
-            const garden = await db.gardens.getById(gardenID);
+            const garden = await db.gardens.getById({ id: gardenID });
             if (!garden) {
                 throw new ApiError(404, 'Garden not found');
             }

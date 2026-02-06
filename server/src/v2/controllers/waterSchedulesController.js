@@ -23,7 +23,7 @@ const WaterSchedulesController = {
         }
 
         try {
-            const waterSchedules = await db.waterSchedules.getAll(filters);
+            const waterSchedules = await db.waterSchedules.getAll({ filters, notification: true });
 
             const items = [];
             for (const schedule of waterSchedules) {
@@ -39,6 +39,12 @@ const WaterSchedulesController = {
                     id: schedule._id.toString(),
                     ...schedule.toObject(),
                     _id: undefined,
+                    notification_client_id: undefined,
+                    notification_client: schedule.notification_client_id ? {
+                        id: schedule.notification_client_id._id,
+                        name: schedule.notification_client_id.name,
+                        type: schedule.notification_client_id.type
+                    } : null,
                     links: [
                         createLink('self', `/water_schedules/${schedule.id}`)
                     ],
@@ -55,7 +61,7 @@ const WaterSchedulesController = {
 
     addWaterSchedule: async (req, res, next) => {
         const { exclude_weather_data } = req.query;
-        const { duration_ms, interval, start_time, weather_control, active_period, name, description } = req.body;
+        const { duration_ms, interval, start_time, weather_control, active_period, name, description, notification_client_id } = req.body;
 
         const schedule = {
             duration_ms,
@@ -64,8 +70,16 @@ const WaterSchedulesController = {
             weather_control,
             active_period,
             name,
-            description
+            description,
+            notification_client_id
         };
+
+        if (notification_client_id) {
+            const client = await db.notificationClients.getById(notification_client_id);
+            if (!client) {
+                throw new ApiError(400, 'Notification client does not exist');
+            }
+        }
 
         // Validate active_period months if provided
         if (active_period) {
@@ -82,7 +96,7 @@ const WaterSchedulesController = {
         }
 
         try {
-            const result = await db.waterSchedules.create(schedule);
+            const result = await db.waterSchedules.create({ data: schedule, notification: true });
 
             let weatherData;
             let nextWaterDetails;
@@ -105,6 +119,12 @@ const WaterSchedulesController = {
                 id: result._id.toString(),
                 ...result.toObject(),
                 _id: undefined,
+                notification_client_id: undefined,
+                notification_client: result.notification_client_id ? {
+                    id: result.notification_client_id._id,
+                    name: result.notification_client_id.name,
+                    type: result.notification_client_id.type
+                } : null,
                 links: [
                     createLink('self', `/water_schedules/${result.id}`)
                 ],
@@ -121,7 +141,7 @@ const WaterSchedulesController = {
         const { exclude_weather_data } = req.query;
 
         try {
-            const schedule = await db.waterSchedules.getById(waterScheduleID);
+            const schedule = await db.waterSchedules.getById({ id: waterScheduleID, notification: true });
             if (!schedule) {
                 throw new ApiError(404, 'Water schedule not found');
             }
@@ -139,6 +159,12 @@ const WaterSchedulesController = {
                 id: schedule._id.toString(),
                 ...schedule.toObject(),
                 _id: undefined,
+                notification_client_id: undefined,
+                notification_client: schedule.notification_client_id ? {
+                    id: schedule.notification_client_id._id,
+                    name: schedule.notification_client_id.name,
+                    type: schedule.notification_client_id.type
+                } : null,
                 links: [
                     createLink('self', `/water_schedules/${schedule.id}`)
                 ],
@@ -154,10 +180,10 @@ const WaterSchedulesController = {
     updateWaterSchedule: async (req, res, next) => {
         const { waterScheduleID } = req.params;
         const { exclude_weather_data } = req.query;
-        const { duration_ms, interval, start_time, weather_control, active_period, name, description } = req.body;
+        const { duration_ms, interval, start_time, weather_control, active_period, name, description, notification_client_id } = req.body;
 
         try {
-            const schedule = await db.waterSchedules.getById(waterScheduleID);
+            const schedule = await db.waterSchedules.getById({ id: waterScheduleID });
             if (!schedule) {
                 throw new ApiError(404, 'Water schedule not found');
             }
@@ -170,6 +196,13 @@ const WaterSchedulesController = {
             if (weather_control) update.weather_control = weather_control;
             if (name) update.name = name;
             if (description) update.description = description;
+            if (notification_client_id) {
+                const client = await db.notificationClients.getById(notification_client_id);
+                if (!client) {
+                    throw new ApiError(400, 'Notification client does not exist');
+                }
+                update.notification_client_id = notification_client_id;
+            }
             // Validate active_period months if provided
             if (active_period) {
                 const { start_month, end_month } = active_period;
@@ -186,7 +219,7 @@ const WaterSchedulesController = {
                 update.active_period = active_period;
             }
 
-            const updatedSchedule = await db.waterSchedules.updateById(waterScheduleID, update);
+            const updatedSchedule = await db.waterSchedules.updateById({ id: waterScheduleID, data: update, notification: true });
             let weatherData;
             let nextWaterDetails;
 
@@ -208,6 +241,12 @@ const WaterSchedulesController = {
                 id: updatedSchedule._id.toString(),
                 ...updatedSchedule.toObject(),
                 _id: undefined,
+                notification_client_id: undefined,
+                notification_client: updatedSchedule.notification_client_id ? {
+                    id: updatedSchedule.notification_client_id._id,
+                    name: updatedSchedule.notification_client_id.name,
+                    type: updatedSchedule.notification_client_id.type
+                } : null,
                 links: [
                     createLink('self', `/water_schedules/${schedule.id}`)
                 ],
@@ -224,7 +263,7 @@ const WaterSchedulesController = {
         const { waterScheduleID } = req.params;
 
         try {
-            const schedule = await db.waterSchedules.getById(waterScheduleID);
+            const schedule = await db.waterSchedules.getById({ id: waterScheduleID });
             if (!schedule) {
                 throw new ApiError(404, 'Water schedule not found');
             }
@@ -246,7 +285,7 @@ const WaterSchedulesController = {
         const { force_execution = false, simulate = false } = req.body;
 
         try {
-            const schedule = await db.waterSchedules.getById(waterScheduleID);
+            const schedule = await db.waterSchedules.getById({ id: waterScheduleID });
             if (!schedule) {
                 throw new ApiError(404, 'Water schedule not found');
             }
@@ -305,7 +344,7 @@ const WaterSchedulesController = {
             } else if (shouldWater) {
                 try {
                     // Execute actual watering across all relevant zones
-                    const gardens = await db.gardens.getAll({ end_date: null });
+                    const gardens = await db.gardens.getAll({ filters: { end_date: null } });
                     let zonesExecuted = 0;
 
                     for (const garden of gardens) {
@@ -342,7 +381,7 @@ const WaterSchedulesController = {
         const { include_zones } = req.query;
 
         try {
-            const schedule = await db.waterSchedules.getById(waterScheduleID);
+            const schedule = await db.waterSchedules.getById({ id: waterScheduleID });
             if (!schedule) {
                 throw new ApiError(404, 'Water schedule not found');
             }
@@ -375,7 +414,7 @@ const WaterSchedulesController = {
             let affectedZones = null;
             if (includeZones) {
                 try {
-                    const gardens = await db.gardens.getAll({ end_date: null });
+                    const gardens = await db.gardens.getAll({ filters: { end_date: null } });
                     const zones = [];
 
                     for (const garden of gardens) {

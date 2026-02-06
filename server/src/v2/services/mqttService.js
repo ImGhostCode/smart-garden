@@ -3,6 +3,7 @@ const EventEmitter = require('events');
 const db = require('../models/database');
 const { generateXid } = require('../utils/helpers');
 const influxDBService = require('./influxdbService');
+const notificationService = require('./notificationService');
 
 class MQTTService extends EventEmitter {
     constructor() {
@@ -173,14 +174,14 @@ class MQTTService extends EventEmitter {
             }
 
             // Find garden by topic prefix
-            const garden = await db.gardens.getAll({ topic_prefix: gardenPrefix, end_date: null });
+            const garden = await db.gardens.getAll({ filters: { topic_prefix: gardenPrefix, end_date: null } });
             if (!garden || garden.length === 0) {
                 console.warn(`Garden not found for topic prefix: ${gardenPrefix}`);
                 return;
             }
 
             // Handle different data types
-            // this.processDataMessage(garden[0], dataType, messageStr);
+            this.processDataMessage(garden[0], dataType, messageStr);
 
         } catch (error) {
             console.error('Error handling MQTT message:', error);
@@ -205,42 +206,28 @@ class MQTTService extends EventEmitter {
 
         switch (dataType) {
             case 'health':
-                this.handleHealthData(garden, message, timestamp);
+                notificationService.handleHealthMessage(garden, message);
                 break;
-            case 'temperature':
-                this.handleTemperatureData(garden, message, timestamp);
-                break;
-            case 'humidity':
-                this.handleHumidityData(garden, message, timestamp);
-                break;
+            // case 'temperature':
+            //     this.handleTemperatureData(garden, message, timestamp);
+            //     break;
+            // case 'humidity':
+            //     this.handleHumidityData(garden, message, timestamp);
+            //     break;
             case 'water':
-                this.handleWaterData(garden, message, timestamp);
+                notificationService.handleWaterMessage(garden, this.parseWaterMessage(message));
                 break;
-            case 'light':
-                this.handleLightData(garden, message, timestamp);
-                break;
+            // case 'light': 
+            //     this.handleLightData(garden, message, timestamp);
+            //     break;
             case 'logs':
-                this.handleLogsData(garden, message, timestamp);
+                notificationService.handleGardenStartupMessage(garden, message);
                 break;
             default:
                 console.log(`Unknown data type: ${dataType}`);
         }
     }
 
-    // Handle health status from ESP32
-    async handleHealthData(garden, message, timestamp) {
-        try {
-            // Update garden health in database
-
-            await influxDBService.writeHealthData(garden.topic_prefix);
-
-            // Emit event for real-time updates
-            this.emit('healthUpdate', garden.id, message);
-
-        } catch (error) {
-            console.error('Error handling health data:', error);
-        }
-    }
 
     // Handle temperature data. Example message: "temperature value=23.5"
     async handleTemperatureData(garden, message, timestamp) {
@@ -344,8 +331,6 @@ class MQTTService extends EventEmitter {
             "id": eventId,
             "source": source
         };
-        // Write command to InfluxDB
-        await influxDBService.writeWaterCommand(garden.topic_prefix, duration, eventId, zoneId, zonePosition, source);
 
         await this.publish(topic, command);
         return eventId;
@@ -429,6 +414,43 @@ class MQTTService extends EventEmitter {
             connected: this.isConnected,
             subscribedTopics: Array.from(this.subscribedTopics)
         };
+    }
+
+    // Example message: water,status=complete,zone=1,id=1,zone_id=1 millis=60000
+    parseWaterMessage(msg) {
+        const result = {};
+        const trimmedMsg = msg.replace(/^water,/, '');
+        const regex = /(\w+)=("[^"]*"|[^,\s]+)/g;
+        let match;
+        while ((match = regex.exec(trimmedMsg)) !== null) {
+            const key = match[1];
+            let val = match[2];
+            val = val.replace(/^"|"$/g, ''); // Remove quotes if present
+            switch (key) {
+                case 'zone':
+                    result.position = parseInt(val);
+                    break;
+                case 'millis':
+                    result.duration = parseInt(val);
+                    break;
+                case 'id':
+                    result.eventId = val;
+                    break;
+                case 'zone_id':
+                    result.zoneId = val;
+                    break;
+                case 'status':
+                    if (val === 'completed') {
+                        result.start = false;
+                    } else if (val === 'started') {
+                        result.start = true;
+                    } else {
+                        throw new Error(`invalid status: ${val}`);
+                    }
+                    break;
+            }
+        }
+        return result;
     }
 }
 

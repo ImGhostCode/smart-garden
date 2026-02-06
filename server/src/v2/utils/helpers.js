@@ -90,6 +90,28 @@ const intervalToMillis = (interval) => {
   return num * 24 * 60 * 60 * 1000; // days to milliseconds
 }
 
+
+// Relative time (e.g., "2 hours ago")
+const getRelativeTime = (pastDate) => {
+  const now = new Date();
+  const diffMs = now - pastDate;
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays > 0) return `${diffDays} day(s)`;
+  if (diffHours > 0) return `${diffHours} hour(s)`;
+  if (diffMinutes > 0) return `${diffMinutes} minute(s)`;
+  return `${diffSeconds} second(s)`;
+}
+
+// Milliseconds to relative time
+const millisToRelativeTime = (ms) => {
+  const now = new Date();
+  const pastDate = new Date(now - ms);
+  return getRelativeTime(pastDate);
+};
+
 module.exports = {
   generateXid,
   createLink,
@@ -97,5 +119,7 @@ module.exports = {
   durationToMillis,
   millisToDuration,
   durationToSeconds,
-  intervalToMillis
+  intervalToMillis,
+  getRelativeTime,
+  millisToRelativeTime
 };

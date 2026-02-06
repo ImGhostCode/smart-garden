@@ -188,7 +188,7 @@ const WaterRoutineController = {
                     continue;
                 }
 
-                const garden = await db.gardens.getById(zone.garden_id);
+                const garden = await db.gardens.getById({ id: zone.garden_id });
                 if (!garden) {
                     console.warn(`Garden ID: ${zone.garden_id} not found for Zone ID: ${step.zone_id}. Skipping step.`);
                     continue;

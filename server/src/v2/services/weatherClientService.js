@@ -1,4 +1,4 @@
-const FakeClient = require("../utils/fakeWeatherClient");
+const FakeWeatherClient = require("../utils/fakeWeatherClient");
 const NetatmoClient = require("../utils/netatmoWeatherClient");
 const db = require("../models/database");
 const { ApiError } = require("../utils/apiResponse");
@@ -27,7 +27,7 @@ class WeatherClient {
                 });
                 break;
             case 'fake':
-                this.client = new FakeClient(config.options);
+                this.client = new FakeWeatherClient(config.options);
                 break;
             default:
                 throw new ApiError(400, `Invalid client type: ${config.type}`);

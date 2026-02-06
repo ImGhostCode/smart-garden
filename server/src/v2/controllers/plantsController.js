@@ -72,7 +72,7 @@ const PlantsController = {
 
         try {
             // Check if garden exists
-            const garden = await db.gardens.getById(gardenID);
+            const garden = await db.gardens.getById({ id: gardenID });
             if (!garden) {
                 throw new ApiError(404, 'Garden not found');
             }

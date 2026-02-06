@@ -13,7 +13,8 @@ Content-Type: application/json
   "description": "Water seedlings a bit every day",
   "duration_ms": 60000,
   "interval": 1,
-  "start_time": "15:00:00"
+  "start_time": "15:00:00",
+  "notification_client_id": "697b3ff5b8cabb00b5210cc"
 }
 ###
 POST   {{host}}/water_schedules?exclude_weather_data=false
@@ -38,7 +39,8 @@ Content-Type: application/json
             "range": 6.0,
             "client_id": "6961dd9e913188586a0c3f7b"
         }
-    }
+    },
+    "notification_client_id": "697b42505f0a55328ccdef0f"
 }
 
 ###
@@ -113,31 +115,13 @@ Content-Type: application/json
   }
 }
 ###
-GET    {{host}}/water_schedules/69661bb7adb93d8d2b03c748?exclude_weather_data=false
+GET    {{host}}/water_schedules/6966fb19cc7a5d3913abd8b1?exclude_weather_data=false
 ###
-PATCH  {{host}}/water_schedules/69661b144ce1de3bcf8a87f4?exclude_weather_data=false
+PATCH  {{host}}/water_schedules/697c9b8efad259c04e8b47ea?exclude_weather_data=false
 Content-Type: application/json
 
 {
-  "name": "Shrubs",
-  "description": "Water shrubs every 5 days",
-  "duration_ms": 2700000,
-  "interval": 5,
-  "start_time": "02:08:00",
-  "weather_control": {
-        "temperature_control": {
-            "baseline_value": 25,
-            "factor": 0.9,
-            "range": 12,
-            "client_id": "6961ddb0913188586a0c3f7e"
-        },
-        "rain_control": {
-            "baseline_value": 3.0,
-            "factor": 0.85,
-            "range": 6.0,
-            "client_id": "6961dd9e913188586a0c3f7b"
-        }
-    }
+    "notification_client_id": "697b42505f0a55328ccdef0f"
 }
 ###
 PATCH  {{host}}/water_schedules/6966fb19cc7a5d3913abd8b1?exclude_weather_data=false
