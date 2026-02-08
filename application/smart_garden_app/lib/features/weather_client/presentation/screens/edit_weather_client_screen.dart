@@ -210,7 +210,8 @@ class _EditWeatherClientScreenState
                     );
                   }).toList(),
                   validator: AppValidators.required,
-                  onChanged: (value) => setState(() => _type = value),
+                  // onChanged: (value) => setState(() => _type = value),
+                  onChanged: null,
                   decoration: const InputDecoration(hintText: 'Select'),
                 ),
               ),

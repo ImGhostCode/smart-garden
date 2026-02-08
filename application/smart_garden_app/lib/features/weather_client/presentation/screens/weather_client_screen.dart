@@ -102,6 +102,16 @@ class _WeatherClientScreenState extends ConsumerState<WeatherClientScreen> {
                 leadingWidth: 120,
                 actions: [
                   IconButton.filled(
+                    onPressed: () {
+                      context.goNotificationClients();
+                    },
+                    icon: const Icon(Icons.notification_add_rounded),
+                    color: AppColors.primary,
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppColors.primary100,
+                    ),
+                  ),
+                  IconButton.filled(
                     onPressed: () {},
                     icon: const Icon(Icons.notifications_rounded),
                     color: AppColors.primary,
@@ -236,7 +246,7 @@ class WeatherClientItem extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Container(
                 margin: const EdgeInsets.only(top: 3),
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                 decoration: BoxDecoration(
                   color: wc.type == WeatherClientType.netatmo.name
                       ? Colors.yellow.shade700

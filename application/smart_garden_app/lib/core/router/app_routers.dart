@@ -3,6 +3,9 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/garden/presentation/screens/edit_garden_screen.dart';
+import '../../features/notification_client/domain/entities/notification_client_entity.dart';
+import '../../features/notification_client/presentation/screens/edit_notification_client_screen.dart';
+import '../../features/notification_client/presentation/screens/new_notification_client_screen.dart';
 import '../../features/plant/domain/entities/plant_entity.dart';
 import '../../features/plant/presentation/screens/add_plant_screen.dart';
 import '../../features/plant/presentation/screens/edit_plant_screen.dart';
@@ -173,6 +176,28 @@ class AppRoutes {
       },
     ),
   ];
+  static List<RouteBase> get ncSubRoutes => [
+    GoRoute(
+      path: 'new',
+      name: RouteNames.newNotificationClient,
+      builder: (context, state) => const NewNotificationClientScreen(),
+    ),
+    GoRoute(
+      path: ':clientId/edit',
+      name: RouteNames.editNotificationClient,
+      builder: (context, state) => EditNotificationClientScreen(
+        nc: state.extra as NotificationClientEntity,
+        clientId: state.pathParameters['clientId']!,
+      ),
+      redirect: (context, state) {
+        final wc = state.extra;
+        if (wc == null || wc is! NotificationClientEntity) {
+          return AppConstants.gardenRoute;
+        }
+        return null;
+      },
+    ),
+  ];
   static List<RouteBase> get wrSubRoutes => [
     GoRoute(
       path: 'new',
@@ -228,6 +253,10 @@ class RouteNames {
   static const String weatherClients = 'weatherClients';
   static const String newWeatherClient = 'newWeatherClient';
   static const String editWeatherClient = 'editWeatherClient';
+
+  static const String notificationClients = 'notificationClients';
+  static const String newNotificationClient = 'newNotificationClient';
+  static const String editNotificationClient = 'editNotificationClient';
 
   static const String waterRoutines = 'waterRoutines';
   static const String newWaterRoutine = 'newWaterRoutine';

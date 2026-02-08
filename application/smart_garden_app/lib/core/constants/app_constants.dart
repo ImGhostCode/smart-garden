@@ -1,6 +1,6 @@
 class AppConstants {
   // API constants
-  static const String apiBaseUrl = 'https://api.yourdomain.com';
+  static const String apiBaseUrl = 'http://api.yourdomain.com';
 
   // Storage constants
   static const String isFirstTimeKey = 'isFirstTime';
@@ -14,6 +14,7 @@ class AppConstants {
   static const String waterSchedulesKey = 'waterSchedules';
   static const String weatherClientsKey = 'weatherClients';
   static const String waterRoutinesKey = 'waterRoutines';
+  static const String notificationClientsKey = 'notificationClients';
 
   // App constants
   static const String appName = 'Smart Garden';
@@ -36,6 +37,7 @@ class AppConstants {
   static const String gardenRoute = '/garden';
   static const String waterScheduleRoute = '/water-schedule';
   static const String weatherClientRoute = '/weather-client';
+  static const String notificationClientRoute = '/notification-client';
   static const String waterRoutineRoute = '/water-routine';
   static const String settingsRoute = '/settings';
 

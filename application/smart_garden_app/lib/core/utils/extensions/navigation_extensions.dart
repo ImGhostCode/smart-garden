@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../features/notification_client/domain/entities/notification_client_entity.dart';
 import '../../../features/plant/domain/entities/plant_entity.dart';
 import '../../../features/water_routine/domain/entities/water_routine_entity.dart';
 import '../../../features/water_schedule/domain/entities/water_schedule_entity.dart';
@@ -96,6 +97,22 @@ extension NavigationContext on BuildContext {
       RouteNames.editWeatherClient,
       pathParameters: {'clientId': clientId},
       extra: wc,
+    );
+  }
+
+  void goNotificationClients() {
+    pushNamed(RouteNames.notificationClients);
+  }
+
+  void goNewNotificationClient() {
+    pushNamed(RouteNames.newNotificationClient);
+  }
+
+  void goEditNotificationClient(String clientId, NotificationClientEntity nc) {
+    pushNamed(
+      RouteNames.editNotificationClient,
+      pathParameters: {'clientId': clientId},
+      extra: nc,
     );
   }
 

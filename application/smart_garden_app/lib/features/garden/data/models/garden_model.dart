@@ -1,5 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 
+import '../../../notification_client/data/models/notification_client_model.dart';
 import '../../domain/entities/garden_entity.dart';
 
 part 'garden_model.g.dart';
@@ -19,6 +20,8 @@ class GardenModel {
   final TempHumDataModel? tempHumData;
   final int? numPlants;
   final int? numZones;
+  final NotificationClientModel? notificationClient;
+  final NotificationSettingModel? notificationSettings;
 
   const GardenModel({
     this.id,
@@ -33,6 +36,8 @@ class GardenModel {
     this.tempHumData,
     this.numPlants,
     this.numZones,
+    this.notificationClient,
+    this.notificationSettings,
   });
 
   factory GardenModel.fromJson(Map<String, dynamic> json) =>
@@ -53,6 +58,8 @@ class GardenModel {
       nextLightAction: nextLightAction,
       health: health,
       tempHumData: tempHumData,
+      notificationClient: notificationClient?.toEntity(),
+      notificationSettings: notificationSettings,
     );
   }
 
@@ -97,6 +104,18 @@ class GardenModel {
           ? TempHumDataModel(
               temperatureCelsius: garden.tempHumData!.temperatureCelsius,
               humidityPercentage: garden.tempHumData!.humidityPercentage,
+            )
+          : null,
+      notificationClient: garden.notificationClient != null
+          ? NotificationClientModel.fromEntity(garden.notificationClient!)
+          : null,
+      notificationSettings: garden.notificationSettings != null
+          ? NotificationSettingModel(
+              controllerStartup: garden.notificationSettings!.controllerStartup,
+              lightSchedule: garden.notificationSettings!.lightSchedule,
+              wateringStarted: garden.notificationSettings!.wateringStarted,
+              wateringCompleted: garden.notificationSettings!.wateringCompleted,
+              downtimeMs: garden.notificationSettings!.downtimeMs,
             )
           : null,
     );
@@ -152,4 +171,19 @@ class TempHumDataModel extends TempHumDataEntity {
   factory TempHumDataModel.fromJson(Map<String, dynamic> json) =>
       _$TempHumDataModelFromJson(json);
   Map<String, dynamic> toJson() => _$TempHumDataModelToJson(this);
+}
+
+@JsonSerializable(fieldRename: FieldRename.snake)
+class NotificationSettingModel extends NotificationSettingEntity {
+  const NotificationSettingModel({
+    super.controllerStartup,
+    super.lightSchedule,
+    super.wateringStarted,
+    super.wateringCompleted,
+    super.downtimeMs,
+  });
+
+  factory NotificationSettingModel.fromJson(Map<String, dynamic> json) =>
+      _$NotificationSettingModelFromJson(json);
+  Map<String, dynamic> toJson() => _$NotificationSettingModelToJson(this);
 }

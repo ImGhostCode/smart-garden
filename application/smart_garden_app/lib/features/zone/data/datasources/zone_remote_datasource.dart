@@ -183,8 +183,7 @@ class ZoneRemoteDataSourceImpl implements ZoneRemoteDataSource {
           if (params.zone.skipCount != null)
             'skip_count': params.zone.skipCount,
           'position': params.zone.position,
-          if (params.zone.waterSchedules != null &&
-              params.zone.waterSchedules!.isNotEmpty)
+          if (params.zone.waterSchedules != null)
             'water_schedule_ids': params.zone.waterSchedules!
                 .map((e) => e.id)
                 .toList(),

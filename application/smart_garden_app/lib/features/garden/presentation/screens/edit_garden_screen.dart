@@ -8,9 +8,13 @@ import '../../../../core/ui/inputs/app_labeled_input.dart';
 import '../../../../core/utils/app_utils.dart';
 import '../../../../core/utils/app_validators.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
+import '../../../notification_client/domain/entities/notification_client_entity.dart';
+import '../../../notification_client/domain/usecases/get_all_notification_clients.dart';
+import '../../../notification_client/presentation/providers/notification_client_provider.dart';
 import '../../domain/entities/garden_entity.dart';
 import '../../domain/usecases/get_all_gardens.dart';
 import '../providers/garden_provider.dart';
+import 'create_garden_screen.dart';
 
 class EditGardenScreen extends ConsumerStatefulWidget {
   final String gardenId;
@@ -36,10 +40,16 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
   // We use lists of TextEditingControllers to manage the state of each input field.
   final List<TextEditingController> _valveControllers = [];
   final List<TextEditingController> _pumpControllers = [];
+  late final TextEditingController _downtimeController;
 
   // Local State
   int? _lsDuration;
   bool isSensorEnabled = true;
+  String? _selectedNCId;
+  bool _notifyOnStartup = true;
+  bool _notifyOnLightSchedule = true;
+  bool _notifyOnWateringStarted = true;
+  bool _notifyOnWateringCompleted = true;
 
   // Data Sources
   late final List<int> _durationHours;
@@ -55,6 +65,7 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
     _lightPinController = TextEditingController();
     _sensorPinController = TextEditingController();
     _intervalController = TextEditingController();
+    _downtimeController = TextEditingController();
 
     // Generate hours 1-24 once
     _durationHours = List.generate(24, (index) => index + 1);
@@ -62,6 +73,9 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
       await ref
           .read(gardenProvider.notifier)
           .getGardenById(id: widget.gardenId);
+      await ref
+          .read(notiClientProvider.notifier)
+          .getAllNotificationClients(GetAllNotificationClientsParams());
       final gardenState = ref.read(gardenProvider);
       final garden = gardenState.garden;
       if (garden != null) {
@@ -84,6 +98,21 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
           }
           _lightPinController.text =
               garden.controllerConfig?.lightPin?.toString() ?? '';
+        }
+
+        // Notification
+        _selectedNCId = garden.notificationClient?.id;
+        final settings = garden.notificationSettings;
+        if (settings != null) {
+          _notifyOnStartup = settings.controllerStartup ?? false;
+          _notifyOnLightSchedule = settings.lightSchedule ?? false;
+          _notifyOnWateringStarted = settings.wateringStarted ?? false;
+          _notifyOnWateringCompleted = settings.wateringCompleted ?? false;
+          if (settings.downtimeMs != null) {
+            _downtimeController.text = AppUtils.msToDurationString(
+              settings.downtimeMs,
+            );
+          }
         }
         // Sensor
         if (garden.controllerConfig?.tempHumidityPin != null) {
@@ -119,7 +148,7 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
     _maxZonesController.dispose();
     _hourController.dispose();
     _minuteController.dispose();
-    // Always dispose controllers to free memory
+    _downtimeController.dispose();
     for (var controller in _valveControllers) {
       controller.dispose();
     }
@@ -165,6 +194,18 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
                     startTime: startTime,
                   )
                 : null,
+            notificationClient: _selectedNCId != null
+                ? NotificationClientEntity(id: _selectedNCId)
+                : null,
+            notificationSettings: NotificationSettingEntity(
+              controllerStartup: _notifyOnStartup,
+              lightSchedule: _notifyOnLightSchedule,
+              wateringStarted: _notifyOnWateringStarted,
+              wateringCompleted: _notifyOnWateringCompleted,
+              downtimeMs: _downtimeController.text.trim().isEmpty
+                  ? null
+                  : AppUtils.durationToMs(_downtimeController.text),
+            ),
             controllerConfig:
                 _lightPinController.text.trim().isNotEmpty ||
                     isSensorEnabled ||
@@ -367,6 +408,106 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Notification',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    LabeledInput(
+                      label: 'Client',
+                      child: DropdownButtonFormField<String>(
+                        menuMaxHeight: MediaQuery.sizeOf(context).height * 0.5,
+                        value: _selectedNCId,
+                        items: ref
+                            .watch(notiClientProvider)
+                            .notiClients
+                            .map(
+                              (i) => DropdownMenuItem(
+                                value: i.id,
+                                child: Text(i.name ?? ''),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() => _selectedNCId = value);
+                        },
+                        decoration: const InputDecoration(
+                          hintText: 'Select client',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const LabeledInput(
+                      label: 'Settings',
+                      child: SizedBox.shrink(),
+                    ),
+                    ListView(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      children: [
+                        NotificationSettingSwitch(
+                          title: 'Controller startup',
+                          description:
+                              'Notify when the controller starts up and connects',
+                          value: _notifyOnStartup,
+                          onChanged: (value) {
+                            setState(() {
+                              _notifyOnStartup = value;
+                            });
+                          },
+                        ),
+                        NotificationSettingSwitch(
+                          title: 'Light schedule',
+                          description:
+                              'Notify when the Garden\'s light is turned on or off by the schedule',
+                          value: _notifyOnLightSchedule,
+                          onChanged: (value) {
+                            setState(() {
+                              _notifyOnLightSchedule = value;
+                            });
+                          },
+                        ),
+                        NotificationSettingSwitch(
+                          title: 'Watering started',
+                          description:
+                              'Notify when a controller starts watering',
+                          value: _notifyOnWateringStarted,
+                          onChanged: (value) {
+                            setState(() {
+                              _notifyOnWateringStarted = value;
+                            });
+                          },
+                        ),
+                        NotificationSettingSwitch(
+                          title: 'Watering completed',
+                          description:
+                              'Notify when a controller completes watering',
+                          value: _notifyOnWateringCompleted,
+                          onChanged: (value) {
+                            setState(() {
+                              _notifyOnWateringCompleted = value;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    LabeledInput(
+                      label: 'Downtime notification',
+                      hintText:
+                          'Notify when the controller fails to publish health checks for the specified duration',
+                      child: TextFormField(
+                        controller: _downtimeController,
+                        decoration: const InputDecoration(hintText: 'e.g., 5m'),
+                        validator: AppValidators.durationFormat,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     const Text(

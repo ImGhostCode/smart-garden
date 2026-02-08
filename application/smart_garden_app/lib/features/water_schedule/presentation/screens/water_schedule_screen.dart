@@ -87,6 +87,16 @@ class _WaterScheduleScreenState extends ConsumerState<WaterScheduleScreen> {
                 leadingWidth: 120,
                 actions: [
                   IconButton.filled(
+                    onPressed: () {
+                      context.goNotificationClients();
+                    },
+                    icon: const Icon(Icons.notification_add_rounded),
+                    color: AppColors.primary,
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppColors.primary100,
+                    ),
+                  ),
+                  IconButton.filled(
                     onPressed: () {},
                     icon: const Icon(Icons.notifications_rounded),
                     color: AppColors.primary,

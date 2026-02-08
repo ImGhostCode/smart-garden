@@ -108,6 +108,19 @@ class GardenRemoteDataSourceImpl implements GardenRemoteDataSource {
               'duration_ms': garden.lightSchedule!.durationMs,
               'start_time': garden.lightSchedule!.startTime,
             },
+          if (garden.notificationClient != null)
+            'notification_client_id': garden.notificationClient!.id,
+          if (garden.notificationSettings != null)
+            'notification_settings': {
+              'controller_startup':
+                  garden.notificationSettings!.controllerStartup,
+              'light_schedule': garden.notificationSettings!.lightSchedule,
+              'watering_started': garden.notificationSettings!.wateringStarted,
+              'watering_completed':
+                  garden.notificationSettings!.wateringCompleted,
+              if (garden.notificationSettings!.downtimeMs != null)
+                'downtime_ms': garden.notificationSettings!.downtimeMs,
+            },
         },
       );
 
@@ -155,6 +168,19 @@ class GardenRemoteDataSourceImpl implements GardenRemoteDataSource {
               if (garden.controllerConfig!.tempHumidityPin != null)
                 'temp_hum_interval_ms':
                     garden.controllerConfig!.tempHumIntervalMs,
+            },
+          if (garden.notificationClient != null)
+            'notification_client_id': garden.notificationClient!.id,
+          if (garden.notificationSettings != null)
+            'notification_settings': {
+              'controller_startup':
+                  garden.notificationSettings!.controllerStartup,
+              'light_schedule': garden.notificationSettings!.lightSchedule,
+              'watering_started': garden.notificationSettings!.wateringStarted,
+              'watering_completed':
+                  garden.notificationSettings!.wateringCompleted,
+              if (garden.notificationSettings!.downtimeMs != null)
+                'downtime_ms': garden.notificationSettings!.downtimeMs,
             },
         },
       );
@@ -204,6 +230,8 @@ class GardenRemoteDataSourceImpl implements GardenRemoteDataSource {
                 'for_duration_ms': params.light!.forDuration,
             },
           if (params.stop != null) 'stop': {'all': params.stop!.all},
+          if (params.update != null)
+            'update': {'config': params.update!.config},
         },
       );
       return ApiResponse<void>.fromJson(response, (data) {});

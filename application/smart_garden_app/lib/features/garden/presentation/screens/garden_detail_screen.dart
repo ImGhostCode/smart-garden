@@ -255,6 +255,16 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
                                 ),
                               );
                         },
+                        onUpdateConfig: () {
+                          ref
+                              .read(gardenProvider.notifier)
+                              .sendGardenAction(
+                                GardenActionParams(
+                                  gardenId: gardenState.garden!.id,
+                                  update: UpdateAction(config: true),
+                                ),
+                              );
+                        },
                       );
                     },
               child: const Text('ACTIONS'),
@@ -296,46 +306,50 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
           ),
           const SizedBox(width: 12),
 
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                garden.name ?? '',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  garden.name ?? '',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                "Topic prefix: ${garden.topicPrefix}",
-                style: TextStyle(color: Colors.grey.shade700),
-              ),
+                const SizedBox(height: 2),
+                Text(
+                  "Topic prefix: ${garden.topicPrefix}",
+                  style: TextStyle(color: Colors.grey.shade700),
+                ),
 
-              Row(
-                children: [
-                  Text(
-                    "Status: ${garden.health?.status == 'UP' ? 'Online' : "Offline"}",
-                    style: const TextStyle(color: Colors.black87),
-                  ),
-                  const SizedBox(width: 4),
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: garden.health?.status == 'UP'
-                          ? Colors.green
-                          : Colors.grey,
-                      shape: BoxShape.circle,
+                Row(
+                  children: [
+                    Text(
+                      "Status: ${garden.health?.status == 'UP' ? 'Online' : "Offline"}",
+                      style: const TextStyle(color: Colors.black87),
                     ),
-                  ),
-                ],
-              ),
-              Text(
-                "Max zone: ${garden.maxZones}",
-                style: const TextStyle(color: Colors.black87),
-              ),
-            ],
+                    const SizedBox(width: 4),
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: garden.health?.status == 'UP'
+                            ? Colors.green
+                            : Colors.grey,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  "Max zone: ${garden.maxZones}",
+                  style: const TextStyle(color: Colors.black87),
+                ),
+              ],
+            ),
           ),
         ],
       ),

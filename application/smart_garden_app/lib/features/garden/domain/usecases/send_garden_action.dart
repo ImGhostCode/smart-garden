@@ -24,8 +24,9 @@ class GardenActionParams {
   final String? gardenId;
   final LightAction? light;
   final StopAction? stop;
+  final UpdateAction? update;
 
-  GardenActionParams({this.gardenId, this.light, this.stop});
+  GardenActionParams({this.gardenId, this.light, this.stop, this.update});
 }
 
 class LightAction {
@@ -39,4 +40,10 @@ class StopAction {
   final bool? all;
 
   StopAction({this.all});
+}
+
+class UpdateAction {
+  final bool? config;
+
+  UpdateAction({this.config});
 }

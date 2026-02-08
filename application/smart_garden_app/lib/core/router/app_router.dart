@@ -7,6 +7,7 @@ import '../../features/garden/presentation/screens/create_garden_screen.dart';
 import '../../features/garden/presentation/screens/garden_detail_screen.dart';
 import '../../features/home/presentation/screens/app_skeleton.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
+import '../../features/notification_client/presentation/screens/notification_client_screen.dart';
 import '../../features/onboarding/presentation/providers/onboarding_provider.dart';
 import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/onboarding/presentation/screens/splash_screen.dart';
@@ -99,6 +100,15 @@ final routerProvider = Provider<GoRouter>((ref) {
               child: const WeatherClientScreen(),
             ),
             routes: AppRoutes.wcSubRoutes,
+          ),
+          GoRoute(
+            path: AppConstants.notificationClientRoute,
+            name: RouteNames.notificationClients,
+            pageBuilder: (context, state) => fadeTransitionPage(
+              key: state.pageKey,
+              child: const NotificationClientScreen(),
+            ),
+            routes: AppRoutes.ncSubRoutes,
           ),
           GoRoute(
             path: AppConstants.waterRoutineRoute,

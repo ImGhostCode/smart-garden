@@ -8,6 +8,9 @@ import '../../../../core/ui/inputs/app_labeled_input.dart';
 import '../../../../core/utils/app_utils.dart';
 import '../../../../core/utils/app_validators.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
+import '../../../notification_client/domain/entities/notification_client_entity.dart';
+import '../../../notification_client/domain/usecases/get_all_notification_clients.dart';
+import '../../../notification_client/presentation/providers/notification_client_provider.dart';
 import '../../domain/entities/garden_entity.dart';
 import '../../domain/usecases/get_all_gardens.dart';
 import '../providers/garden_provider.dart';
@@ -28,6 +31,7 @@ class _CreateGardenScreenState extends ConsumerState<CreateGardenScreen> {
   late final TextEditingController _maxZonesController;
   late final TextEditingController _hourController;
   late final TextEditingController _minuteController;
+  late final TextEditingController _downtimeController;
 
   // Local State
   String? _lsDuration;
@@ -35,14 +39,26 @@ class _CreateGardenScreenState extends ConsumerState<CreateGardenScreen> {
   // Data Sources
   late final List<int> _durationHours;
 
+  String? _selectedNCId;
+  bool _notifyOnStartup = true;
+  bool _notifyOnLightSchedule = true;
+  bool _notifyOnWateringStarted = true;
+  bool _notifyOnWateringCompleted = true;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref
+          .read(notiClientProvider.notifier)
+          .getAllNotificationClients(GetAllNotificationClientsParams());
+    });
     _nameController = TextEditingController();
     _topicPrefixController = TextEditingController();
     _maxZonesController = TextEditingController();
     _hourController = TextEditingController();
     _minuteController = TextEditingController();
+    _downtimeController = TextEditingController();
 
     // Generate hours 1-24 once
     _durationHours = List.generate(24, (index) => index + 1);
@@ -55,6 +71,7 @@ class _CreateGardenScreenState extends ConsumerState<CreateGardenScreen> {
     _maxZonesController.dispose();
     _hourController.dispose();
     _minuteController.dispose();
+    _downtimeController.dispose();
     EasyLoading.dismiss();
     super.dispose();
   }
@@ -78,6 +95,18 @@ class _CreateGardenScreenState extends ConsumerState<CreateGardenScreen> {
                     startTime: startTime,
                   )
                 : null,
+            notificationClient: _selectedNCId != null
+                ? NotificationClientEntity(id: _selectedNCId)
+                : null,
+            notificationSettings: NotificationSettingEntity(
+              controllerStartup: _notifyOnStartup,
+              lightSchedule: _notifyOnLightSchedule,
+              wateringStarted: _notifyOnWateringStarted,
+              wateringCompleted: _notifyOnWateringCompleted,
+              downtimeMs: _downtimeController.text.trim().isEmpty
+                  ? null
+                  : AppUtils.durationToMs(_downtimeController.text.trim()),
+            ),
           ),
         );
   }
@@ -217,6 +246,98 @@ class _CreateGardenScreenState extends ConsumerState<CreateGardenScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Notification',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+                const SizedBox(height: 8),
+                LabeledInput(
+                  label: 'Client',
+                  child: DropdownButtonFormField<String>(
+                    menuMaxHeight: MediaQuery.sizeOf(context).height * 0.5,
+                    items: ref
+                        .watch(notiClientProvider)
+                        .notiClients
+                        .map(
+                          (i) => DropdownMenuItem(
+                            value: i.id,
+                            child: Text(i.name ?? ''),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() => _selectedNCId = value);
+                    },
+                    decoration: const InputDecoration(
+                      hintText: 'Select client',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const LabeledInput(label: 'Settings', child: SizedBox.shrink()),
+                ListView(
+                  padding: EdgeInsets.zero,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    NotificationSettingSwitch(
+                      title: 'Controller startup',
+                      description:
+                          'Notify when the controller starts up and connects',
+                      value: _notifyOnStartup,
+                      onChanged: (value) {
+                        setState(() {
+                          _notifyOnStartup = value;
+                        });
+                      },
+                    ),
+                    NotificationSettingSwitch(
+                      title: 'Light schedule',
+                      description:
+                          'Notify when the Garden\'s light is turned on or off by the schedule',
+                      value: _notifyOnLightSchedule,
+                      onChanged: (value) {
+                        setState(() {
+                          _notifyOnLightSchedule = value;
+                        });
+                      },
+                    ),
+                    NotificationSettingSwitch(
+                      title: 'Watering started',
+                      description: 'Notify when a controller starts watering',
+                      value: _notifyOnWateringStarted,
+                      onChanged: (value) {
+                        setState(() {
+                          _notifyOnWateringStarted = value;
+                        });
+                      },
+                    ),
+                    NotificationSettingSwitch(
+                      title: 'Watering completed',
+                      description:
+                          'Notify when a controller completes watering',
+                      value: _notifyOnWateringCompleted,
+                      onChanged: (value) {
+                        setState(() {
+                          _notifyOnWateringCompleted = value;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                LabeledInput(
+                  label: 'Downtime notification',
+                  hintText:
+                      'Notify when the controller fails to publish health checks for the specified duration',
+                  child: TextFormField(
+                    controller: _downtimeController,
+                    decoration: const InputDecoration(hintText: 'e.g., 5m'),
+                    validator: AppValidators.durationFormat,
+                  ),
+                ),
                 const SizedBox(height: 150),
               ],
             ),
@@ -237,6 +358,35 @@ class _CreateGardenScreenState extends ConsumerState<CreateGardenScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class NotificationSettingSwitch extends StatelessWidget {
+  const NotificationSettingSwitch({
+    super.key,
+    required this.title,
+    required this.description,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String title;
+  final String description;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SwitchListTile(
+      title: Text(title),
+      subtitle: Text(description),
+      value: value,
+      onChanged: onChanged,
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: AppConstants.paddingMd,
+      ),
+      activeColor: Colors.green,
     );
   }
 }

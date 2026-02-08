@@ -3,6 +3,8 @@
 
 import 'package:equatable/equatable.dart';
 
+import '../../../notification_client/domain/entities/notification_client_entity.dart';
+
 class GardenEntity extends Equatable {
   final String? id;
   final String? name;
@@ -16,6 +18,8 @@ class GardenEntity extends Equatable {
   final TempHumDataEntity? tempHumData;
   final int? numPlants;
   final int? numZones;
+  final NotificationClientEntity? notificationClient;
+  final NotificationSettingEntity? notificationSettings;
 
   const GardenEntity({
     this.id,
@@ -30,6 +34,8 @@ class GardenEntity extends Equatable {
     this.tempHumData,
     this.numPlants,
     this.numZones,
+    this.notificationClient,
+    this.notificationSettings,
   });
 
   @override
@@ -46,6 +52,8 @@ class GardenEntity extends Equatable {
     tempHumData,
     numPlants,
     numZones,
+    notificationSettings,
+    notificationClient,
   ];
 }
 
@@ -113,4 +121,29 @@ class TempHumDataEntity extends Equatable {
 
   @override
   List<Object?> get props => [temperatureCelsius, humidityPercentage];
+}
+
+class NotificationSettingEntity extends Equatable {
+  final bool? controllerStartup;
+  final bool? lightSchedule;
+  final bool? wateringStarted;
+  final bool? wateringCompleted;
+  final int? downtimeMs;
+
+  const NotificationSettingEntity({
+    this.controllerStartup,
+    this.lightSchedule,
+    this.wateringStarted,
+    this.wateringCompleted,
+    this.downtimeMs,
+  });
+
+  @override
+  List<Object?> get props => [
+    controllerStartup,
+    lightSchedule,
+    wateringStarted,
+    wateringCompleted,
+    downtimeMs,
+  ];
 }

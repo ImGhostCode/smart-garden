@@ -131,6 +131,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 actions: [
                   IconButton.filled(
+                    onPressed: () {
+                      context.goNotificationClients();
+                    },
+                    icon: const Icon(Icons.notification_add_rounded),
+                    color: AppColors.primary,
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppColors.primary100,
+                    ),
+                  ),
+                  IconButton.filled(
                     onPressed: () {},
                     icon: const Icon(Icons.notifications_rounded),
                     color: AppColors.primary,
@@ -350,7 +360,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: _buildStatCard(
                   context,
                   'Next Light Action',
-                  garden.nextLightAction?.action == "OFF" ? "ON" : "OFF",
+                  garden.nextLightAction?.action ?? '',
                   Icons.lightbulb_outline,
                   Colors.teal,
                 ),
@@ -522,6 +532,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         );
                   },
+                  onUpdateConfig: () {
+                    ref
+                        .read(gardenProvider.notifier)
+                        .sendGardenAction(
+                          GardenActionParams(
+                            gardenId: garden.id,
+                            update: UpdateAction(config: true),
+                          ),
+                        );
+                  },
                 );
               },
               child: const Text('ACTIONS'),
@@ -553,6 +573,7 @@ void showGardenActions({
   required GardenEntity garden,
   required Function(bool) onToggleLight,
   required VoidCallback onStopAll,
+  required VoidCallback onUpdateConfig,
 }) {
   showModalBottomSheet(
     useRootNavigator: true,
@@ -654,6 +675,34 @@ void showGardenActions({
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.error, // Màu đỏ/cam nhạt
+              ),
+            ),
+          ),
+          const Divider(),
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppConstants.paddingMd,
+            ),
+            title: const Text(
+              'Configuration',
+              style: TextStyle(
+                color: AppColors.primary700,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            trailing: ElevatedButton.icon(
+              onPressed: onUpdateConfig,
+              icon: const Icon(
+                Icons.upload_rounded,
+                size: AppConstants.iconMd,
+                color: Colors.white,
+              ),
+              label: const Text(
+                'Update',
+                style: TextStyle(color: Colors.white),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
               ),
             ),
           ),
