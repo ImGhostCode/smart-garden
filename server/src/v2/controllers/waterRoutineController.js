@@ -194,7 +194,9 @@ const WaterRoutineController = {
                     continue;
                 }
                 const cronScheduler = require('../services/cronScheduler');
-                await cronScheduler.executeWaterAction(garden, zone, step.duration_ms, "water_routine");
+                cronScheduler.executeWaterAction(garden, zone, step.duration_ms, "water_routine").catch(error => {
+                    console.error(`Error executing water action for Garden ${garden._id}, Zone ${zone._id}:`, error);
+                });
             }
             return res.status(202).json(new ApiSuccess(202, 'Water routine execution started', null));
         } catch (error) {

@@ -19,9 +19,7 @@ const GardensController = {
             // Get plant and zone counts for each garden
             const gardensWithCounts = await Promise.all(
                 gardens.map(async (garden) => {
-                    const [plantsCount, zonesCount,
-                        health, temHumData, nextOnTime, nextOffTime
-                    ] = await Promise.all([
+                    const [plantsCount, zonesCount, health, temHumData] = await Promise.all([
                         db.plants.getByGardenId(garden.id).then(plants =>
                             plants.filter(p => !p.end_date).length
                         ),
@@ -30,9 +28,10 @@ const GardensController = {
                         ),
                         gardenService.getGardenHealth(garden),
                         influxdbService.getTemperatureAndHumidity(garden.topic_prefix).then(data => data),
-                        cronScheduler.getNextLightTime(garden, 'ON'),
-                        cronScheduler.getNextLightTime(garden, 'OFF')
+
                     ]);
+                    const nextOnTime = cronScheduler.getNextLightTime(garden, 'ON');
+                    const nextOffTime = cronScheduler.getNextLightTime(garden, 'OFF');
 
                     const formattedGarden = formatGardenResponse(garden, req);
                     formattedGarden.health = health;
@@ -113,23 +112,7 @@ const GardensController = {
 
             const savedGarden = await db.gardens.create({ data: newGarden, notification: true });
 
-            // Sent config to garden controller via MQTT
-            if (controller_config) {
-                try {
-                    await mqttService.sendUpdateAction(savedGarden, controller_config);
-                } catch (mqttError) {
-                    console.error('MQTT error sending initial config:', mqttError);
-                    // Proceed without failing the request
-                }
-            }
-            if (light_schedule) {
-                try {
-                    await cronScheduler.scheduleLightActions(savedGarden);
-                } catch (scheduleError) {
-                    console.error('Scheduling light error:', scheduleError);
-                }
-            }
-
+            cronScheduler.scheduleLightActions(savedGarden);
             // Format and return the response
             const formattedGarden = formatGardenResponse(savedGarden, req);
             formattedGarden.num_plants = 0;
@@ -152,8 +135,7 @@ const GardensController = {
             }
 
             // Get plant and zone counts
-            const [plantsCount, zonesCount, health, temHumData, nextOnTime, nextOffTime
-            ] = await Promise.all([
+            const [plantsCount, zonesCount, health, temHumData] = await Promise.all([
                 db.plants.getByGardenId(gardenID).then(plants =>
                     plants.filter(p => !p.end_date).length
                 ),
@@ -162,9 +144,9 @@ const GardensController = {
                 ),
                 gardenService.getGardenHealth(garden),
                 influxdbService.getTemperatureAndHumidity(garden.topic_prefix).then(data => data),
-                cronScheduler.getNextLightTime(garden, 'ON'),
-                cronScheduler.getNextLightTime(garden, 'OFF')
             ]);
+            const nextOnTime = cronScheduler.getNextLightTime(garden, 'ON');
+            const nextOffTime = cronScheduler.getNextLightTime(garden, 'OFF');
 
             // Format response with HATEOAS links and counts
             const formattedGarden = formatGardenResponse(garden, req);
@@ -294,27 +276,16 @@ const GardensController = {
                 throw new ApiError(404, 'Garden not found');
             }
 
-            if (controller_config) {
-                try {
-                    await mqttService.sendUpdateAction(updatedGarden, controller_config);
-                } catch (mqttError) {
-                    console.error('MQTT error sending initial config:', mqttError);
-                }
-            }
 
             if (light_schedule) {
-                if (light_schedule) {
-                    await cronScheduler.scheduleLightActions(updatedGarden);
-                } else {
-                    // If LightSchedule is set to null, remove the scheduled Jobs
-                    cronScheduler.removeLightJobsByGardenId(updatedGarden._id.toString());
-                }
+                cronScheduler.scheduleLightActions(updatedGarden);
+            } else {
+                // If LightSchedule is set to null, remove the scheduled Jobs
+                cronScheduler.removeLightJobsByGardenId(updatedGarden._id.toString());
             }
 
             // Get plant and zone counts
-            const [plantsCount, zonesCount, health
-                , nextOnTime, nextOffTime
-            ] = await Promise.all([
+            const [plantsCount, zonesCount, health] = await Promise.all([
                 db.plants.getByGardenId(gardenID).then(plants =>
                     plants.filter(p => !p.end_date).length
                 ),
@@ -322,9 +293,10 @@ const GardensController = {
                     zones.filter(z => !z.end_date).length
                 ),
                 gardenService.getGardenHealth(updatedGarden),
-                cronScheduler.getNextLightTime(updatedGarden, 'ON'),
-                cronScheduler.getNextLightTime(updatedGarden, 'OFF')
             ]);
+
+            const nextOnTime = cronScheduler.getNextLightTime(updatedGarden, 'ON');
+            const nextOffTime = cronScheduler.getNextLightTime(updatedGarden, 'OFF');
 
             // Format response
             const formattedGarden = formatGardenResponse(updatedGarden, req);
@@ -371,13 +343,12 @@ const GardensController = {
                 throw new ApiError(404, 'Garden not found');
             }
 
-            const cronScheduler = require('../services/cronScheduler');
             cronScheduler.removeLightJobsByGardenId(endDatedGarden._id.toString());
 
             // Stop all watering in garden, turn off lights, pumps, etc.
-            await mqttService.sendStopAllAction(endDatedGarden, true);
-            await mqttService.sendLightAction(endDatedGarden, 'OFF');
-            // Reset device
+            gardenService.executeGardenAction(endDatedGarden, { stop: { all: true }, light: { state: 'OFF' } }).catch(err => {
+                console.error('Error executing end-date garden actions:', err);
+            });
 
             return res.json(new ApiSuccess(200, 'Garden end-dated successfully', gardenID));
 
@@ -405,54 +376,6 @@ const GardensController = {
         }
     },
 
-    // Light Schedule Management
-    scheduleLightActions: async (req, res, next) => {
-        try {
-            const { gardenID } = req.params;
-
-            // Verify garden exists and has light_schedule
-            const garden = await db.gardens.getById({ id: gardenID });
-            if (!garden) {
-                throw new ApiError(404, 'Garden not found');
-            }
-
-            if (!garden.light_schedule || !garden.light_schedule.duration_ms || !garden.light_schedule.start_time) {
-                throw new ApiError(400, 'Garden does not have a valid light schedule to schedule');
-            }
-
-            await cronScheduler.scheduleLightActions(garden);
-
-            return res.json(new ApiSuccess(200, 'Light schedule scheduled successfully', {
-                garden_id: gardenID,
-                next_light_on: cronScheduler.getNextLightTime(garden, 'ON'),
-                next_light_off: cronScheduler.getNextLightTime(garden, 'OFF')
-            }));
-        } catch (error) {
-            next(error);
-        }
-    },
-
-    resetLightSchedule: async (req, res, next) => {
-        try {
-            const { gardenID } = req.params;
-
-            // Verify garden exists
-            const garden = await db.gardens.getById({ id: gardenID });
-            if (!garden) {
-                throw new ApiError(404, 'Garden not found');
-            }
-
-            await cronScheduler.resetLightSchedule(garden);
-
-            return res.json(new ApiSuccess(200, 'Light schedule reset successfully', {
-                garden_id: gardenID,
-                next_light_on: cronScheduler.getNextLightTime(garden, 'ON'),
-                next_light_off: cronScheduler.getNextLightTime(garden, 'OFF')
-            }));
-        } catch (error) {
-            next(error);
-        }
-    },
 };
 
 module.exports = GardensController;

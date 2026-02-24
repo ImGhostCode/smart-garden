@@ -104,16 +104,12 @@ const WaterSchedulesController = {
                 weatherData = await getWeatherData(result);
             }
 
-            try {
-                // Auto-schedule the new water schedule with cron
-                await cronScheduler.scheduleWaterAction(result);
-                nextWaterDetails = await getNextWaterDetails(
-                    result,
-                    exclude_weather_data === 'true'
-                );
-            } catch (error) {
-                console.error('Error calculating next water time:', error);
-            }
+            // Auto-schedule the new water schedule with cron
+            await cronScheduler.scheduleWaterAction(result);
+            nextWaterDetails = await getNextWaterDetails(
+                result,
+                exclude_weather_data === 'true'
+            );
 
             return res.status(201).json(new ApiSuccess(201, 'Water schedule added successfully', {
                 id: result._id.toString(),
@@ -226,16 +222,12 @@ const WaterSchedulesController = {
             if (updatedSchedule.hasWeatherControl() && updatedSchedule.end_date == null && exclude_weather_data !== 'true') {
                 weatherData = await getWeatherData(updatedSchedule);
             }
-            try {
-                // Reschedule the updated water schedule with cron
-                await cronScheduler.resetWaterSchedule(updatedSchedule);
-                nextWaterDetails = await getNextWaterDetails(
-                    updatedSchedule,
-                    exclude_weather_data === 'true'
-                );
-            } catch (error) {
-                console.error('Error calculating next water time:', error);
-            }
+            // Reschedule the updated water schedule with cron
+            await cronScheduler.resetWaterSchedule(updatedSchedule);
+            nextWaterDetails = await getNextWaterDetails(
+                updatedSchedule,
+                exclude_weather_data === 'true'
+            );
 
             return res.json(new ApiSuccess(200, 'Water schedule updated successfully', {
                 id: updatedSchedule._id.toString(),
@@ -351,8 +343,12 @@ const WaterSchedulesController = {
                         const zones = await db.zones.getByGardenId(garden._id.toString());
                         for (const zone of zones) {
                             if (zone.water_schedule_ids && zone.water_schedule_ids.includes(waterScheduleID)) {
-                                await cronScheduler.executeWaterAction(garden, zone, finalDuration, 'scheduled');
-                                zonesExecuted++;
+                                try {
+                                    await cronScheduler.executeWaterAction(garden, zone, finalDuration, 'scheduled');
+                                    zonesExecuted++;
+                                } catch (error) {
+                                    console.error(`Error executing watering for zone ${zone._id.toString()}:`, error);
+                                }
                             }
                         }
                     }

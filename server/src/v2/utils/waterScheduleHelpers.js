@@ -51,6 +51,7 @@ const getNextWaterDetails = async (waterSchedule, excludeWeatherData = false) =>
             }
 
         } catch (error) {
+            result.message = "Error impacted duration scaling";
             console.error('Error applying weather scaling:', error);
         }
     }
@@ -102,38 +103,27 @@ const getNextActiveWaterSchedule = async (waterScheduleIds) => {
 const scaleWateringDuration = async (waterSchedule) => {
     let scaleFactor = 1.0;
     if (waterSchedule.hasTemperatureControl() && waterSchedule.weather_control.temperature_control.client_id != null) {
-        try {
-            const weatherClient = await db.weatherClientConfigs.getById(waterSchedule.weather_control.temperature_control.client_id);
-            if (!weatherClient) {
-                throw new Error('WeatherClient not found for TemperatureControl');
-            }
-            const avgHighTemp = await new WeatherClient(weatherClient).getAverageHighTemperature(
-                intervalToMillis(waterSchedule.interval)
-            );
-            const tempScaleFactor = waterSchedule.weather_control.temperature_control.scale(avgHighTemp);
-            scaleFactor *= tempScaleFactor;
-        } catch (error) {
-            console.error('Error getting TemperatureControl scale factor:', error);
-            // throw new Error('Failed to get TemperatureControl scale factor');
+        const weatherClient = await db.weatherClientConfigs.getById(waterSchedule.weather_control.temperature_control.client_id);
+        if (!weatherClient) {
+            throw new Error('WeatherClient not found for TemperatureControl');
         }
+        const avgHighTemp = await new WeatherClient(weatherClient).getAverageHighTemperature(
+            intervalToMillis(waterSchedule.interval)
+        );
+        const tempScaleFactor = waterSchedule.weather_control.temperature_control.scale(avgHighTemp);
+        scaleFactor *= tempScaleFactor;
     }
 
     if (waterSchedule.hasRainControl() && waterSchedule.weather_control.rain_control.client_id != null) {
-        try {
-            const weatherClient = await db.weatherClientConfigs.getById(waterSchedule.weather_control.rain_control.client_id);
-            if (!weatherClient) {
-                throw new Error('WeatherClient not found for RainControl');
-            }
-            const totalRain = await new WeatherClient(weatherClient).getTotalRain(
-                intervalToMillis(waterSchedule.interval)
-            );
-            const rainScaleFactor = waterSchedule.weather_control.rain_control.invertedScaleDownOnly(totalRain);
-            scaleFactor *= rainScaleFactor;
+        const weatherClient = await db.weatherClientConfigs.getById(waterSchedule.weather_control.rain_control.client_id);
+        if (!weatherClient) {
+            throw new Error('WeatherClient not found for RainControl');
         }
-        catch (error) {
-            console.error('Error getting RainControl scale factor:', error);
-            // throw new Error('Failed to get RainControl scale factor');
-        }
+        const totalRain = await new WeatherClient(weatherClient).getTotalRain(
+            intervalToMillis(waterSchedule.interval)
+        );
+        const rainScaleFactor = waterSchedule.weather_control.rain_control.invertedScaleDownOnly(totalRain);
+        scaleFactor *= rainScaleFactor;
     }
 
     console.log('Final scale factor:', scaleFactor);

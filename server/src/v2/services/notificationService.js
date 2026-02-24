@@ -36,31 +36,40 @@ class NotificationService {
     }
 
     async sendLightActionNotification(garden, state) {
-        if (!garden.notification_client_id) {
-            return;
+        try {
+            if (!garden.notification_client_id) {
+                return;
+            }
+            if (!garden.notification_settings || !garden.notification_settings.light_schedule) {
+                console.log("Garden does not have light_schedule notification enabled");
+                return;
+            }
+            const title = `${garden.name}: Light ${state}`;
+            await this.sendNotification(garden.notification_client_id, title, "Successfully executed LightAction");
+
+        } catch (error) {
+            console.error("Error sending light action notification:", error);
         }
-        if (!garden.notification_settings || !garden.notification_settings.light_schedule) {
-            console.log("Garden does not have light_schedule notification enabled");
-            return;
-        }
-        const title = `${garden.name}: Light ${state}`;
-        await this.sendNotification(garden.notification_client_id, title, "Successfully executed LightAction");
     }
 
     async sendDownNotification(garden, clientID, actionName) {
-        const health = await gardenService.getGardenHealth(garden);
-        if (health.status !== 'UP') {
-            const title = `${garden.name}: ${health.status}`;
-            let msg = `Attempting to execute ${actionName} Action`;
-            if (health.last_contact) {
-                msg += `, but last contact was ${new Date(health.last_contact).toISOString()}.`;
+        try {
+            const health = await gardenService.getGardenHealth(garden);
+            if (health.status !== 'UP') {
+                const title = `${garden.name}: ${health.status}`;
+                let msg = `Attempting to execute ${actionName} Action`;
+                if (health.last_contact) {
+                    msg += `, but last contact was ${new Date(health.last_contact).toISOString().substring(0, 19).replace("T", " ")}.`;
+                }
+                msg += `\nDetails: ${health.details}`;
+                await this.sendNotification(
+                    clientID,
+                    title,
+                    msg
+                );
             }
-            msg += `\nDetails: ${health.details}`;
-            await this.sendNotification(
-                clientID,
-                title,
-                msg
-            );
+        } catch (error) {
+            console.error("Error sending down notification:", error);
         }
     }
 
@@ -74,14 +83,20 @@ class NotificationService {
     }
 
     async sendNotificationForGarden(garden, title, message) {
-        if (!garden.notification_client_id) {
-            throw new Error("Garden does not have notification client");
+        try {
+            if (!garden.notification_client_id) {
+                console.log("Garden does not have notification client");
+                return;
+            }
+            const notificationClient = await db.notificationClients.getById(garden.notification_client_id);
+            if (!notificationClient) {
+                console.log("Error getting notification client", garden.notification_client_id);
+                return;
+            }
+            await notificationClient.sendMessage(title, message);
+        } catch (error) {
+            console.error("Error sending notification for garden:", error);
         }
-        const notificationClient = await db.notificationClients.getById(garden.notification_client_id);
-        if (!notificationClient) {
-            throw new Error("Error getting notification client");
-        }
-        await notificationClient.sendMessage(title, message);
     }
 
     async sendGardenStartupNotification(garden, msg) {

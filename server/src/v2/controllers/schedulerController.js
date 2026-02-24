@@ -34,18 +34,13 @@ const SchedulerController = {
             cronScheduler.stopAllJobs();
 
             // Initialize with all active schedules
-            const success = await cronScheduler.initialize();
-
-            if (success) {
-                const activeJobs = cronScheduler.getActiveJobs();
-                return res.json(new ApiSuccess(200, 'Scheduler initialized successfully', {
-                    active_jobs_count: activeJobs.length,
-                    active_jobs: activeJobs,
-                    initialized_at: new Date().toISOString()
-                }));
-            } else {
-                throw new ApiError(500, 'Failed to initialize scheduler');
-            }
+            await cronScheduler.initialize();
+            const activeJobs = cronScheduler.getActiveJobs();
+            return res.json(new ApiSuccess(200, 'Scheduler initialized successfully', {
+                active_jobs_count: activeJobs.length,
+                active_jobs: activeJobs,
+                initialized_at: new Date().toISOString()
+            }));
         } catch (error) {
             next(error);
         }
@@ -158,16 +153,20 @@ const SchedulerController = {
                 for (const zone of zones) {
                     if (zone.water_schedule_ids.includes(waterSchedule._id.toString())) {
                         // Execute immediately
-                        if (force) {
-                            // Force execution regardless of schedule
-                            await cronScheduler.executeWaterAction(
-                                garden, zone,
-                                waterSchedule.duration_ms, 'command');
-                        } else {
-                            // Execute with normal logic
-                            await cronScheduler.executeScheduledWaterAction(
-                                garden, zone,
-                                waterScheduleId);
+                        try {
+                            if (force) {
+                                // Force execution regardless of schedule
+                                await cronScheduler.executeWaterAction(
+                                    garden, zone,
+                                    waterSchedule.duration_ms, 'command');
+                            } else {
+                                // Execute with normal logic
+                                await cronScheduler.executeScheduledWaterAction(
+                                    garden, zone,
+                                    waterScheduleId);
+                            }
+                        } catch (error) {
+                            console.error(`Error triggering water schedule for Garden ${garden._id}, Zone ${zone._id}:`, error);
                         }
                     }
                 }

@@ -19,6 +19,7 @@ class FakeNotificationClient {
             throw new ApiError(400, this.config.send_message_error);
         }
         messagesSent.push({ title, message });
+        console.log(`FakeNotificationClient sent message: ${title} - ${message}`);
     }
 
     static lastMessage() {

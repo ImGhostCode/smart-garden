@@ -1,4 +1,14 @@
 const { InfluxDB, Point } = require('@influxdata/influxdb-client');
+const client = require('prom-client');
+const config = require('../config/app.config');
+const register = client.register;
+
+const influxClientDuration = new client.Summary({
+    name: `${config.metric_prefix}influxdb_client_duration_seconds`,
+    help: "summary of influxdb client calls",
+    labelNames: ["function"],
+    registers: [register],
+});
 
 /*
 Measurement: water
@@ -242,15 +252,17 @@ class InfluxDBService {
 
     // Get last contact time for garden
     async getLastContact(topicPrefix, start = '15m') {
+        const end = influxClientDuration.labels('GetLastContact').startTimer();
+
         const query = `
-      from(bucket: "${this.config.bucket}")
-      |> range(start: -${start})
-      |> filter(fn: (r) => r["_measurement"] == "health")
-      |> filter(fn: (r) => r["_field"] == "garden")
-      |> filter(fn: (r) => r["_value"] == "${topicPrefix}")
-      |> drop(columns: ["host"])
-      |> last()
-    `;
+          from(bucket: "${this.config.bucket}")
+          |> range(start: -${start})
+          |> filter(fn: (r) => r["_measurement"] == "health")
+          |> filter(fn: (r) => r["_field"] == "garden")
+          |> filter(fn: (r) => r["_value"] == "${topicPrefix}")
+          |> drop(columns: ["host"])
+          |> last()
+        `;
 
         try {
             const results = await this.queryApi.collectRows(query);
@@ -262,11 +274,14 @@ class InfluxDBService {
         } catch (error) {
             console.error('Error querying last contact:', error);
             return null;
+        } finally {
+            end();
         }
     }
 
     // Get water history for zone
     async getWaterHistory(topicPrefix, start = '24h', zoneId, limit = 5) {
+        const end = influxClientDuration.labels("GetWaterHistory").startTimer();
         const query = `
       waterCommands = from(bucket: "${this.config.bucket}")
         |> range(start: -${start})
@@ -274,6 +289,7 @@ class InfluxDBService {
         |> filter(fn: (r) => r["topic"] == "${topicPrefix}/command/water")
         |> filter(fn: (r) => r["zone_id"] == "${zoneId}")
         |> keep(columns: ["_time", "zone_id", "id", "_value", "source"])
+                |> map(fn: (r) => ({ r with _value: int(v: r._value) }))
         |> set(key: "command", value: "true")
 
       waterEvents = from(bucket: "${this.config.bucket}")
@@ -282,6 +298,7 @@ class InfluxDBService {
         |> filter(fn: (r) => r["topic"] == "${topicPrefix}/data/water")
         |> filter(fn: (r) => r["zone_id"] == "${zoneId}")
         |> keep(columns: ["_time", "zone_id", "id", "status", "_value"])
+                |> map(fn: (r) => ({ r with _value: int(v: r._value) }))
 
       union(tables: [waterCommands, waterEvents])
         |> group(columns: ["zone_id", "id"])
@@ -297,7 +314,7 @@ class InfluxDBService {
               started_at: if r.status == "started" then r._time else accumulator.started_at,
               completed_at: if r.status == "completed" then r._time else accumulator.completed_at,
             }),
-            identity: {event_id: "", zone_id: "", status: "", source: "", sent_at: time(v:0), started_at: time(v:0), completed_at: time(v:0), _value: 0}
+                        identity: {event_id: "", zone_id: "", status: "", source: "", sent_at: time(v:0), started_at: time(v:0), completed_at: time(v:0), _value: 0}
           )
         ${limit > 0 ? `|> limit(n: ${limit})` : ''}
         |> yield(name: "waterHistory")
@@ -319,11 +336,14 @@ class InfluxDBService {
         } catch (error) {
             console.error('Error querying water history:', error);
             return [];
+        } finally {
+            end();
         }
     }
 
     // Get temperature and humidity averages
     async getTemperatureAndHumidity(topicPrefix, start = '15m') {
+        const end = influxClientDuration.labels("GetTemperatureAndHumidity").startTimer();
         const query = `
       from(bucket: "${this.config.bucket}")
       |> range(start: -${start})
@@ -334,24 +354,20 @@ class InfluxDBService {
       |> mean()
     `;
 
-        try {
-            const results = await this.queryApi.collectRows(query);
-            let temperature = null;
-            let humidity = null;
+        const results = await this.queryApi.collectRows(query);
+        let temperature = null;
+        let humidity = null;
 
-            results.forEach(row => {
-                if (row._measurement === 'temperature') {
-                    temperature = row._value;
-                } else if (row._measurement === 'humidity') {
-                    humidity = row._value;
-                }
-            });
+        results.forEach(row => {
+            if (row._measurement === 'temperature') {
+                temperature = row._value;
+            } else if (row._measurement === 'humidity') {
+                humidity = row._value;
+            }
+        });
 
-            return { temperature, humidity };
-        } catch (error) {
-            console.error('Error querying temperature and humidity:', error);
-            return { temperature: null, humidity: null };
-        }
+        end();
+        return { temperature, humidity };
     }
 
     // Flush and close connections

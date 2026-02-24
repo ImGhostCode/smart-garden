@@ -61,7 +61,7 @@ Content-Type: application/json
     }
 }
 ###
-GET    {{host}}/gardens/6972f61d8513a980cefa294b
+GET    {{host}}/gardens/{{gardenId}}
 ###
 PATCH  {{host}}/gardens/6961d1f049bfbf9e55918bac
 Content-Type: application/json
@@ -178,15 +178,7 @@ Content-Type: application/json
 
 {
   "update": {
-    "config":true,
-    "controller_config": {
-      "max_zones": 2,
-      "valve_pins": [1,2],
-      "pump_pins": [3,4],
-      "light_pin": 14,
-      "temp_humidity_pin": 12,
-      "temp_hum_interval_ms": 60000
-    }
+    "config": true
   }
 }
 ###

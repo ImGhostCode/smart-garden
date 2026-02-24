@@ -369,17 +369,12 @@ const ZonesController = {
                 throw new ApiError(404, 'Garden not found');
             }
 
-            try {
-                // Handle water action
-                if (action.water && action.water.duration_ms) {
-                    const cronScheduler = require('../services/cronScheduler');
-                    await cronScheduler.executeWaterAction(garden, zone, action.water.duration_ms, "command");
-                }
-                res.status(202).json(new ApiSuccess(202, 'Zone action executed successfully'));
-            } catch (error) {
-                console.error('Error executing zone action:', error);
-                throw new ApiError(500, 'Failed to execute zone action');
+            // Handle water action
+            if (action.water && action.water.duration_ms) {
+                const cronScheduler = require('../services/cronScheduler');
+                await cronScheduler.executeWaterAction(garden, zone, action.water.duration_ms, "command");
             }
+            return res.status(202).json(new ApiSuccess(202, 'Zone action executed successfully'));
         } catch (error) {
             next(error);
         }

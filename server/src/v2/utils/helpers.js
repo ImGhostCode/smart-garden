@@ -112,6 +112,16 @@ const millisToRelativeTime = (ms) => {
   return getRelativeTime(pastDate);
 };
 
+const zoneLabels = (zone) => {
+  return { type: "zone", id: zone._id.toString() };
+}
+const gardenLabels = (garden) => {
+  return { type: "garden", id: garden._id.toString() };
+}
+const waterScheduleLabels = (waterSchedule) => {
+  return { type: "water_schedule", id: waterSchedule._id.toString() };
+}
+
 module.exports = {
   generateXid,
   createLink,
@@ -121,5 +131,8 @@ module.exports = {
   durationToSeconds,
   intervalToMillis,
   getRelativeTime,
-  millisToRelativeTime
+  millisToRelativeTime,
+  zoneLabels,
+  gardenLabels,
+  waterScheduleLabels
 };

@@ -44,29 +44,7 @@ const schemas = {
             all: Joi.boolean().optional()
         }).optional(),
         update: Joi.object({
-            config: Joi.boolean().required(),
-            controller_config: Joi.object({
-                max_zones: Joi.number().integer().min(1).required(),
-                valve_pins: Joi.array().items(Joi.number().integer().min(0).required()).required().when('max_zones', {
-                    is: Joi.number().integer().min(1),
-                    then: Joi.array().min(Joi.ref('max_zones')).max(Joi.ref('max_zones')).messages({
-                        'array.min': 'valve_pins must have at least as many pins as max_zones',
-                        'array.max': 'valve_pins cannot have more pins than max_zones'
-                    }),
-                    otherwise: Joi.forbidden()
-                }),
-                pump_pins: Joi.array().items(Joi.number().integer().min(0).required()).required().when('max_zones', {
-                    is: Joi.number().integer().min(1),
-                    then: Joi.array().min(Joi.ref('max_zones')).max(Joi.ref('max_zones')).messages({
-                        'array.min': 'pump_pins must have at least as many pins as max_zones',
-                        'array.max': 'pump_pins cannot have more pins than max_zones'
-                    }),
-                    otherwise: Joi.forbidden()
-                }),
-                light_pin: Joi.number().integer().min(0).optional(),
-                temp_humidity_pin: Joi.number().integer().min(0).optional(),
-                temp_hum_interval_ms: Joi.number().integer().min(0).optional()
-            }).required()
+            config: Joi.boolean().optional(),
         }).optional()
     }).or('light', 'stop', 'update').messages({
         'object.missing': 'Either light, stop or update action must be provided'

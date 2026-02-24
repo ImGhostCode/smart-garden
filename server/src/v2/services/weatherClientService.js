@@ -2,6 +2,17 @@ const FakeWeatherClient = require("../utils/fakeWeatherClient");
 const NetatmoClient = require("../utils/netatmoWeatherClient");
 const db = require("../models/database");
 const { ApiError } = require("../utils/apiResponse");
+const client = require('prom-client');
+const config = require('../config/app.config');
+const register = client.register;
+
+const weatherClientDuration = new client.Summary({
+    name: `${config.metric_prefix}weather_client_duration_seconds`,
+    help: "summary of weather client calls",
+    labelNames: ["function", "cached"],
+    registers: [register],
+});
+
 
 // Global cache for all WeatherClient instances
 const globalCache = new Map();
@@ -61,6 +72,8 @@ class WeatherClient {
     async getTotalRain(sinceMs) {
         const cacheKey = `total_rain_${sinceMs}_${this.config._id}`;
         const cached = this._getCache(cacheKey);
+        const end = weatherClientDuration.labels("getTotalRain", cached !== null ? true : false).startTimer();
+
         if (cached !== null) {
             this._recordMetric('getTotalRain', true);
             return cached;
@@ -69,12 +82,14 @@ class WeatherClient {
         const result = await this.client.getTotalRain(sinceMs);
         this._setCache(cacheKey, result);
         this._recordMetric('getTotalRain', false);
+        end();
         return result;
     }
 
     async getAverageHighTemperature(sinceMs) {
         const cacheKey = `avg_temp_${sinceMs}_${this.config._id}`;
         const cached = this._getCache(cacheKey);
+        const end = weatherClientDuration.labels("getAverageHighTemperature", cached !== null ? true : false).startTimer();
         if (cached !== null) {
             this._recordMetric('getAverageHighTemperature', true);
             return cached;
@@ -83,6 +98,7 @@ class WeatherClient {
         const result = await this.client.getAverageHighTemperature(sinceMs);
         this._setCache(cacheKey, result);
         this._recordMetric('getAverageHighTemperature', false);
+        end();
         return result;
     }
 

@@ -3,6 +3,7 @@ const cors = require('cors');
 require('dotenv').config();
 const errorHandler = require('./middlewares/errorHandler');
 const client = require('prom-client');
+const config = require('./config/app.config');
 
 // Import MQTT service
 const mqttService = require('./services/mqttService');
@@ -20,10 +21,11 @@ const schedulerRoutes = require('./routes/scheduler');
 const weatherClientsRoutes = require('./routes/weatherClients');
 const waterRoutineRoutes = require('./routes/waterRoutine');
 const notificationClientRoutes = require('./routes/notificationClients');
+const metricMiddleware = require('./middlewares/metricMiddleware');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const register = new client.Registry();
+const register = client.register;
 
 // Collect default metrics (CPU, memory usage, etc.)
 client.collectDefaultMetrics({ register });
@@ -32,6 +34,7 @@ client.collectDefaultMetrics({ register });
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(metricMiddleware);
 
 // Logging middleware
 if (process.env.NODE_ENV !== 'production') {
@@ -284,12 +287,11 @@ app.listen(PORT, async () => {
 
     // Initialize Cron Scheduler after database is ready
     setTimeout(async () => {
-        const cronScheduler = require('./services/cronScheduler');
-        const success = await cronScheduler.initialize();
-        if (success) {
-            console.log('✓ Cron scheduler initialized successfully');
-        } else {
-            console.error('✗ Failed to initialize cron scheduler');
+        try {
+            const cronScheduler = require('./services/cronScheduler');
+            await cronScheduler.initialize();
+        } catch (error) {
+            console.error('❌ Failed to initialize cron scheduler:', error.message);
         }
     }, 2000);
 

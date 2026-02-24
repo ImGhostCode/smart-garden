@@ -4,6 +4,8 @@ class Config {
         this.maxWaterDuration = process.env.MAX_WATER_DURATION_MS ? parseInt(process.env.MAX_WATER_DURATION_MS) : 1 * 24 * 60 * 60 * 1000; // 1 days
         this.minLightDuration = process.env.MIN_LIGHT_DURATION_MS ? parseInt(process.env.MIN_LIGHT_DURATION_MS) : 60000; // 1 minute
         this.maxLightDuration = process.env.MAX_LIGHT_DURATION_MS ? parseInt(process.env.MAX_LIGHT_DURATION_MS) : 24 * 60 * 60 * 1000; // 24 hours
+
+        this.metric_prefix = process.env.METRIC_PREFIX || 'smart_garden_server_';
     }
 }
 

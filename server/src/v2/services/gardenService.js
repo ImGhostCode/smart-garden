@@ -23,6 +23,7 @@ class GardenService {
                 details: `last contact from Garden was ${Math.floor(diffMinutes)} minutes ago`
             };
         } catch (error) {
+            console.error(`Error getting garden health for ${garden.topic_prefix}:`, error);
             return {
                 status: 'N/A',
                 details: error.message
@@ -35,21 +36,21 @@ class GardenService {
             try {
                 await this.executeLightAction(garden, action.light);
             } catch (error) {
-                throw new ApiError(error.code, `Unable to execute LightAction: ${error.message}`);
+                throw new ApiError(error.code || 500, `Unable to execute LightAction: ${error.message}`);
             }
         }
         if (action.stop) {
             try {
                 await this.executeStopAction(garden, action.stop);
             } catch (error) {
-                throw new ApiError(error.code, `Unable to execute StopAction: ${error.message}`);
+                throw new ApiError(error.code || 500, `Unable to execute StopAction: ${error.message}`);
             }
         }
         if (action.update) {
             try {
                 await this.executeUpdateAction(garden, action.update);
             } catch (error) {
-                throw new ApiError(error.code, `Unable to execute UpdateAction: ${error.message}`);
+                throw new ApiError(error.code || 500, `Unable to execute UpdateAction: ${error.message}`);
             }
         }
     }
@@ -69,8 +70,14 @@ class GardenService {
     }
 
     async executeUpdateAction(garden, update) {
+        if (!update.config) {
+            throw new ApiError(400, 'Update action must have config=true');
+        }
+        if (!garden.controller_config) {
+            throw new ApiError(400, 'Garden does not have existing controller configuration to update');
+        }
         const mqttService = require('./mqttService');
-        await mqttService.sendUpdateAction(garden, update.controller_config);
+        await mqttService.sendUpdateAction(garden, garden.controller_config);
     }
 }
 

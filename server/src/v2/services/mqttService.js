@@ -4,6 +4,17 @@ const db = require('../models/database');
 const { generateXid } = require('../utils/helpers');
 const influxDBService = require('./influxdbService');
 const notificationService = require('./notificationService');
+const client = require('prom-client');
+const config = require('../config/app.config');
+const register = client.register;
+
+const mqttClientDuration = new client.Summary({
+    name: `${config.metric_prefix}mqtt_client_duration_seconds`,
+    help: "summary of MQTT client calls",
+    labelNames: ["function", "topic"],
+    registers: [register],
+});
+
 
 class MQTTService extends EventEmitter {
     constructor() {
@@ -35,6 +46,8 @@ class MQTTService extends EventEmitter {
 
     // Connect to MQTT broker
     connect(brokerUrl = 'mqtt://localhost:1883', options = {}) {
+        const end = mqttClientDuration.labels('Connect', '').startTimer();
+
         const defaultOptions = {
             // clientId: `garden-server-${Date.now()}`,
             // clean: true,
@@ -81,7 +94,7 @@ class MQTTService extends EventEmitter {
         this.client.on('reconnect', () => {
             console.log('MQTT reconnecting...');
         });
-
+        end();
         return this;
     }
 
@@ -139,6 +152,7 @@ class MQTTService extends EventEmitter {
 
     // Publish message to a topic
     publish(topic, message, options = {}) {
+        const end = mqttClientDuration.labels('Publish', topic).startTimer();
         if (!this.isConnected) {
             console.warn('Cannot publish - MQTT not connected');
             return Promise.reject(new Error('MQTT not connected'));
@@ -155,6 +169,7 @@ class MQTTService extends EventEmitter {
                     console.log(`Published to ${topic}:`, payload);
                     resolve();
                 }
+                end();
             });
         });
     }
@@ -181,7 +196,7 @@ class MQTTService extends EventEmitter {
             }
 
             // Handle different data types
-            this.processDataMessage(garden[0], dataType, messageStr);
+            await this.processDataMessage(garden[0], dataType, messageStr);
 
         } catch (error) {
             console.error('Error handling MQTT message:', error);
@@ -201,12 +216,12 @@ class MQTTService extends EventEmitter {
     }
 
     // Process different types of data messages
-    processDataMessage(garden, dataType, message) {
+    async processDataMessage(garden, dataType, message) {
         const timestamp = new Date().toISOString();
 
         switch (dataType) {
             case 'health':
-                notificationService.handleHealthMessage(garden, message);
+                await notificationService.handleHealthMessage(garden, message);
                 break;
             // case 'temperature':
             //     this.handleTemperatureData(garden, message, timestamp);
@@ -215,13 +230,13 @@ class MQTTService extends EventEmitter {
             //     this.handleHumidityData(garden, message, timestamp);
             //     break;
             case 'water':
-                notificationService.handleWaterMessage(garden, this.parseWaterMessage(message));
+                await notificationService.handleWaterMessage(garden, this.parseWaterMessage(message));
                 break;
             // case 'light': 
             //     this.handleLightData(garden, message, timestamp);
             //     break;
             case 'logs':
-                notificationService.handleGardenStartupMessage(garden, message);
+                await notificationService.handleGardenStartupMessage(garden, message);
                 break;
             default:
                 console.log(`Unknown data type: ${dataType}`);
@@ -352,7 +367,7 @@ class MQTTService extends EventEmitter {
     }
 
     // Send light command
-    async sendLightAction(garden, state = "", forDuration = 0) {
+    async sendLightAction(garden, state, forDuration = 0) {
         const topic = `${garden.topic_prefix}${this.TOPICS.COMMANDS.LIGHT}`;
         const command = {
             "state": state, // "ON" or "OFF" or ""
