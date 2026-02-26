@@ -75,9 +75,9 @@ class _NewWaterRoutineScreenState extends ConsumerState<NewWaterRoutineScreen> {
     ref.listen(waterRoutineProvider, (previous, next) async {
       if (previous?.isCreatingWR == true && next.isCreatingWR == false) {
         if (next.errCreatingWR.isNotEmpty) {
-          EasyLoading.showError(next.errCreatingWR);
+          AppUtils.showError(next.errCreatingWR);
         } else {
-          EasyLoading.showSuccess(next.responseMsg ?? 'Water Routine created');
+          AppUtils.showSuccess(next.responseMsg ?? 'Water Routine created');
           ref
               .read(waterRoutineProvider.notifier)
               .getAllWaterRoutine(GetAllWRParams());

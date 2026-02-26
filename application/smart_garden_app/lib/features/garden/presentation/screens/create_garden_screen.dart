@@ -128,9 +128,9 @@ class _CreateGardenScreenState extends ConsumerState<CreateGardenScreen> {
       if (previous?.isCreatingGarden == true &&
           next.isCreatingGarden == false) {
         if (next.errCreatingGarden.isNotEmpty) {
-          EasyLoading.showError(next.errCreatingGarden);
+          AppUtils.showError(next.errCreatingGarden);
         } else {
-          EasyLoading.showSuccess(next.responseMsg ?? 'Garden created');
+          AppUtils.showSuccess(next.responseMsg ?? 'Garden created');
           ref.read(gardenProvider.notifier).getAllGarden(GetAllGardenParams());
           context.goBack();
         }

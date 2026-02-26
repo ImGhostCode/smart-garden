@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/ui/inputs/app_labeled_input.dart';
+import '../../../../core/utils/app_utils.dart';
 import '../../../../core/utils/app_validators.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../../garden/domain/entities/garden_entity.dart';
@@ -134,9 +135,9 @@ class _EditZoneScreenState extends ConsumerState<EditZoneScreen> {
     ref.listen(zoneProvider, (previous, next) async {
       if (previous?.isEditingZone == true && next.isEditingZone == false) {
         if (next.errEditingZone.isNotEmpty) {
-          EasyLoading.showError(next.errEditingZone);
+          AppUtils.showError(next.errEditingZone);
         } else {
-          EasyLoading.showSuccess(next.responseMsg ?? 'Zone edited');
+          AppUtils.showSuccess(next.responseMsg ?? 'Zone edited');
           ref
               .read(zoneProvider.notifier)
               .getAllZone(GetAllZoneParams(gardenId: widget.gardenId));

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/ui/inputs/app_labeled_input.dart';
+import '../../../../core/utils/app_utils.dart';
 import '../../../../core/utils/app_validators.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../../garden/domain/entities/garden_entity.dart';
@@ -111,9 +112,9 @@ class _AddZoneScreenState extends ConsumerState<AddZoneScreen> {
     ref.listen(zoneProvider, (previous, next) async {
       if (previous?.isCreatingZone == true && next.isCreatingZone == false) {
         if (next.errCreatingZone.isNotEmpty) {
-          EasyLoading.showError(next.errCreatingZone);
+          AppUtils.showError(next.errCreatingZone);
         } else {
-          EasyLoading.showSuccess(next.responseMsg ?? 'Zone created');
+          AppUtils.showSuccess(next.responseMsg ?? 'Zone created');
           ref
               .read(zoneProvider.notifier)
               .getAllZone(GetAllZoneParams(gardenId: widget.gardenId));

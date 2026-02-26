@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/assets.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_utils.dart';
 import '../../../../core/utils/extensions/build_context_extentions.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../domain/entities/plant_entity.dart';
@@ -54,9 +55,9 @@ class _PlantListScreenState extends ConsumerState<PlantListScreen> {
     ref.listen(plantProvider, (previous, next) async {
       if (previous?.isDeletingPlant == true && next.isDeletingPlant == false) {
         if (next.errDeletingPlant.isNotEmpty) {
-          EasyLoading.showError(next.errDeletingPlant);
+          AppUtils.showError(next.errDeletingPlant);
         } else {
-          EasyLoading.showSuccess(next.responseMsg ?? 'Plant deleted');
+          AppUtils.showSuccess(next.responseMsg ?? 'Plant deleted');
           // refresh list
           ref
               .read(plantProvider.notifier)
@@ -110,9 +111,9 @@ class _PlantListScreenState extends ConsumerState<PlantListScreen> {
                       EasyLoading.dismiss();
                       final state = ref.read(plantProvider);
                       if (state.errDeletingPlant.isNotEmpty) {
-                        EasyLoading.showError(state.errDeletingPlant);
+                        AppUtils.showError(state.errDeletingPlant);
                       } else {
-                        EasyLoading.showSuccess(
+                        AppUtils.showSuccess(
                           state.responseMsg ?? 'Plant deleted',
                         );
                       }

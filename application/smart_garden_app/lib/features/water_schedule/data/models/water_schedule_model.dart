@@ -1,5 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 
+import '../../../notification_client/data/models/notification_client_model.dart';
 import '../../../zone/data/models/zone_model.dart';
 import '../../domain/entities/water_schedule_entity.dart';
 
@@ -21,6 +22,7 @@ class WaterScheduleModel {
   // final List<Link>? links;
   final WeatherDataModel? weatherData;
   final NextWaterModel? nextWater;
+  final NotificationClientModel? notificationClient;
 
   WaterScheduleModel({
     this.id,
@@ -37,6 +39,7 @@ class WaterScheduleModel {
     // this.links,
     this.weatherData,
     this.nextWater,
+    this.notificationClient,
   });
 
   factory WaterScheduleModel.fromJson(Map<String, dynamic> json) =>
@@ -59,6 +62,7 @@ class WaterScheduleModel {
       updatedAt: updatedAt,
       weatherData: weatherData?.toEntity(),
       nextWater: nextWater?.toEntity(),
+      notificationClient: notificationClient?.toEntity(),
     );
   }
 
@@ -110,6 +114,9 @@ class WaterScheduleModel {
           : null,
       nextWater: entity.nextWater != null
           ? NextWaterModel.fromEntity(entity.nextWater!)
+          : null,
+      notificationClient: entity.notificationClient != null
+          ? NotificationClientModel.fromEntity(entity.notificationClient!)
           : null,
     );
   }

@@ -1,6 +1,7 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'package:equatable/equatable.dart';
 
+import '../../../notification_client/domain/entities/notification_client_entity.dart';
 import '../../../zone/domain/entities/zone_entity.dart';
 
 class WaterScheduleEntity extends Equatable {
@@ -18,6 +19,7 @@ class WaterScheduleEntity extends Equatable {
   // final List<Link>? links;
   final WeatherDataEntity? weatherData;
   final NextWaterEntity? nextWater;
+  final NotificationClientEntity? notificationClient;
 
   const WaterScheduleEntity({
     this.id,
@@ -34,6 +36,7 @@ class WaterScheduleEntity extends Equatable {
     // this.links,
     this.weatherData,
     this.nextWater,
+    this.notificationClient,
   });
 
   @override
@@ -51,6 +54,7 @@ class WaterScheduleEntity extends Equatable {
     updatedAt,
     weatherData,
     nextWater,
+    notificationClient,
   ];
 }
 
@@ -86,9 +90,9 @@ class ActivePeriodEntity extends Equatable {
 }
 
 class ControlEntity extends Equatable {
-  final int? baselineValue;
+  final double? baselineValue;
   final double? factor;
-  final int? range;
+  final double? range;
   final String? clientId;
 
   const ControlEntity({

@@ -132,6 +132,35 @@ class WaterScheduleRemoteDataSourceImpl
                 3,
               ),
             },
+          if (waterSchedule.weatherControl != null)
+            'weather_control': {
+              if (waterSchedule.weatherControl!.rainControl != null)
+                'rain_control': {
+                  'baseline_value':
+                      waterSchedule.weatherControl!.rainControl!.baselineValue,
+                  'factor': waterSchedule.weatherControl!.rainControl!.factor,
+                  'range': waterSchedule.weatherControl!.rainControl!.range,
+                  'client_id':
+                      waterSchedule.weatherControl!.rainControl!.clientId,
+                },
+              if (waterSchedule.weatherControl!.temperatureControl != null)
+                'temperature_control': {
+                  'baseline_value': waterSchedule
+                      .weatherControl!
+                      .temperatureControl!
+                      .baselineValue,
+                  'factor':
+                      waterSchedule.weatherControl!.temperatureControl!.factor,
+                  'range':
+                      waterSchedule.weatherControl!.temperatureControl!.range,
+                  'client_id': waterSchedule
+                      .weatherControl!
+                      .temperatureControl!
+                      .clientId,
+                },
+            },
+          if (waterSchedule.notificationClient != null)
+            'notification_client_id': waterSchedule.notificationClient!.id,
         },
         queryParameters: {'exclude_weather_data': true},
       );
@@ -175,6 +204,36 @@ class WaterScheduleRemoteDataSourceImpl
                 3,
               ),
             },
+
+          if (waterSchedule.weatherControl != null)
+            'weather_control': {
+              if (waterSchedule.weatherControl!.rainControl != null)
+                'rain_control': {
+                  'baseline_value':
+                      waterSchedule.weatherControl!.rainControl!.baselineValue,
+                  'factor': waterSchedule.weatherControl!.rainControl!.factor,
+                  'range': waterSchedule.weatherControl!.rainControl!.range,
+                  'client_id':
+                      waterSchedule.weatherControl!.rainControl!.clientId,
+                },
+              if (waterSchedule.weatherControl!.temperatureControl != null)
+                'temperature_control': {
+                  'baseline_value': waterSchedule
+                      .weatherControl!
+                      .temperatureControl!
+                      .baselineValue,
+                  'factor':
+                      waterSchedule.weatherControl!.temperatureControl!.factor,
+                  'range':
+                      waterSchedule.weatherControl!.temperatureControl!.range,
+                  'client_id': waterSchedule
+                      .weatherControl!
+                      .temperatureControl!
+                      .clientId,
+                },
+            },
+          if (waterSchedule.notificationClient != null)
+            'notification_client_id': waterSchedule.notificationClient!.id,
         },
         queryParameters: {'exclude_weather_data': true},
       );

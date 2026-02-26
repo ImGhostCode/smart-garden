@@ -61,9 +61,9 @@ class _WaterRoutineScreenState extends ConsumerState<WaterRoutineScreen> {
     ref.listen(waterRoutineProvider, (previous, next) async {
       if (previous?.isRunningWR == true && next.isRunningWR == false) {
         if (next.errRunningWR.isNotEmpty) {
-          EasyLoading.showError(next.errRunningWR);
+          AppUtils.showError(next.errRunningWR);
         } else {
-          EasyLoading.showSuccess(
+          AppUtils.showSuccess(
             next.responseMsg ?? 'Water Routine run successfully',
           );
           // context.goBack();
@@ -85,9 +85,9 @@ class _WaterRoutineScreenState extends ConsumerState<WaterRoutineScreen> {
     ref.listen(waterRoutineProvider, (previous, next) async {
       if (previous?.isDeletingWR == true && next.isDeletingWR == false) {
         if (next.errDeletingWR.isNotEmpty) {
-          EasyLoading.showError(next.errDeletingWR);
+          AppUtils.showError(next.errDeletingWR);
         } else {
-          EasyLoading.showSuccess(
+          AppUtils.showSuccess(
             next.responseMsg ?? 'Water Routine deleted successfully',
           );
           ref

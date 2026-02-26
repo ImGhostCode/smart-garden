@@ -173,4 +173,16 @@ class AppValidators {
     }
     return null;
   }
+
+  // Factor must be between 0 and 1
+  static String? factor(String? value, {String? fieldName = 'Factor'}) {
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+    final numValue = num.tryParse(value);
+    if (numValue == null || numValue < 0 || numValue > 1) {
+      return '${fieldName ?? 'This field'} must be between 0 and 1';
+    }
+    return null;
+  }
 }

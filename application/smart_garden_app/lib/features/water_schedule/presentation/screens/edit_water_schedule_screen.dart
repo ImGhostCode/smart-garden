@@ -8,6 +8,11 @@ import '../../../../core/ui/inputs/app_labeled_input.dart';
 import '../../../../core/utils/app_utils.dart';
 import '../../../../core/utils/app_validators.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
+import '../../../notification_client/domain/entities/notification_client_entity.dart';
+import '../../../notification_client/domain/usecases/get_all_notification_clients.dart';
+import '../../../notification_client/presentation/providers/notification_client_provider.dart';
+import '../../../weather_client/domain/usecases/get_all_weather_clients.dart';
+import '../../../weather_client/presentation/providers/weather_client_provider.dart';
 import '../../domain/entities/water_schedule_entity.dart';
 import '../../domain/usecases/get_all_water_schedules.dart';
 import '../providers/water_schedule_provider.dart';
@@ -56,6 +61,19 @@ class _EditWaterScheduleScreenState
     "December",
   ];
 
+  String? _selectedNCId;
+  // Weather control
+  String? _temperatureClientId;
+  String? _rainClientId;
+
+  late final TextEditingController _tempBaseline;
+  late final TextEditingController _tempFactor;
+  late final TextEditingController _tempRange;
+
+  late final TextEditingController _rainBaseline;
+  late final TextEditingController _rainFactor;
+  late final TextEditingController _rainRange;
+
   @override
   void initState() {
     _name = TextEditingController();
@@ -64,22 +82,58 @@ class _EditWaterScheduleScreenState
     _interval = TextEditingController();
     _hour = TextEditingController();
     _minute = TextEditingController();
+    _tempBaseline = TextEditingController();
+    _tempFactor = TextEditingController();
+    _tempRange = TextEditingController();
+    _rainBaseline = TextEditingController();
+    _rainFactor = TextEditingController();
+    _rainRange = TextEditingController();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await ref
+          .read(weatherClientProvider.notifier)
+          .getAllWeatherClients(GetAllWeatherClientsParams());
+      await ref
+          .read(notiClientProvider.notifier)
+          .getAllNotificationClients(GetAllNotificationClientsParams());
 
-    final ws = widget.ws;
-    _name.text = ws.name ?? '';
-    _description.text = ws.description ?? '';
-    _duration.text = AppUtils.msToDurationString(ws.durationMs ?? 0);
-    _interval.text = ws.interval?.toString() ?? '';
-    final utcStartTime = AppUtils.toLocalTime(ws.startTime);
-    if (utcStartTime != null && utcStartTime.isNotEmpty) {
-      final timeParts = utcStartTime.split(':');
-      if (timeParts.length >= 2) {
-        _hour.text = timeParts[0];
-        _minute.text = timeParts[1];
+      final ws = widget.ws;
+      _name.text = ws.name ?? '';
+      _description.text = ws.description ?? '';
+      _duration.text = AppUtils.msToDurationString(ws.durationMs ?? 0);
+      _interval.text = ws.interval?.toString() ?? '';
+      final utcStartTime = AppUtils.toLocalTime(ws.startTime);
+      if (utcStartTime != null && utcStartTime.isNotEmpty) {
+        final timeParts = utcStartTime.split(':');
+        if (timeParts.length >= 2) {
+          _hour.text = timeParts[0];
+          _minute.text = timeParts[1];
+        }
       }
-    }
-    _startPeriod = ws.activePeriod?.startMonth;
-    _endPeriod = ws.activePeriod?.endMonth;
+      _startPeriod = ws.activePeriod?.startMonth;
+      _endPeriod = ws.activePeriod?.endMonth;
+
+      _selectedNCId = ws.notificationClient?.id;
+
+      _temperatureClientId = ws.weatherControl?.temperatureControl?.clientId;
+      _rainClientId = ws.weatherControl?.rainControl?.clientId;
+      if (ws.weatherControl?.temperatureControl != null) {
+        _tempBaseline.text = ws
+            .weatherControl!
+            .temperatureControl!
+            .baselineValue
+            .toString();
+        _tempFactor.text = ws.weatherControl!.temperatureControl!.factor
+            .toString();
+        _tempRange.text = ws.weatherControl!.temperatureControl!.range
+            .toString();
+      }
+      if (ws.weatherControl?.rainControl != null) {
+        _rainBaseline.text = ws.weatherControl!.rainControl!.baselineValue
+            .toString();
+        _rainFactor.text = ws.weatherControl!.rainControl!.factor.toString();
+        _rainRange.text = ws.weatherControl!.rainControl!.range.toString();
+      }
+    });
     super.initState();
   }
 
@@ -91,6 +145,12 @@ class _EditWaterScheduleScreenState
     _interval.dispose();
     _hour.dispose();
     _minute.dispose();
+    _tempBaseline.dispose();
+    _tempFactor.dispose();
+    _tempRange.dispose();
+    _rainBaseline.dispose();
+    _rainFactor.dispose();
+    _rainRange.dispose();
     EasyLoading.dismiss();
     super.dispose();
   }
@@ -116,6 +176,30 @@ class _EditWaterScheduleScreenState
                     endMonth: _endPeriod!,
                   )
                 : null,
+            notificationClient: _selectedNCId != null
+                ? NotificationClientEntity(id: _selectedNCId)
+                : null,
+            weatherControl:
+                (_temperatureClientId != null || _rainClientId != null)
+                ? WeatherControlEntity(
+                    temperatureControl: _temperatureClientId != null
+                        ? ControlEntity(
+                            clientId: _temperatureClientId!,
+                            baselineValue: double.parse(_tempBaseline.text),
+                            factor: double.parse(_tempFactor.text),
+                            range: double.parse(_tempRange.text),
+                          )
+                        : null,
+                    rainControl: _rainClientId != null
+                        ? ControlEntity(
+                            clientId: _rainClientId!,
+                            baselineValue: double.parse(_rainBaseline.text),
+                            factor: double.parse(_rainFactor.text),
+                            range: double.parse(_rainRange.text),
+                          )
+                        : null,
+                  )
+                : null,
           ),
         );
   }
@@ -136,9 +220,9 @@ class _EditWaterScheduleScreenState
     ref.listen(waterScheduleProvider, (previous, next) async {
       if (previous?.isEditingWS == true && next.isEditingWS == false) {
         if (next.errEditingWS.isNotEmpty) {
-          EasyLoading.showError(next.errEditingWS);
+          AppUtils.showError(next.errEditingWS);
         } else {
-          EasyLoading.showSuccess(next.responseMsg ?? 'Water Schedule edited');
+          AppUtils.showSuccess(next.responseMsg ?? 'Water Schedule edited');
           ref
               .read(waterScheduleProvider.notifier)
               .getAllWaterSchedule(GetAllWSParams());
@@ -329,6 +413,218 @@ class _EditWaterScheduleScreenState
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Weather control',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Temperature',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+                const SizedBox(height: 6),
+                LabeledInput(
+                  label: 'Client',
+                  child: DropdownButtonFormField<String>(
+                    menuMaxHeight: MediaQuery.sizeOf(context).height * 0.5,
+                    value: _temperatureClientId,
+                    items: ref
+                        .watch(weatherClientProvider)
+                        .weatherClients
+                        .map(
+                          (i) => DropdownMenuItem(
+                            value: i.id,
+                            child: Text(i.name ?? ''),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() => _temperatureClientId = value);
+                    },
+                    decoration: const InputDecoration(
+                      hintText: 'Select client',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: LabeledInput(
+                        label: 'Baseline',
+                        child: TextFormField(
+                          decoration: const InputDecoration(
+                            // hintText: 'e.g., 1h30m',
+                            helperText: 'Đơn vị: °C',
+                          ),
+                          controller: _tempBaseline,
+                          validator: _temperatureClientId != null
+                              ? AppValidators.combine([
+                                  AppValidators.required,
+                                  AppValidators.numberOnly,
+                                ])
+                              : null,
+                          textInputAction: TextInputAction.next,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: LabeledInput(
+                        label: 'Factor',
+                        child: TextFormField(
+                          // decoration: const InputDecoration(helperText: '0 -> 1'),
+                          controller: _tempFactor,
+                          validator: _temperatureClientId != null
+                              ? AppValidators.combine([
+                                  AppValidators.required,
+                                  AppValidators.factor,
+                                ])
+                              : null,
+                          textInputAction: TextInputAction.next,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: LabeledInput(
+                        label: 'Range',
+                        child: TextFormField(
+                          decoration: const InputDecoration(
+                            helperText: 'Đơn vị: °C',
+                          ),
+                          controller: _tempRange,
+                          validator: _temperatureClientId != null
+                              ? AppValidators.combine([
+                                  AppValidators.required,
+                                  AppValidators.nonNegativeNum,
+                                ])
+                              : null,
+                          textInputAction: TextInputAction.next,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Rain',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+                const SizedBox(height: 6),
+                LabeledInput(
+                  label: 'Client',
+                  child: DropdownButtonFormField<String>(
+                    menuMaxHeight: MediaQuery.sizeOf(context).height * 0.5,
+                    value: _rainClientId,
+                    items: ref
+                        .watch(weatherClientProvider)
+                        .weatherClients
+                        .map(
+                          (i) => DropdownMenuItem(
+                            value: i.id,
+                            child: Text(i.name ?? ''),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() => _rainClientId = value);
+                    },
+                    decoration: const InputDecoration(
+                      hintText: 'Select client',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: LabeledInput(
+                        label: 'Baseline',
+                        child: TextFormField(
+                          decoration: const InputDecoration(
+                            // hintText: 'e.g., 1h30m',
+                            helperText: 'Đơn vị: mm',
+                          ),
+                          controller: _rainBaseline,
+                          validator: _rainClientId != null
+                              ? AppValidators.combine([
+                                  AppValidators.required,
+                                  AppValidators.numberOnly,
+                                ])
+                              : null,
+                          textInputAction: TextInputAction.next,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: LabeledInput(
+                        label: 'Factor',
+                        child: TextFormField(
+                          // decoration: const InputDecoration(helperText: '0 -> 1'),
+                          controller: _rainFactor,
+                          validator: _rainClientId != null
+                              ? AppValidators.combine([
+                                  AppValidators.required,
+                                  AppValidators.factor,
+                                ])
+                              : null,
+                          textInputAction: TextInputAction.next,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: LabeledInput(
+                        label: 'Range',
+                        child: TextFormField(
+                          decoration: const InputDecoration(
+                            helperText: 'Đơn vị: mm',
+                          ),
+                          controller: _rainRange,
+                          validator: _rainClientId != null
+                              ? AppValidators.combine([
+                                  AppValidators.required,
+                                  AppValidators.nonNegativeNum,
+                                ])
+                              : null,
+                          textInputAction: TextInputAction.next,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                LabeledInput(
+                  label: 'Notification Client',
+                  child: DropdownButtonFormField<String>(
+                    value: _selectedNCId,
+                    menuMaxHeight: MediaQuery.sizeOf(context).height * 0.5,
+                    items: ref
+                        .watch(notiClientProvider)
+                        .notiClients
+                        .map(
+                          (i) => DropdownMenuItem(
+                            value: i.id,
+                            child: Text(i.name ?? ''),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() => _selectedNCId = value);
+                    },
+                    decoration: const InputDecoration(
+                      hintText: 'Select client',
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 150),
               ],

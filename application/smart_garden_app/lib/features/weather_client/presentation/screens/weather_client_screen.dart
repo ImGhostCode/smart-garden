@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_utils.dart';
 import '../../../../core/utils/extensions/build_context_extentions.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../domain/entities/weather_client_entity.dart';
@@ -71,9 +72,9 @@ class _WeatherClientScreenState extends ConsumerState<WeatherClientScreen> {
     ref.listen(weatherClientProvider, (previous, next) async {
       if (previous?.isDeletingWC == true && next.isDeletingWC == false) {
         if (next.errDeletingWC.isNotEmpty) {
-          EasyLoading.showError(next.errDeletingWC);
+          AppUtils.showError(next.errDeletingWC);
         } else {
-          EasyLoading.showSuccess(next.responseMsg ?? 'Weather client deleted');
+          AppUtils.showSuccess(next.responseMsg ?? 'Weather client deleted');
           // refresh list
         }
       }

@@ -166,9 +166,9 @@ class _EditWeatherClientScreenState
     ref.listen(weatherClientProvider, (previous, next) async {
       if (previous?.isEditingWC == true && next.isEditingWC == false) {
         if (next.errEditingWC.isNotEmpty) {
-          EasyLoading.showError(next.errEditingWC);
+          AppUtils.showError(next.errEditingWC);
         } else {
-          EasyLoading.showSuccess(next.responseMsg ?? 'Weather Client edited');
+          AppUtils.showSuccess(next.responseMsg ?? 'Weather Client edited');
           ref
               .read(weatherClientProvider.notifier)
               .getAllWeatherClients(GetAllWeatherClientsParams());

@@ -87,9 +87,9 @@ class _EditWaterRoutineScreenState
     ref.listen(waterRoutineProvider, (previous, next) async {
       if (previous?.isEditingWR == true && next.isEditingWR == false) {
         if (next.errEditingWR.isNotEmpty) {
-          EasyLoading.showError(next.errEditingWR);
+          AppUtils.showError(next.errEditingWR);
         } else {
-          EasyLoading.showSuccess(next.responseMsg ?? 'Water Routine edited');
+          AppUtils.showSuccess(next.responseMsg ?? 'Water Routine edited');
           ref
               .read(waterRoutineProvider.notifier)
               .getAllWaterRoutine(GetAllWRParams());

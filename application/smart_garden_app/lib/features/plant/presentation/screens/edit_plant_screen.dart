@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/ui/inputs/app_labeled_input.dart';
+import '../../../../core/utils/app_utils.dart';
 import '../../../../core/utils/app_validators.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../../zone/domain/entities/zone_entity.dart';
@@ -115,9 +116,9 @@ class _EditPlantScreenState extends ConsumerState<EditPlantScreen> {
     ref.listen(plantProvider, (previous, next) async {
       if (previous?.isEditingPlant == true && next.isEditingPlant == false) {
         if (next.errEditingPlant.isNotEmpty) {
-          EasyLoading.showError(next.errEditingPlant);
+          AppUtils.showError(next.errEditingPlant);
         } else {
-          EasyLoading.showSuccess(next.responseMsg ?? 'Plant edited');
+          AppUtils.showSuccess(next.responseMsg ?? 'Plant edited');
           ref
               .read(plantProvider.notifier)
               .getAllPlant(

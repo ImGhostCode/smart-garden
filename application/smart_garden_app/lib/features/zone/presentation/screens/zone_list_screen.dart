@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/assets.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_utils.dart';
 import '../../../../core/utils/extensions/build_context_extentions.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../../garden/presentation/screens/garden_detail_screen.dart'
@@ -60,9 +61,9 @@ class _ZoneListScreenState extends ConsumerState<ZoneListScreen> {
     ref.listen(zoneProvider, (previous, next) async {
       if (previous?.isDeletingZone == true && next.isDeletingZone == false) {
         if (next.errDeletingZone.isNotEmpty) {
-          EasyLoading.showError(next.errDeletingZone);
+          AppUtils.showError(next.errDeletingZone);
         } else {
-          EasyLoading.showSuccess(next.responseMsg ?? 'Zone deleted');
+          AppUtils.showSuccess(next.responseMsg ?? 'Zone deleted');
           // refresh zone list
           ref
               .read(zoneProvider.notifier)

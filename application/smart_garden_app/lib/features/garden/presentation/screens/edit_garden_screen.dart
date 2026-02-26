@@ -250,9 +250,9 @@ class _EditGardenScreenState extends ConsumerState<EditGardenScreen> {
     ref.listen(gardenProvider, (previous, next) async {
       if (previous?.isEditingGarden == true && next.isEditingGarden == false) {
         if (next.errEditingGarden.isNotEmpty) {
-          EasyLoading.showError(next.errEditingGarden);
+          AppUtils.showError(next.errEditingGarden);
         } else {
-          EasyLoading.showSuccess(next.responseMsg ?? 'Garden edited');
+          AppUtils.showSuccess(next.responseMsg ?? 'Garden edited');
           ref.read(gardenProvider.notifier).getAllGarden(GetAllGardenParams());
           context.goBack();
         }

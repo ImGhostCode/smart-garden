@@ -65,9 +65,9 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
     // ref.listen(zoneProvider, (previous, next) async {
     //   if (previous?.isSendingAction == true && next.isSendingAction == false) {
     //     if (next.errSendingAction != null) {
-    //       EasyLoading.showError(next.errSendingAction ?? 'Error');
+    //       AppUtils.showError(next.errSendingAction ?? 'Error');
     //     } else {
-    //       EasyLoading.showSuccess(next.responseMsg ?? 'Zone action sent');
+    //       AppUtils.showSuccess(next.responseMsg ?? 'Zone action sent');
     //       // context.goBack();
     //     }
     //   }

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/ui/inputs/app_labeled_input.dart';
+import '../../../../core/utils/app_utils.dart';
 import '../../../../core/utils/app_validators.dart';
 import '../../../../core/utils/extensions/build_context_extentions.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
@@ -75,9 +76,9 @@ class _NotificationClientScreenState
     ref.listen(notiClientProvider, (previous, next) async {
       if (previous?.isSendingNoti == true && next.isSendingNoti == false) {
         if (next.errSendingNoti.isNotEmpty) {
-          EasyLoading.showError(next.errSendingNoti);
+          AppUtils.showError(next.errSendingNoti);
         } else {
-          EasyLoading.showSuccess(next.responseMsg ?? 'Notification sent');
+          AppUtils.showSuccess(next.responseMsg ?? 'Notification sent');
           // refresh list
         }
       }
@@ -85,9 +86,9 @@ class _NotificationClientScreenState
     ref.listen(notiClientProvider, (previous, next) async {
       if (previous?.isDeletingNC == true && next.isDeletingNC == false) {
         if (next.errDeletingNC.isNotEmpty) {
-          EasyLoading.showError(next.errDeletingNC);
+          AppUtils.showError(next.errDeletingNC);
         } else {
-          EasyLoading.showSuccess(
+          AppUtils.showSuccess(
             next.responseMsg ?? 'Notification client deleted',
           );
           ref
@@ -123,8 +124,15 @@ class _NotificationClientScreenState
                     onPressed: () {
                       context.goNewNotificationClient();
                     },
-                    // icon: const Icon(Icons.add_circle_rounded),
                     label: const Text('New'),
+                    icon: const Icon(Icons.add_circle_rounded, size: 24),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppConstants.paddingSm,
+                        vertical: AppConstants.paddingSm - 4,
+                      ),
+                    ),
                   ),
                   const SizedBox(width: AppConstants.paddingSm),
                 ],

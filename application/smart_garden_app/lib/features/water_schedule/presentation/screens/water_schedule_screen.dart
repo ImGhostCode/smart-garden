@@ -52,9 +52,9 @@ class _WaterScheduleScreenState extends ConsumerState<WaterScheduleScreen> {
     ref.listen(waterScheduleProvider, (previous, next) async {
       if (previous?.isDeletingWS == true && next.isDeletingWS == false) {
         if (next.errDeletingWS.isNotEmpty) {
-          EasyLoading.showError(next.errDeletingWS);
+          AppUtils.showError(next.errDeletingWS);
         } else {
-          EasyLoading.showSuccess(next.responseMsg ?? 'Water schedule deleted');
+          AppUtils.showSuccess(next.responseMsg ?? 'Water schedule deleted');
           // refresh list
           ref
               .read(waterScheduleProvider.notifier)

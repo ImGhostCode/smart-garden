@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/assets.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_utils.dart';
 import '../../../../core/utils/extensions/build_context_extentions.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../../garden/domain/entities/garden_entity.dart';
@@ -53,9 +54,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.listen(gardenProvider, (previous, next) async {
       if (previous?.isSendingAction == true && next.isSendingAction == false) {
         if (next.errSendingAction.isNotEmpty) {
-          EasyLoading.showError(next.errSendingAction);
+          AppUtils.showError(next.errSendingAction);
         } else {
-          EasyLoading.showSuccess(next.responseMsg ?? 'Garden action sent');
+          AppUtils.showSuccess(next.responseMsg ?? 'Garden action sent');
           context.goBack();
         }
       }
@@ -76,9 +77,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (previous?.isDeletingGarden == true &&
           next.isDeletingGarden == false) {
         if (next.errDeletingGarden.isNotEmpty) {
-          EasyLoading.showError(next.errDeletingGarden);
+          AppUtils.showError(next.errDeletingGarden);
         } else {
-          EasyLoading.showSuccess(next.responseMsg ?? 'Garden deleted');
+          AppUtils.showSuccess(next.responseMsg ?? 'Garden deleted');
           // refresh garden list
           ref.read(gardenProvider.notifier).getAllGarden(GetAllGardenParams());
           // refresh water routine list
@@ -103,9 +104,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.listen(zoneProvider, (previous, next) async {
       if (previous?.isSendingAction == true && next.isSendingAction == false) {
         if (next.errSendingAction.isNotEmpty) {
-          EasyLoading.showError(next.errSendingAction);
+          AppUtils.showError(next.errSendingAction);
         } else {
-          EasyLoading.showSuccess(next.responseMsg ?? 'Zone action sent');
+          AppUtils.showSuccess(next.responseMsg ?? 'Zone action sent');
           // context.goBack();
         }
       }

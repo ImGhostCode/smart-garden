@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/ui/inputs/app_labeled_input.dart';
+import '../../../../core/utils/app_utils.dart';
 import '../../../../core/utils/app_validators.dart';
 import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../domain/entities/notification_client_entity.dart';
@@ -104,9 +105,9 @@ class _NewNotificationClientScreenState
     ref.listen(notiClientProvider, (previous, next) async {
       if (previous?.isCreatingNC == true && next.isCreatingNC == false) {
         if (next.errCreatingNC.isNotEmpty) {
-          EasyLoading.showError(next.errCreatingNC);
+          AppUtils.showError(next.errCreatingNC);
         } else {
-          EasyLoading.showSuccess(
+          AppUtils.showSuccess(
             next.responseMsg ?? 'Notification Client created',
           );
           ref

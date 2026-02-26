@@ -1,6 +1,10 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:intl/intl.dart';
+
+import '../constants/app_constants.dart';
+import '../theme/app_colors.dart';
 
 class AppUtils {
   // Network connectivity check
@@ -100,6 +104,37 @@ class AppUtils {
     Future.delayed(duration ?? const Duration(seconds: 2), () {
       overlayEntry.remove();
     });
+  }
+
+  static Future<void> showSuccess(String? status) async {
+    EasyLoading.instance
+      ..loadingStyle = EasyLoadingStyle.custom
+      ..progressColor = Colors.white
+      ..backgroundColor = AppColors.primary
+      ..indicatorColor = Colors.white
+      ..textColor = Colors.white;
+    await EasyLoading.showSuccess(status ?? '');
+    await Future.delayed(const Duration(seconds: 2));
+    EasyLoading.instance
+      ..loadingStyle = EasyLoadingStyle.light
+      ..indicatorColor = Colors.black
+      ..textColor = Colors.black;
+  }
+
+  static Future<void> showError(String? status) async {
+    EasyLoading.instance
+      ..loadingStyle = EasyLoadingStyle.custom
+      ..progressColor = Colors.white
+      ..backgroundColor = Colors.red.shade400
+      ..indicatorColor = Colors.white
+      ..radius = AppConstants.radiusMd
+      ..textColor = Colors.white;
+    await EasyLoading.showError(status ?? '');
+    await Future.delayed(const Duration(seconds: 2));
+    EasyLoading.instance
+      ..loadingStyle = EasyLoadingStyle.light
+      ..indicatorColor = Colors.black
+      ..textColor = Colors.black;
   }
 
   // Email validation
