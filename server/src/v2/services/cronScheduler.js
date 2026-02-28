@@ -85,8 +85,8 @@ class CronScheduler {
                                 } catch (error) {
                                     schedulerErrors.inc(waterScheduleLabels(waterSchedule), 1);
                                     this.logger.error('Error executing scheduled water action:', error);
-                                    if (garden.notification_client_id) {
-                                        notificationService.sendNotification(garden.notification_client_id, `${garden.name}: Watering Action Error`, error.message).catch((err) => {
+                                    if (waterSchedule.notification_client_id) {
+                                        notificationService.sendNotification(waterSchedule.notification_client_id, `${waterSchedule.name}: Watering Action Error`, error.message).catch((err) => {
                                             this.logger.error("Error sending watering action error notification:", err)
                                         });
                                     }
@@ -163,8 +163,8 @@ class CronScheduler {
             return;
         }
 
-        if (garden.notification_client_id) {
-            notificationService.sendDownNotification(garden, garden.notification_client_id, "Water")
+        if (waterSchedule.notification_client_id) {
+            notificationService.sendDownNotification(garden, waterSchedule.notification_client_id, "Water")
         }
 
         // Execute the actual watering
