@@ -16,6 +16,7 @@ import '../../../weather_client/presentation/providers/weather_client_provider.d
 import '../../domain/entities/water_schedule_entity.dart';
 import '../../domain/usecases/get_all_water_schedules.dart';
 import '../providers/water_schedule_provider.dart';
+import '../providers/water_schedule_ui_providers.dart';
 
 class EditWaterScheduleScreen extends ConsumerStatefulWidget {
   final String scheduleId;
@@ -225,7 +226,11 @@ class _EditWaterScheduleScreenState
           AppUtils.showSuccess(next.responseMsg ?? 'Water Schedule edited');
           ref
               .read(waterScheduleProvider.notifier)
-              .getAllWaterSchedule(GetAllWSParams());
+              .getAllWaterSchedule(
+                GetAllWSParams(
+                  excludeWeatherData: ref.read(excludeWeatherProvider),
+                ),
+              );
           context.goBack();
         }
       }

@@ -91,7 +91,7 @@ class WeatherDataEntity extends Equatable {
 
 class RainEntity extends Equatable {
   final double? mm;
-  final int? scaleFactor;
+  final double? scaleFactor;
 
   const RainEntity({this.mm, this.scaleFactor});
 

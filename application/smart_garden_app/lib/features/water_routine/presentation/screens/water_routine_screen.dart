@@ -13,6 +13,7 @@ import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../domain/entities/water_routine_entity.dart';
 import '../../domain/usecases/get_all_water_routines.dart';
 import '../providers/water_routine_provider.dart';
+import '../providers/water_routine_ui_providers.dart';
 
 enum WaterRoutineAction { edit, delete }
 
@@ -25,8 +26,11 @@ class WaterRoutineScreen extends ConsumerStatefulWidget {
 }
 
 class _WaterRoutineScreenState extends ConsumerState<WaterRoutineScreen> {
+  late final TextEditingController _searchController;
+
   @override
   void initState() {
+    _searchController = TextEditingController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (ref.read(waterRoutineProvider).waterRoutines.isEmpty) {
         ref
@@ -39,6 +43,7 @@ class _WaterRoutineScreenState extends ConsumerState<WaterRoutineScreen> {
 
   @override
   void dispose() {
+    _searchController.dispose();
     EasyLoading.dismiss();
     super.dispose();
   }
@@ -46,6 +51,15 @@ class _WaterRoutineScreenState extends ConsumerState<WaterRoutineScreen> {
   @override
   Widget build(BuildContext context) {
     final waterRoutineState = ref.watch(waterRoutineProvider);
+
+    ref.listen(waterRoutineProvider.select((state) => state.waterRoutines), (
+      previous,
+      next,
+    ) {
+      if (previous?.length != next.length) {
+        ref.read(wrFilterProvider.notifier).state = '';
+      }
+    });
 
     ref.listen(waterRoutineProvider.select((state) => state.isRunningWR), (
       previousLoading,
@@ -165,21 +179,37 @@ class _WaterRoutineScreenState extends ConsumerState<WaterRoutineScreen> {
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppConstants.paddingMd,
                   ),
-                  child: SearchBar(
-                    leading: const Icon(
-                      Icons.search_rounded,
-                      color: Colors.grey,
-                    ),
-                    hintText: 'Search',
-                    trailing: [
-                      IconButton(
-                        onPressed: () {},
-                        icon: const Icon(
-                          Icons.clear_rounded,
-                          size: AppConstants.iconMd,
+                  child: Builder(
+                    builder: (context) {
+                      final searchQuery = ref.watch(wrFilterProvider);
+                      _searchController.text = searchQuery;
+                      return SearchBar(
+                        onTapOutside: (event) =>
+                            FocusScope.of(context).unfocus(),
+                        controller: _searchController,
+                        onChanged: (value) {
+                          ref.read(wrFilterProvider.notifier).state = value;
+                        },
+                        leading: const Icon(
+                          Icons.search_rounded,
+                          color: Colors.grey,
                         ),
-                      ),
-                    ],
+                        hintText: 'Search routines',
+                        trailing: [
+                          if (searchQuery.isNotEmpty)
+                            IconButton(
+                              onPressed: () {
+                                ref.read(wrFilterProvider.notifier).state = '';
+                                _searchController.clear();
+                              },
+                              icon: const Icon(
+                                Icons.clear_rounded,
+                                size: AppConstants.iconMd,
+                              ),
+                            ),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ),
@@ -212,9 +242,25 @@ class _WaterRoutineScreenState extends ConsumerState<WaterRoutineScreen> {
       );
     }
 
+    final filteredWRs = ref.watch(filteredWRProvider);
+    final searchQuery = ref.watch(wrFilterProvider);
+
+    if (filteredWRs.isEmpty) {
+      return SliverFillRemaining(
+        hasScrollBody: false,
+        child: Center(
+          child: Text(
+            searchQuery.isEmpty
+                ? 'No routines found'
+                : 'No routines match "$searchQuery"',
+          ),
+        ),
+      );
+    }
+
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
-        final wr = waterRoutineState.waterRoutines[index];
+        final wr = filteredWRs[index];
         return WaterRoutineItem(
           wr: wr,
           onRun: () {
@@ -224,7 +270,7 @@ class _WaterRoutineScreenState extends ConsumerState<WaterRoutineScreen> {
             ref.read(waterRoutineProvider.notifier).deleteWaterRoutine(wr.id!);
           },
         );
-      }, childCount: waterRoutineState.waterRoutines.length),
+      }, childCount: filteredWRs.length),
     );
   }
 }

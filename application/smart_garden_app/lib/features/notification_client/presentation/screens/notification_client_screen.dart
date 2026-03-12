@@ -13,6 +13,7 @@ import '../../domain/entities/notification_client_entity.dart';
 import '../../domain/usecases/get_all_notification_clients.dart';
 import '../../domain/usecases/send_notification.dart';
 import '../providers/notification_client_provider.dart';
+import '../providers/notification_client_ui_providers.dart';
 
 enum NotificationClientAction { edit, delete }
 
@@ -28,8 +29,11 @@ class NotificationClientScreen extends ConsumerStatefulWidget {
 
 class _NotificationClientScreenState
     extends ConsumerState<NotificationClientScreen> {
+  late final TextEditingController _searchController;
+
   @override
   void initState() {
+    _searchController = TextEditingController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (ref.read(notiClientProvider).notiClients.isEmpty) {
         ref
@@ -43,6 +47,7 @@ class _NotificationClientScreenState
 
   @override
   void dispose() {
+    _searchController.dispose();
     EasyLoading.dismiss();
     super.dispose();
   }
@@ -50,6 +55,15 @@ class _NotificationClientScreenState
   @override
   Widget build(BuildContext context) {
     final notiClientState = ref.watch(notiClientProvider);
+
+    ref.listen(notiClientProvider.select((state) => state.notiClients), (
+      previous,
+      next,
+    ) {
+      if (previous?.length != next.length) {
+        ref.read(ncFilterProvider.notifier).state = '';
+      }
+    });
 
     ref.listen(notiClientProvider.select((state) => state.isSendingNoti), (
       previousLoading,
@@ -150,21 +164,37 @@ class _NotificationClientScreenState
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppConstants.paddingMd,
                   ),
-                  child: SearchBar(
-                    leading: const Icon(
-                      Icons.search_rounded,
-                      color: Colors.grey,
-                    ),
-                    hintText: 'Search',
-                    trailing: [
-                      IconButton(
-                        onPressed: () {},
-                        icon: const Icon(
-                          Icons.clear_rounded,
-                          size: AppConstants.iconMd,
+                  child: Builder(
+                    builder: (context) {
+                      final searchQuery = ref.watch(ncFilterProvider);
+                      _searchController.text = searchQuery;
+                      return SearchBar(
+                        onTapOutside: (event) =>
+                            FocusScope.of(context).unfocus(),
+                        controller: _searchController,
+                        onChanged: (value) {
+                          ref.read(ncFilterProvider.notifier).state = value;
+                        },
+                        leading: const Icon(
+                          Icons.search_rounded,
+                          color: Colors.grey,
                         ),
-                      ),
-                    ],
+                        hintText: 'Search clients',
+                        trailing: [
+                          if (searchQuery.isNotEmpty)
+                            IconButton(
+                              onPressed: () {
+                                ref.read(ncFilterProvider.notifier).state = '';
+                                _searchController.clear();
+                              },
+                              icon: const Icon(
+                                Icons.clear_rounded,
+                                size: AppConstants.iconMd,
+                              ),
+                            ),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ),
@@ -198,9 +228,25 @@ class _NotificationClientScreenState
       );
     }
 
+    final filteredNCs = ref.watch(filteredNCProvider);
+    final searchQuery = ref.watch(ncFilterProvider);
+
+    if (filteredNCs.isEmpty) {
+      return SliverFillRemaining(
+        hasScrollBody: false,
+        child: Center(
+          child: Text(
+            searchQuery.isEmpty
+                ? 'No clients found'
+                : 'No clients match "$searchQuery"',
+          ),
+        ),
+      );
+    }
+
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
-        final nc = notiClientState.notiClients[index];
+        final nc = filteredNCs[index];
         return NotificationClientItem(
           nc: nc,
           onSend: (title, message) {
@@ -220,7 +266,7 @@ class _NotificationClientScreenState
                 .deleteNotificationClient(nc.id!);
           },
         );
-      }, childCount: notiClientState.notiClients.length),
+      }, childCount: filteredNCs.length),
     );
   }
 }

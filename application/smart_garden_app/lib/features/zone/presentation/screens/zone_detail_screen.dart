@@ -31,6 +31,8 @@ class ZoneDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _ZoneDetailScreenState extends ConsumerState<ZoneDetailScreen> {
+  List<WaterHistoryEntity> _waterHistory = [];
+  String _errLoadingWHistory = '';
   @override
   void initState() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -52,7 +54,14 @@ class _ZoneDetailScreenState extends ConsumerState<ZoneDetailScreen> {
               range: '24h',
               limit: 10,
             ),
-          );
+          )
+          .then((_) {
+            setState(() {
+              final zoneState = ref.read(zoneProvider);
+              _errLoadingWHistory = zoneState.errLoadingWHistory;
+              _waterHistory = zoneState.waterHistory;
+            });
+          });
     });
     super.initState();
   }
@@ -188,7 +197,7 @@ class _ZoneDetailScreenState extends ConsumerState<ZoneDetailScreen> {
                     ),
                     const SizedBox(height: 8),
                     _buildWeatherRow(
-                      icon: Icons.hot_tub_rounded,
+                      icon: Icons.thermostat,
                       label: "Temperature",
                       value:
                           "${zoneState.zone!.weatherData?.temperature?.celsius?.toStringAsFixed(2)}°C",
@@ -217,10 +226,12 @@ class _ZoneDetailScreenState extends ConsumerState<ZoneDetailScreen> {
 
                   // --- Water Schedules Section ---
                   if (zoneState.zone!.waterSchedules != null) ...[
-                    _buildSectionHeader(
+                    const Text(
                       "Water schedules",
-                      onTap: () {},
-                      count: zoneState.zone!.waterSchedules?.length,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     if (zoneState.zone!.waterSchedules!.isNotEmpty)
@@ -252,14 +263,19 @@ class _ZoneDetailScreenState extends ConsumerState<ZoneDetailScreen> {
                     const SizedBox(height: 8),
                   ],
                   // --- Water History Section ---
-                  _buildSectionHeader("Water History", onTap: () {}),
+                  _buildSectionHeader(
+                    "Last 24h water history",
+                    onTap: () {
+                      context.goWaterHistory(widget.gardenId, widget.zoneId);
+                    },
+                  ),
                   const SizedBox(height: 8),
                   zoneState.isLoadingWHistory
                       ? const Center(child: CircularProgressIndicator())
-                      : zoneState.errLoadingWHistory.isNotEmpty
-                      ? Center(child: Text(zoneState.errLoadingWHistory))
-                      : zoneState.waterHistory.isNotEmpty
-                      ? _buildHistoryTable(zoneState.waterHistory)
+                      : _errLoadingWHistory.isNotEmpty
+                      ? Center(child: Text(_errLoadingWHistory))
+                      : _waterHistory.isNotEmpty
+                      ? buildHistoryTable(_waterHistory)
                       : Center(
                           child: Text(
                             'No water history found',
@@ -484,121 +500,6 @@ class _ZoneDetailScreenState extends ConsumerState<ZoneDetailScreen> {
     );
   }
 
-  // --- Widget: History Table ---
-  Widget _buildHistoryTable(List<WaterHistoryEntity> waterHistory) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppConstants.radiusMd),
-        border: Border.all(color: Colors.black12),
-      ),
-      child: Column(
-        children: [
-          _buildTableHeader(),
-          ...waterHistory.map((history) {
-            return Column(
-              children: [const Divider(height: 1), _buildTableRow(history)],
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
-  // Table header
-  Widget _buildTableHeader() {
-    return const Padding(
-      padding: EdgeInsets.all(12),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 1,
-            child: Text(
-              "Source",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-          Expanded(
-            flex: 1,
-            child: Text(
-              "Duration",
-              style: TextStyle(fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          Expanded(
-            flex: 1,
-            child: Text(
-              "Status",
-              style: TextStyle(fontWeight: FontWeight.bold),
-              textAlign: TextAlign.end,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTableRow(WaterHistoryEntity history) {
-    String source = history.source ?? 'Unknown';
-    String startAt = AppUtils.utcToLocalString(history.sentAt);
-    String duration = AppUtils.msToDurationString(history.durationMs);
-    String? status = history.status ?? 'Unknown';
-    Color? statusColor;
-    switch (history.status?.toLowerCase() ?? 'unknown') {
-      case 'sent':
-        statusColor = Colors.black87;
-        break;
-      case 'started':
-        statusColor = Colors.blue;
-        break;
-      case 'completed':
-        statusColor = Colors.green;
-        break;
-      case 'failed':
-        statusColor = Colors.red;
-        break;
-      default:
-        statusColor = Colors.black87;
-    }
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: Row(
-        children: [
-          //  Source & Start
-          Expanded(
-            flex: 1,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  source,
-                  style: const TextStyle(fontWeight: FontWeight.w500),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  startAt,
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          // Duration
-          Expanded(flex: 1, child: Text(duration, textAlign: TextAlign.center)),
-          // Status
-          Expanded(
-            flex: 1,
-            child: Text(
-              status,
-              textAlign: TextAlign.end,
-              style: TextStyle(color: statusColor),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   // --- Widget: Section Header ---
   Widget _buildSectionHeader(String title, {VoidCallback? onTap, int? count}) {
     return Row(
@@ -626,6 +527,115 @@ class _ZoneDetailScreenState extends ConsumerState<ZoneDetailScreen> {
       ],
     );
   }
+}
+
+// --- Widget: History Table ---
+Widget buildHistoryTable(List<WaterHistoryEntity> waterHistory) {
+  return Container(
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(AppConstants.radiusMd),
+      border: Border.all(color: Colors.black12),
+    ),
+    child: Column(
+      children: [
+        _buildTableHeader(),
+        ...waterHistory.map((history) {
+          return Column(
+            children: [const Divider(height: 1), _buildTableRow(history)],
+          );
+        }),
+      ],
+    ),
+  );
+}
+
+// Table header
+Widget _buildTableHeader() {
+  return const Padding(
+    padding: EdgeInsets.all(12),
+    child: Row(
+      children: [
+        Expanded(
+          flex: 1,
+          child: Text("Source", style: TextStyle(fontWeight: FontWeight.bold)),
+        ),
+        Expanded(
+          flex: 1,
+          child: Text(
+            "Duration",
+            style: TextStyle(fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        Expanded(
+          flex: 1,
+          child: Text(
+            "Status",
+            style: TextStyle(fontWeight: FontWeight.bold),
+            textAlign: TextAlign.end,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildTableRow(WaterHistoryEntity history) {
+  String source = history.source ?? 'Unknown';
+  String startAt = AppUtils.utcToLocalString(history.sentAt);
+  String duration = AppUtils.msToDurationString(history.durationMs);
+  String? status = history.status ?? 'Unknown';
+  Color? statusColor;
+  switch (history.status?.toLowerCase() ?? 'unknown') {
+    case 'sent':
+      statusColor = Colors.black87;
+      break;
+    case 'started':
+      statusColor = Colors.blue;
+      break;
+    case 'completed':
+      statusColor = Colors.green;
+      break;
+    case 'failed':
+      statusColor = Colors.red;
+      break;
+    default:
+      statusColor = Colors.black87;
+  }
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    child: Row(
+      children: [
+        //  Source & Start
+        Expanded(
+          flex: 1,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(source, style: const TextStyle(fontWeight: FontWeight.w500)),
+              const SizedBox(height: 2),
+              Text(
+                startAt,
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        // Duration
+        Expanded(flex: 1, child: Text(duration, textAlign: TextAlign.center)),
+        // Status
+        Expanded(
+          flex: 1,
+          child: Text(
+            status,
+            textAlign: TextAlign.end,
+            style: TextStyle(color: statusColor),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 // --- Widget: Schedule Item ---
@@ -670,6 +680,10 @@ Widget buildScheduleItem(WaterScheduleEntity schedule) {
               _buildScheduleTag(
                 Icons.event_available,
                 '${schedule.activePeriod!.startMonth} - ${schedule.activePeriod!.endMonth}',
+                enabled: AppUtils.isInActivePeriod(
+                  schedule.activePeriod!.startMonth,
+                  schedule.activePeriod!.endMonth,
+                ),
               ),
             ],
           ],
@@ -679,11 +693,11 @@ Widget buildScheduleItem(WaterScheduleEntity schedule) {
   );
 }
 
-Widget _buildScheduleTag(IconData icon, String? text) {
+Widget _buildScheduleTag(IconData icon, String? text, {bool? enabled = true}) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
     decoration: BoxDecoration(
-      color: AppColors.primary,
+      color: enabled! ? AppColors.primary : Colors.grey.shade400,
       borderRadius: BorderRadius.circular(AppConstants.radiusMd),
     ),
     child: Row(

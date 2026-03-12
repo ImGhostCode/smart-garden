@@ -12,6 +12,7 @@ import '../../../garden/domain/entities/garden_entity.dart';
 import '../../../garden/domain/usecases/get_all_gardens.dart';
 import '../../../garden/domain/usecases/send_garden_action.dart';
 import '../../../garden/presentation/providers/garden_provider.dart';
+import '../../../garden/presentation/providers/garden_ui_providers.dart';
 import '../../../water_routine/domain/usecases/get_all_water_routines.dart';
 import '../../../water_routine/presentation/providers/water_routine_provider.dart';
 import '../../../zone/presentation/providers/zone_provider.dart';
@@ -26,13 +27,16 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  late final TextEditingController _searchController;
   @override
   void initState() {
     super.initState();
+    _searchController = TextEditingController();
   }
 
   @override
   void dispose() {
+    _searchController.dispose();
     EasyLoading.dismiss();
     super.dispose();
   }
@@ -48,6 +52,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         EasyLoading.show(status: 'Loading...');
       } else if (nextLoading == false && previousLoading == true) {
         EasyLoading.dismiss();
+      }
+    });
+
+    ref.listen(gardenProvider.select((state) => state.gardens), (
+      previous,
+      next,
+    ) {
+      if (previous?.length != next.length) {
+        ref.read(gardenFilterProvider.notifier).state = '';
       }
     });
 
@@ -173,21 +186,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppConstants.paddingMd,
                   ),
-                  child: SearchBar(
-                    leading: const Icon(
-                      Icons.search_rounded,
-                      color: Colors.grey,
-                    ),
-                    hintText: 'Search',
-                    trailing: [
-                      IconButton(
-                        onPressed: () {},
-                        icon: const Icon(
-                          Icons.clear_rounded,
-                          size: AppConstants.iconMd,
+                  child: Builder(
+                    builder: (context) {
+                      final searchQuery = ref.watch(gardenFilterProvider);
+                      _searchController.text = searchQuery;
+                      return SearchBar(
+                        onTapOutside: (event) =>
+                            FocusScope.of(context).unfocus(),
+                        controller: _searchController,
+                        onChanged: (value) {
+                          ref.read(gardenFilterProvider.notifier).state = value;
+                        },
+                        leading: const Icon(
+                          Icons.search_rounded,
+                          color: Colors.grey,
                         ),
-                      ),
-                    ],
+                        hintText: 'Search gardens',
+                        trailing: [
+                          if (searchQuery.isNotEmpty)
+                            IconButton(
+                              onPressed: () {
+                                ref.read(gardenFilterProvider.notifier).state =
+                                    '';
+                                _searchController.clear();
+                              },
+                              icon: const Icon(
+                                Icons.clear_rounded,
+                                size: AppConstants.iconMd,
+                              ),
+                            ),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ),
@@ -221,9 +251,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
     }
 
+    final filteredGardens = ref.watch(filteredGardensProvider);
+    final searchQuery = ref.watch(gardenFilterProvider);
+
+    if (filteredGardens.isEmpty) {
+      return SliverFillRemaining(
+        hasScrollBody: false,
+        child: Center(
+          child: Text(
+            searchQuery.isEmpty
+                ? 'No gardens found'
+                : 'No gardens match "$searchQuery"',
+          ),
+        ),
+      );
+    }
+
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
-        final garden = gardenState.gardens[index];
+        final garden = filteredGardens[index];
         return Container(
           margin: const EdgeInsets.only(bottom: AppConstants.paddingMd),
           child: InkWell(
@@ -246,7 +292,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
         );
-      }, childCount: gardenState.gardens.length),
+      }, childCount: filteredGardens.length),
     );
   }
 

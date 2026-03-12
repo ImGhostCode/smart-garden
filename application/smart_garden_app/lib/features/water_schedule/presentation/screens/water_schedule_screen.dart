@@ -10,6 +10,7 @@ import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../domain/entities/water_schedule_entity.dart';
 import '../../domain/usecases/get_all_water_schedules.dart';
 import '../providers/water_schedule_provider.dart';
+import '../providers/water_schedule_ui_providers.dart';
 
 enum WaterScheduleAction { edit, delete }
 
@@ -22,21 +23,43 @@ class WaterScheduleScreen extends ConsumerStatefulWidget {
 }
 
 class _WaterScheduleScreenState extends ConsumerState<WaterScheduleScreen> {
+  late final TextEditingController _searchController;
   @override
   void initState() {
+    _searchController = TextEditingController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (ref.read(waterScheduleProvider).waterSchedules.isEmpty) {
         ref
             .read(waterScheduleProvider.notifier)
-            .getAllWaterSchedule(GetAllWSParams());
+            .getAllWaterSchedule(
+              GetAllWSParams(
+                excludeWeatherData: ref.read(excludeWeatherProvider),
+              ),
+            );
       }
     });
     super.initState();
   }
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    EasyLoading.dismiss();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final waterScheduleState = ref.watch(waterScheduleProvider);
+
+    ref.listen(waterScheduleProvider.select((state) => state.waterSchedules), (
+      previous,
+      next,
+    ) {
+      if (previous?.length != next.length) {
+        ref.read(wsFilterProvider.notifier).state = '';
+      }
+    });
 
     ref.listen(waterScheduleProvider.select((state) => state.isDeletingWS), (
       previousLoading,
@@ -58,7 +81,11 @@ class _WaterScheduleScreenState extends ConsumerState<WaterScheduleScreen> {
           // refresh list
           ref
               .read(waterScheduleProvider.notifier)
-              .getAllWaterSchedule(GetAllWSParams());
+              .getAllWaterSchedule(
+                GetAllWSParams(
+                  excludeWeatherData: ref.read(excludeWeatherProvider),
+                ),
+              );
         }
       }
     });
@@ -67,7 +94,11 @@ class _WaterScheduleScreenState extends ConsumerState<WaterScheduleScreen> {
       onRefresh: () async {
         ref
             .read(waterScheduleProvider.notifier)
-            .getAllWaterSchedule(GetAllWSParams());
+            .getAllWaterSchedule(
+              GetAllWSParams(
+                excludeWeatherData: ref.read(excludeWeatherProvider),
+              ),
+            );
       },
       child: SafeArea(
         child: Scaffold(
@@ -130,20 +161,66 @@ class _WaterScheduleScreenState extends ConsumerState<WaterScheduleScreen> {
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppConstants.paddingMd,
                   ),
-                  child: SearchBar(
-                    leading: const Icon(
-                      Icons.search_rounded,
-                      color: Colors.grey,
-                    ),
-                    hintText: 'Search',
-                    trailing: [
-                      IconButton(
-                        onPressed: () {},
-                        icon: const Icon(
-                          Icons.clear_rounded,
-                          size: AppConstants.iconMd,
+                  child: Builder(
+                    builder: (context) {
+                      final searchQuery = ref.watch(wsFilterProvider);
+                      _searchController.text = searchQuery;
+                      return SearchBar(
+                        onTapOutside: (event) =>
+                            FocusScope.of(context).unfocus(),
+                        controller: _searchController,
+                        onChanged: (value) {
+                          ref.read(wsFilterProvider.notifier).state = value;
+                        },
+                        leading: const Icon(
+                          Icons.search_rounded,
+                          color: Colors.grey,
                         ),
+                        hintText: 'Search schedules',
+                        trailing: [
+                          if (searchQuery.isNotEmpty)
+                            IconButton(
+                              onPressed: () {
+                                ref.read(wsFilterProvider.notifier).state = '';
+                                _searchController.clear();
+                              },
+                              icon: const Icon(
+                                Icons.clear_rounded,
+                                size: AppConstants.iconMd,
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
+
+              // Fliter options
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 40,
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppConstants.paddingMd,
+                    ),
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      FilterChip(
+                        backgroundColor: Colors.white,
+                        label: const Text('Weather Data'),
+                        selected: !ref.read(excludeWeatherProvider),
+                        onSelected: (selected) {
+                          ref.read(excludeWeatherProvider.notifier).state =
+                              !selected;
+                          ref
+                              .read(waterScheduleProvider.notifier)
+                              .getAllWaterSchedule(
+                                GetAllWSParams(excludeWeatherData: !selected),
+                              );
+                        },
                       ),
+                      // Thêm các filter chip khác nếu cần
                     ],
                   ),
                 ),
@@ -178,10 +255,26 @@ class _WaterScheduleScreenState extends ConsumerState<WaterScheduleScreen> {
       );
     }
 
+    final filteredWSs = ref.watch(filteredWSProvider);
+    final searchQuery = ref.watch(wsFilterProvider);
+
+    if (filteredWSs.isEmpty) {
+      return SliverFillRemaining(
+        hasScrollBody: false,
+        child: Center(
+          child: Text(
+            searchQuery.isEmpty
+                ? 'No schedules found'
+                : 'No schedules match "$searchQuery"',
+          ),
+        ),
+      );
+    }
+
     // Dùng SliverList thay cho ListView để tối ưu hiệu năng (không cần shrinkWrap)
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
-        final ws = waterScheduleState.waterSchedules[index];
+        final ws = filteredWSs[index];
         return WaterScheduleItem(
           ws: ws,
           onDelete: () {
@@ -190,7 +283,7 @@ class _WaterScheduleScreenState extends ConsumerState<WaterScheduleScreen> {
                 .deleteWaterSchedule(ws.id!);
           },
         );
-      }, childCount: waterScheduleState.waterSchedules.length),
+      }, childCount: filteredWSs.length),
     );
   }
 }
@@ -210,6 +303,28 @@ class WaterScheduleItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final duration = AppUtils.msToDurationString(ws.durationMs);
     final startTime = AppUtils.to12HourFormat(ws.startTime);
+
+    final nextWaterTime = AppUtils.utcToLocalString(ws.nextWater?.time);
+    final nextWaterDuration = ws.nextWater?.durationMs != null
+        ? AppUtils.msToDurationString(ws.nextWater!.durationMs!)
+        : 'N/A';
+
+    final temp = ws.weatherData?.temperature?.celsius != null
+        ? ws.weatherData!.temperature!.celsius!.toStringAsFixed(1)
+        : 'N/A';
+    final tempScale = ws.weatherData?.temperature?.scaleFactor != null
+        ? ws.weatherData!.temperature!.scaleFactor!.toStringAsFixed(1)
+        : 'N/A';
+    final tempInfo = '$temp°C (Scale: $tempScale)';
+
+    final rain = ws.weatherData?.rain?.mm != null
+        ? ws.weatherData!.rain!.mm!.toStringAsFixed(1)
+        : 'N/A';
+    final rainScale = ws.weatherData?.rain?.scaleFactor != null
+        ? ws.weatherData!.rain!.scaleFactor!.toStringAsFixed(1)
+        : 'N/A';
+    final rainInfo = '$rain mm (Scale: $rainScale)';
+
     return Container(
       margin: const EdgeInsets.only(bottom: AppConstants.paddingMd),
       width: double.infinity,
@@ -285,6 +400,36 @@ class WaterScheduleItem extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          if (ws.nextWater != null) const SizedBox(height: 8),
+          if (ws.nextWater != null)
+            Row(
+              children: [
+                const SizedBox(width: AppConstants.paddingMd),
+                const Icon(Icons.waves, color: Colors.blue),
+                const SizedBox(width: 5),
+                Text('$nextWaterTime - $nextWaterDuration'),
+              ],
+            ),
+          if (ws.weatherData != null) const SizedBox(height: 8),
+          if (ws.weatherData != null)
+            Row(
+              children: [
+                const SizedBox(width: AppConstants.paddingMd),
+                const Icon(Icons.thermostat, color: Colors.orange),
+                const SizedBox(width: 5),
+                Text(tempInfo),
+              ],
+            ),
+          if (ws.weatherData != null) const SizedBox(height: 8),
+          if (ws.weatherData != null)
+            Row(
+              children: [
+                const SizedBox(width: AppConstants.paddingMd),
+                const Icon(Icons.water_drop, color: Colors.blue),
+                const SizedBox(width: 5),
+                Text(rainInfo),
+              ],
+            ),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(
@@ -306,6 +451,10 @@ class WaterScheduleItem extends StatelessWidget {
                 const SizedBox(width: 5),
                 if (ws.activePeriod != null)
                   ScheduleConfig(
+                    enabled: AppUtils.isInActivePeriod(
+                      ws.activePeriod!.startMonth,
+                      ws.activePeriod!.endMonth,
+                    ),
                     icon: Icons.calendar_month_rounded,
                     value:
                         '${ws.activePeriod?.startMonth} - ${ws.activePeriod?.endMonth}',
@@ -321,7 +470,13 @@ class WaterScheduleItem extends StatelessWidget {
 }
 
 class ScheduleConfig extends StatelessWidget {
-  const ScheduleConfig({super.key, this.value, required this.icon});
+  const ScheduleConfig({
+    super.key,
+    this.value,
+    required this.icon,
+    this.enabled = true,
+  });
+  final bool enabled;
   final String? value;
   final IconData icon;
 
@@ -333,7 +488,7 @@ class ScheduleConfig extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppConstants.radiusMd),
       ),
-      backgroundColor: AppColors.primary,
+      backgroundColor: enabled ? AppColors.primary : Colors.grey.shade400,
       labelPadding: EdgeInsets.zero,
       labelStyle: Theme.of(
         context,

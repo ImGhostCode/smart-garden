@@ -10,6 +10,7 @@ import '../../../../core/utils/extensions/navigation_extensions.dart';
 import '../../domain/entities/weather_client_entity.dart';
 import '../../domain/usecases/get_all_weather_clients.dart';
 import '../providers/weather_client_provider.dart';
+import '../providers/weather_client_ui_providers.dart';
 
 enum WeatherClientAction { edit, delete }
 
@@ -24,8 +25,11 @@ class WeatherClientScreen extends ConsumerStatefulWidget {
 }
 
 class _WeatherClientScreenState extends ConsumerState<WeatherClientScreen> {
+  late final TextEditingController _searchController;
+
   @override
   void initState() {
+    _searchController = TextEditingController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (ref.read(weatherClientProvider).weatherClients.isEmpty) {
         ref
@@ -39,6 +43,7 @@ class _WeatherClientScreenState extends ConsumerState<WeatherClientScreen> {
 
   @override
   void dispose() {
+    _searchController.dispose();
     EasyLoading.dismiss();
     super.dispose();
   }
@@ -46,6 +51,15 @@ class _WeatherClientScreenState extends ConsumerState<WeatherClientScreen> {
   @override
   Widget build(BuildContext context) {
     final weatherClientState = ref.watch(weatherClientProvider);
+
+    ref.listen(weatherClientProvider.select((state) => state.weatherClients), (
+      previous,
+      next,
+    ) {
+      if (previous?.length != next.length) {
+        ref.read(wcFilterProvider.notifier).state = '';
+      }
+    });
 
     ref.listen(
       weatherClientProvider.select((state) => state.isLoadingWeather),
@@ -75,7 +89,9 @@ class _WeatherClientScreenState extends ConsumerState<WeatherClientScreen> {
           AppUtils.showError(next.errDeletingWC);
         } else {
           AppUtils.showSuccess(next.responseMsg ?? 'Weather client deleted');
-          // refresh list
+          ref
+              .read(weatherClientProvider.notifier)
+              .getAllWeatherClients(GetAllWeatherClientsParams());
         }
       }
     });
@@ -146,21 +162,37 @@ class _WeatherClientScreenState extends ConsumerState<WeatherClientScreen> {
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppConstants.paddingMd,
                   ),
-                  child: SearchBar(
-                    leading: const Icon(
-                      Icons.search_rounded,
-                      color: Colors.grey,
-                    ),
-                    hintText: 'Search',
-                    trailing: [
-                      IconButton(
-                        onPressed: () {},
-                        icon: const Icon(
-                          Icons.clear_rounded,
-                          size: AppConstants.iconMd,
+                  child: Builder(
+                    builder: (context) {
+                      final searchQuery = ref.watch(wcFilterProvider);
+                      _searchController.text = searchQuery;
+                      return SearchBar(
+                        onTapOutside: (event) =>
+                            FocusScope.of(context).unfocus(),
+                        controller: _searchController,
+                        onChanged: (value) {
+                          ref.read(wcFilterProvider.notifier).state = value;
+                        },
+                        leading: const Icon(
+                          Icons.search_rounded,
+                          color: Colors.grey,
                         ),
-                      ),
-                    ],
+                        hintText: 'Search clients',
+                        trailing: [
+                          if (searchQuery.isNotEmpty)
+                            IconButton(
+                              onPressed: () {
+                                ref.read(wcFilterProvider.notifier).state = '';
+                                _searchController.clear();
+                              },
+                              icon: const Icon(
+                                Icons.clear_rounded,
+                                size: AppConstants.iconMd,
+                              ),
+                            ),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ),
@@ -194,9 +226,25 @@ class _WeatherClientScreenState extends ConsumerState<WeatherClientScreen> {
       );
     }
 
+    final filteredWCs = ref.watch(filteredWCProvider);
+    final searchQuery = ref.watch(wcFilterProvider);
+
+    if (filteredWCs.isEmpty) {
+      return SliverFillRemaining(
+        hasScrollBody: false,
+        child: Center(
+          child: Text(
+            searchQuery.isEmpty
+                ? 'No clients found'
+                : 'No clients match "$searchQuery"',
+          ),
+        ),
+      );
+    }
+
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
-        final wc = weatherClientState.weatherClients[index];
+        final wc = filteredWCs[index];
         return WeatherClientItem(
           wc: wc,
           fetchWeatherData: () {
@@ -208,7 +256,7 @@ class _WeatherClientScreenState extends ConsumerState<WeatherClientScreen> {
                 .deleteWeatherClient(wc.id!);
           },
         );
-      }, childCount: weatherClientState.weatherClients.length),
+      }, childCount: filteredWCs.length),
     );
   }
 }
@@ -338,7 +386,7 @@ class WeatherClientItem extends StatelessWidget {
                       Row(
                         children: [
                           const Icon(
-                            Icons.water_drop_outlined,
+                            Icons.water_drop,
                             color: Colors.blue,
                             size: AppConstants.iconMd,
                           ),

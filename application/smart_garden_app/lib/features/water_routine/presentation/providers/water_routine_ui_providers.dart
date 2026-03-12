@@ -5,9 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../zone/domain/entities/zone_entity.dart';
 import '../../domain/entities/water_routine_entity.dart';
+import 'water_routine_provider.dart';
 
 // UI state providers
-final waterRoutineFilterProvider = StateProvider<String>((ref) => '');
+final wrFilterProvider = StateProvider<String>((ref) => '');
 
 final waterRoutineSortOrderProvider = StateProvider<SortOrder>(
   (ref) => SortOrder.asc,
@@ -75,3 +76,20 @@ class WRStepsNotifier extends StateNotifier<List<StepEntity>> {
     state = [...state, step];
   }
 }
+
+// Derived providers - computed from other providers
+final filteredWRProvider = Provider<List<WaterRoutineEntity>>((ref) {
+  final waterRoutines = ref.watch(waterRoutineProvider).waterRoutines;
+  final searchQuery = ref.watch(wrFilterProvider);
+
+  if (searchQuery.isEmpty) {
+    return waterRoutines;
+  }
+
+  return waterRoutines
+      .where(
+        (wr) =>
+            (wr.name ?? '').toLowerCase().contains(searchQuery.toLowerCase()),
+      )
+      .toList();
+});

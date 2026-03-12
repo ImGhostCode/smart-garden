@@ -37,6 +37,13 @@ extension NavigationContext on BuildContext {
     );
   }
 
+  void goWaterHistory(String gardenId, String zoneId) {
+    pushNamed(
+      RouteNames.waterHistory,
+      pathParameters: {'gardenId': gardenId, 'zoneId': zoneId},
+    );
+  }
+
   void goEditZone(String gardenId, String zoneId, ZoneEntity zone) {
     pushNamed(
       RouteNames.editZone,

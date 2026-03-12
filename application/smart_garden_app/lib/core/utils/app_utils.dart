@@ -334,4 +334,36 @@ class AppUtils {
       return utcTime; // Return original if parsing fails
     }
   }
+
+  // Compare two month string: "Mar" and "May"
+  static bool isInActivePeriod(String? startMonthStr, String? endMonthStr) {
+    if (startMonthStr == null || endMonthStr == null) {
+      return false;
+    }
+    final monthMap = {
+      'Jan': 1,
+      'Feb': 2,
+      'Mar': 3,
+      'Apr': 4,
+      'May': 5,
+      'Jun': 6,
+      'Jul': 7,
+      'Aug': 8,
+      'Sep': 9,
+      'Oct': 10,
+      'Nov': 11,
+      'Dec': 12,
+    };
+    final now = DateTime.now();
+    final currentMonth = now.month;
+    final startMonth = monthMap[startMonthStr] ?? 1;
+    final endMonth = monthMap[endMonthStr] ?? 12;
+
+    if (startMonth <= endMonth) {
+      return currentMonth >= startMonth && currentMonth <= endMonth;
+    } else {
+      // Handle wrap-around case (e.g., Nov to Mar)
+      return currentMonth >= startMonth || currentMonth <= endMonth;
+    }
+  }
 }

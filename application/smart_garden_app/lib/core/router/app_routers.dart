@@ -23,6 +23,7 @@ import '../../features/weather_client/presentation/screens/new_weather_client_sc
 import '../../features/zone/domain/entities/zone_entity.dart';
 import '../../features/zone/presentation/screens/add_zone_screen.dart';
 import '../../features/zone/presentation/screens/edit_zone_screen.dart';
+import '../../features/zone/presentation/screens/water_history_screen.dart';
 import '../../features/zone/presentation/screens/zone_detail_screen.dart';
 import '../../features/zone/presentation/screens/zone_list_screen.dart';
 import '../constants/app_constants.dart';
@@ -86,6 +87,14 @@ class AppRoutes {
                 }
                 return null;
               },
+            ),
+            GoRoute(
+              path: 'water-history',
+              name: RouteNames.waterHistory,
+              builder: (context, state) => WaterHistoryScreen(
+                gardenId: state.pathParameters['gardenId']!,
+                zoneId: state.pathParameters['zoneId']!,
+              ),
             ),
           ],
         ),
@@ -238,6 +247,7 @@ class RouteNames {
 
   static const String zones = 'zones';
   static const String zoneDetail = 'zoneDetail';
+  static const String waterHistory = 'waterHistory';
   static const String addZone = 'addZone';
   static const String editZone = 'editZone';
 

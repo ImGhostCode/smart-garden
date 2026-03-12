@@ -4,9 +4,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/water_schedule_entity.dart';
+import 'water_schedule_provider.dart';
 
 // UI state providers
-final waterScheduleFilterProvider = StateProvider<String>((ref) => '');
+final wsFilterProvider = StateProvider<String>((ref) => '');
 
 final waterScheduleSortOrderProvider = StateProvider<SortOrder>(
   (ref) => SortOrder.asc,
@@ -14,13 +15,15 @@ final waterScheduleSortOrderProvider = StateProvider<SortOrder>(
 
 enum SortOrder { asc, desc }
 
+final excludeWeatherProvider = StateProvider<bool>((ref) => true);
+
 final selectedWSProvider =
-    StateNotifierProvider<WRStepsNotifier, List<WaterScheduleEntity>>(
-      (ref) => WRStepsNotifier(),
+    StateNotifierProvider<WSStepsNotifier, List<WaterScheduleEntity>>(
+      (ref) => WSStepsNotifier(),
     );
 
-class WRStepsNotifier extends StateNotifier<List<WaterScheduleEntity>> {
-  WRStepsNotifier() : super([]);
+class WSStepsNotifier extends StateNotifier<List<WaterScheduleEntity>> {
+  WSStepsNotifier() : super([]);
 
   void toggle(WaterScheduleEntity ws) {
     final index = state.indexWhere((s) => s.id == ws.id);
@@ -42,3 +45,20 @@ class WRStepsNotifier extends StateNotifier<List<WaterScheduleEntity>> {
     state = [...state, ws];
   }
 }
+
+// Derived providers - computed from other providers
+final filteredWSProvider = Provider<List<WaterScheduleEntity>>((ref) {
+  final waterSchedules = ref.watch(waterScheduleProvider).waterSchedules;
+  final searchQuery = ref.watch(wsFilterProvider);
+
+  if (searchQuery.isEmpty) {
+    return waterSchedules;
+  }
+
+  return waterSchedules
+      .where(
+        (ws) =>
+            (ws.name ?? '').toLowerCase().contains(searchQuery.toLowerCase()),
+      )
+      .toList();
+});

@@ -111,7 +111,7 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
                   const SizedBox(height: 8),
                   _buildDetailRow(
                     icon: Icons.thermostat,
-                    iconColor: Colors.redAccent,
+                    iconColor: Colors.orange,
                     title: "Temperature",
                     value:
                         "${gardenState.garden?.tempHumData?.temperatureCelsius?.toStringAsFixed(1) ?? '-'}°C",
@@ -374,7 +374,7 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: Colors.grey[200],
+            backgroundColor: iconColor.withOpacity(0.1),
             child: Icon(icon, color: iconColor),
           ),
           const SizedBox(width: 12),
@@ -402,6 +402,7 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
                     minHeight: 6,
                   ),
                 ),
+                const SizedBox(height: 8),
               ],
             ),
           ),
@@ -430,8 +431,8 @@ class _GardenDetailScreenState extends ConsumerState<GardenDetailScreen> {
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: Colors.grey[200],
-            child: const Icon(Icons.lightbulb, color: Colors.orange),
+            backgroundColor: Colors.yellow[700]!.withOpacity(0.1),
+            child: Icon(Icons.lightbulb, color: Colors.yellow[700]),
           ),
           const SizedBox(width: 12),
           Expanded(
